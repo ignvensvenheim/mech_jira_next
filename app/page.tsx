@@ -16,6 +16,7 @@ export default function IssuesPage() {
     error,
     statusOptions,
     priorityOptions,
+    requestTypeOptions, // <— new
     assigneeOptions,
     loadMore,
     resetFilters,
@@ -28,6 +29,7 @@ export default function IssuesPage() {
         setFilters={setFilters}
         statusOptions={statusOptions}
         priorityOptions={priorityOptions}
+        requestTypeOptions={requestTypeOptions} // <— new
         assigneeOptions={assigneeOptions}
         onReset={resetFilters}
       />

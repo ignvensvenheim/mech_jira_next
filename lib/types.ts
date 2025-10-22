@@ -44,14 +44,13 @@ export type ApiResponse = {
 };
 
 export type Filters = {
-  project: string;
   text: string;
-  statuses: string[];
-  priorities: string[];
-  assignee: string;
-  createdFrom: string;
-  createdTo: string;
+  statuses: string[]; // status names
+  priorities: string[]; // priority names
+  requestTypes: string[]; // customer request type names
+  assignee: string; // '', 'me', 'unassigned', or accountId
+  createdFrom: string; // yyyy-mm-dd
+  createdTo: string; // yyyy-mm-dd
   orderBy: "created desc" | "created asc" | "updated desc" | "updated asc";
-  // number for fixed size, or 'all' to auto-fetch all pages
   maxResults: number | "all";
 };

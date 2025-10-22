@@ -3,69 +3,26 @@
 import React from "react";
 import type { Issue, Paging, ApiResponse, Filters } from "@/lib/types";
 
+const PROJECT_KEY = "MECH";
+
 export const DEFAULT_FILTERS: Filters = {
-  project: "MECH",
   text: "",
   statuses: [],
   priorities: [],
+  requestTypes: [],
   assignee: "",
   createdFrom: "",
   createdTo: "",
   orderBy: "created desc",
-  maxResults: 20,
+  maxResults: 20, // or 'all'
 };
 
 const DEBOUNCE_MS = 500;
-// Jira caps per-page ~100. We'll use 100 when "All" is selected.
 const PAGE_CAP_FOR_ALL = 100;
-// Safety: cap total auto pages to avoid fetching tens of thousands unintentionally.
-const MAX_AUTO_PAGES = 50; // 50 * 100 = up to ~5,000 issues
+const MAX_AUTO_PAGES = 50;
 
 function jqlQuote(s: string) {
   return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
-}
-
-function buildJql(f: Filters): string {
-  const clauses: string[] = [];
-  if (f.project.trim()) clauses.push(`project = ${f.project.trim()}`);
-
-  if (f.text.trim()) {
-    const t = f.text.trim();
-    clauses.push(
-      `(summary ~ ${jqlQuote(t)} OR description ~ ${jqlQuote(
-        t
-      )} OR comment ~ ${jqlQuote(t)})`
-    );
-  }
-
-  if (f.statuses.length)
-    clauses.push(`status in (${f.statuses.map(jqlQuote).join(", ")})`);
-  if (f.priorities.length)
-    clauses.push(`priority in (${f.priorities.map(jqlQuote).join(", ")})`);
-
-  if (f.assignee === "me") clauses.push("assignee = currentUser()");
-  else if (f.assignee === "unassigned") clauses.push("assignee is EMPTY");
-  else if (f.assignee)
-    clauses.push(`assignee in (accountId(${jqlQuote(f.assignee)}))`);
-
-  if (f.createdFrom) clauses.push(`created >= ${f.createdFrom}`);
-  if (f.createdTo) clauses.push(`created <= ${f.createdTo}`);
-
-  let jql = clauses.join(" AND ");
-  switch (f.orderBy) {
-    case "created asc":
-      jql += " ORDER BY created ASC";
-      break;
-    case "updated desc":
-      jql += " ORDER BY updated DESC";
-      break;
-    case "updated asc":
-      jql += " ORDER BY updated ASC";
-      break;
-    default:
-      jql += " ORDER BY created DESC";
-  }
-  return jql.trim();
 }
 
 export function useJiraSearch() {
@@ -76,6 +33,51 @@ export function useJiraSearch() {
   const [loadingInitial, setLoadingInitial] = React.useState(true);
   const [loadingMore, setLoadingMore] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Options fetched from metadata
+  const [statusOptions, setStatusOptions] = React.useState<string[]>([]);
+  const [priorityOptions, setPriorityOptions] = React.useState<string[]>([]);
+  const [requestTypeOptions, setRequestTypeOptions] = React.useState<string[]>(
+    []
+  );
+  const [assigneeOptions, setAssigneeOptions] = React.useState<
+    { id: string; name: string }[]
+  >([]);
+  const [requestTypeFieldName, setRequestTypeFieldName] =
+    React.useState<string>("Request Type");
+
+  // Load options from our meta endpoint once
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch(
+          `/api/jira/meta/options?projectKey=${PROJECT_KEY}`,
+          { cache: "no-store" }
+        );
+        const data = await r.json();
+        if (cancelled) return;
+        if (data?.options) {
+          setStatusOptions(data.options.statuses || []);
+          setPriorityOptions(data.options.priorities || []);
+          setRequestTypeOptions(data.options.requestTypes || []);
+          setAssigneeOptions(
+            (data.options.assignees || []).map((a: any) => ({
+              id: a.id,
+              name: a.name,
+            }))
+          );
+        }
+        if (data?.fieldNames?.requestType)
+          setRequestTypeFieldName(data.fieldNames.requestType);
+      } catch {
+        // leave empty on failure
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const searchAbortRef = React.useRef<AbortController | null>(null);
   const loadMoreAbortRef = React.useRef<AbortController | null>(null);
@@ -99,10 +101,60 @@ export function useJiraSearch() {
     []
   );
 
-  // Auto-apply filters with debounce, and auto-load when maxResults = 'all'
+  const buildJql = React.useCallback(
+    (f: Filters) => {
+      const clauses: string[] = [];
+      clauses.push(`project = ${PROJECT_KEY}`);
+
+      if (f.text.trim()) {
+        const t = f.text.trim();
+        clauses.push(
+          `(summary ~ ${jqlQuote(t)} OR description ~ ${jqlQuote(
+            t
+          )} OR comment ~ ${jqlQuote(t)})`
+        );
+      }
+      if (f.statuses.length)
+        clauses.push(`status in (${f.statuses.map(jqlQuote).join(", ")})`);
+      if (f.priorities.length)
+        clauses.push(`priority in (${f.priorities.map(jqlQuote).join(", ")})`);
+      if (f.requestTypes.length && requestTypeFieldName) {
+        clauses.push(
+          `"${requestTypeFieldName}" in (${f.requestTypes
+            .map(jqlQuote)
+            .join(", ")})`
+        );
+      }
+      if (f.assignee === "me") clauses.push("assignee = currentUser()");
+      else if (f.assignee === "unassigned") clauses.push("assignee is EMPTY");
+      else if (f.assignee)
+        clauses.push(`assignee in (accountId(${jqlQuote(f.assignee)}))`);
+      if (f.createdFrom) clauses.push(`created >= ${f.createdFrom}`);
+      if (f.createdTo) clauses.push(`created <= ${f.createdTo}`);
+
+      let jql = clauses.join(" AND ");
+      switch (f.orderBy) {
+        case "created asc":
+          jql += " ORDER BY created ASC";
+          break;
+        case "updated desc":
+          jql += " ORDER BY updated DESC";
+          break;
+        case "updated asc":
+          jql += " ORDER BY updated ASC";
+          break;
+        default:
+          jql += " ORDER BY created DESC";
+      }
+      return jql.trim();
+    },
+    [requestTypeFieldName]
+  );
+
+  // Debounced auto search; fetch ALL when typing or Size='all'
   React.useEffect(() => {
-    loadMoreAbortRef.current?.abort(); // cancel any load-more when filters change
-    searchAbortRef.current?.abort(); // abort previous search
+    loadMoreAbortRef.current?.abort();
+    searchAbortRef.current?.abort();
 
     const ctrl = new AbortController();
     searchAbortRef.current = ctrl;
@@ -115,30 +167,31 @@ export function useJiraSearch() {
         const jql = buildJql(filters);
         setActiveJql(jql);
 
-        const firstPageSize =
-          filters.maxResults === "all" ? PAGE_CAP_FOR_ALL : filters.maxResults;
+        const searchingText = filters.text.trim().length > 0;
+        const wantAll = searchingText || filters.maxResults === "all";
+        const firstPageSize = wantAll
+          ? PAGE_CAP_FOR_ALL
+          : (filters.maxResults as number);
+
+        // First page
         const first = await fetchPage({
           jql,
           maxResults: firstPageSize,
           signal: ctrl.signal,
         });
+        let allIssues = Array.isArray(first.issues) ? first.issues : [];
+        let lastPaging = first.paging;
 
-        setIssues(Array.isArray(first.issues) ? first.issues : []);
-        setPaging(first.paging);
-        if (!ctrl.signal.aborted) setLoadingInitial(false);
-
-        // Auto-load remaining pages if "All" selected
+        // Auto-fetch rest if needed
         if (
-          filters.maxResults === "all" &&
+          wantAll &&
           first.paging?.nextPageToken &&
           !first.paging?.isLast &&
           !ctrl.signal.aborted
         ) {
           setLoadingMore(true);
           let token = first.paging.nextPageToken || null;
-          let lastPaging = first.paging;
           let pages = 1;
-
           while (
             token &&
             !lastPaging?.isLast &&
@@ -151,16 +204,20 @@ export function useJiraSearch() {
               token,
               signal: ctrl.signal,
             });
-            setIssues((prev) =>
-              prev.concat(Array.isArray(more.issues) ? more.issues : [])
+            allIssues = allIssues.concat(
+              Array.isArray(more.issues) ? more.issues : []
             );
             lastPaging = more.paging || lastPaging;
             token = more.paging?.nextPageToken || null;
             pages += 1;
           }
-
-          setPaging(lastPaging);
           if (!ctrl.signal.aborted) setLoadingMore(false);
+        }
+
+        if (!ctrl.signal.aborted) {
+          setIssues(allIssues);
+          setPaging(lastPaging);
+          setLoadingInitial(false);
         }
       } catch (e: any) {
         if (e?.name !== "AbortError") {
@@ -177,11 +234,7 @@ export function useJiraSearch() {
       clearTimeout(t);
       ctrl.abort();
     };
-  }, [filters, fetchPage]);
-
-  const resetFilters = React.useCallback(() => {
-    setFilters(DEFAULT_FILTERS);
-  }, []);
+  }, [filters, buildJql, fetchPage]);
 
   const loadMore = React.useCallback(async () => {
     if (!paging?.nextPageToken || paging.isLast || loadingMore) return;
@@ -192,8 +245,13 @@ export function useJiraSearch() {
     try {
       setLoadingMore(true);
       setError(null);
+
+      const searchingText = filters.text.trim().length > 0;
       const pageSize =
-        filters.maxResults === "all" ? PAGE_CAP_FOR_ALL : filters.maxResults;
+        filters.maxResults === "all" || searchingText
+          ? PAGE_CAP_FOR_ALL
+          : (filters.maxResults as number);
+
       const json = await fetchPage({
         jql: activeJql || buildJql(filters),
         token: paging.nextPageToken || undefined,
@@ -216,30 +274,12 @@ export function useJiraSearch() {
     fetchPage,
     activeJql,
     filters,
+    buildJql,
   ]);
 
-  // Derived options
-  const statusOptions = React.useMemo(
-    () =>
-      Array.from(new Set(issues.map((i) => i.status).filter(Boolean))).sort(
-        (a, b) => a.localeCompare(b)
-      ),
-    [issues]
-  );
-  const priorityOptions = React.useMemo(
-    () =>
-      Array.from(
-        new Set(issues.map((i) => i.priority || "").filter(Boolean))
-      ).sort((a, b) => a.localeCompare(b)),
-    [issues]
-  );
-  const assigneeOptions = React.useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const i of issues)
-      if (i.assignee?.id && i.assignee.name)
-        seen.set(i.assignee.id, i.assignee.name);
-    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
-  }, [issues]);
+  const resetFilters = React.useCallback(() => {
+    setFilters(DEFAULT_FILTERS);
+  }, []);
 
   return {
     // state
@@ -250,9 +290,10 @@ export function useJiraSearch() {
     loadingInitial,
     loadingMore,
     error,
-    // derived
+    // options
     statusOptions,
     priorityOptions,
+    requestTypeOptions,
     assigneeOptions,
     // actions
     loadMore,
