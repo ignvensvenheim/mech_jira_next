@@ -5,7 +5,7 @@ import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { FilterBar } from "@/components/FilterBar";
 import { IssueCard } from "@/components/IssueCard";
 
-export default function IssuesPage() {
+export default function Page() {
   const {
     filters,
     setFilters,
@@ -16,7 +16,7 @@ export default function IssuesPage() {
     error,
     statusOptions,
     priorityOptions,
-    requestTypeOptions, // <— new
+    requestTypeOptions,
     assigneeOptions,
     loadMore,
     resetFilters,
@@ -29,7 +29,7 @@ export default function IssuesPage() {
         setFilters={setFilters}
         statusOptions={statusOptions}
         priorityOptions={priorityOptions}
-        requestTypeOptions={requestTypeOptions} // <— new
+        requestTypeOptions={requestTypeOptions}
         assigneeOptions={assigneeOptions}
         onReset={resetFilters}
       />
@@ -37,7 +37,7 @@ export default function IssuesPage() {
       {loadingInitial && <div>Loading…</div>}
       {error && !loadingInitial && (
         <div style={{ color: "crimson", whiteSpace: "pre-wrap" }}>
-          Failed to load: {error}
+          {String(error)}
         </div>
       )}
 
