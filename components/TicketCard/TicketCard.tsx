@@ -2,72 +2,83 @@
 
 import React from "react";
 import type { Issue } from "@/lib/types";
-import "./ticketCard.css";
 
 export function IssueCard({ issue: i }: { issue: Issue }) {
   const url =
-    i.requestUrl ?? `https://your-domain.atlassian.net/browse/${i.key}`;
-
-  const getStatusClass = (category?: string) => {
-    const k = (category || "").toLowerCase();
-    if (k === "done") return "ticket-card__status ticket-card__status--done";
-    if (k === "indeterminate")
-      return "ticket-card__status ticket-card__status--indeterminate";
-    return "ticket-card__status";
-  };
-
-  const getStatusStyle = (category?: string) => {
-    const k = (category || "").toLowerCase();
-    if (k === "done") return { background: "#E3FCEF", color: "#006644" };
-    if (k === "indeterminate")
-      return { background: "#DEEBFF", color: "#0747A6" };
-    return { background: "#F4F5F7", color: "#42526E" };
-  };
+    i.requestUrl ?? `https://your-domain.atlassian.net/browse/${i.key}`; // replace your-domain
 
   return (
-    <article className="ticket-card">
-      <div className="ticket-card__header">
+    <article
+      style={{
+        padding: 14,
+        border: "1px solid #EBECF0",
+        borderRadius: 12,
+        background: "#FFFFFF",
+        boxShadow: "0 1px 2px rgba(9,30,66,0.08)",
+        display: "grid",
+        gap: 8,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 8,
+        }}
+      >
         <a
           href={url}
           target="_blank"
           rel="noreferrer"
-          className="ticket-card__key"
+          style={{ textDecoration: "none", color: "#172B4D" }}
         >
-          {i.key}
+          <strong>{i.key}</strong>
         </a>
-        <span
-          className={getStatusClass(i.statusCategory)}
-          style={getStatusStyle(i.statusCategory)}
-        >
-          {i.status}
-        </span>
+        <span style={statusPillStyle(i.statusCategory)}>{i.status}</span>
       </div>
 
-      <div className="ticket-card__summary">{i.summary}</div>
+      <div style={{ fontSize: 15, color: "#091E42" }}>{i.summary}</div>
 
       {i.descriptionText && (
-        <div className="ticket-card__description">
+        <div style={{ color: "#6B778C", whiteSpace: "pre-wrap" }}>
           {truncate(i.descriptionText, 180)}
         </div>
       )}
 
-      <div className="ticket-card__chips">
-        {i.priority && <Chip text={`Priority: ${i.priority}`} />}
-        {i.requestType && (
+      <div
+        style={{
+          display: "flex",
+          gap: 8,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        {i.priority ? <Chip text={`Priority: ${i.priority}`} /> : null}
+        {i.requestType ? (
           <Chip text={`Request: ${i.requestType}`} bg="#EAE6FF" fg="#403294" />
-        )}
+        ) : null}
         <Chip text={`Time: ${fmtDuration(i.timeSpentSeconds)}`} />
         <Chip text={`Created: ${relativeDate(i.created)}`} />
       </div>
 
-      <div className="ticket-card__assignee">
-        <Avatar url={i.assignee?.avatar} />
-        <span>Assignee: {i.assignee?.name || "—"}</span>
-      </div>
-
-      <div className="ticket-card__reporter">
-        <Avatar url={i.reporter?.avatar} />
-        <span>Reporter: {i.reporter?.name || "—"}</span>
+      <div
+        style={{
+          display: "flex",
+          gap: 16,
+          alignItems: "center",
+          color: "#6B778C",
+          fontSize: 13,
+        }}
+      >
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Avatar url={i.assignee?.avatar} />
+          <span>Assignee: {i.assignee?.name || "—"}</span>
+        </div>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Avatar url={i.reporter?.avatar} />
+          <span>Reporter: {i.reporter?.name || "—"}</span>
+        </div>
       </div>
     </article>
   );
@@ -76,8 +87,16 @@ export function IssueCard({ issue: i }: { issue: Issue }) {
 function Avatar({ url }: { url?: string | null }) {
   return (
     <span
-      className="ticket-card__avatar"
-      style={{ backgroundImage: url ? `url(${url})` : undefined }}
+      style={{
+        width: 18,
+        height: 18,
+        borderRadius: "50%",
+        backgroundImage: url ? `url(${url})` : undefined,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundColor: "#DFE1E6",
+        display: "inline-block",
+      }}
     />
   );
 }
@@ -92,13 +111,25 @@ function Chip({
   fg?: string;
 }) {
   return (
-    <span className="ticket-card__chip" style={{ background: bg, color: fg }}>
+    <span
+      style={{
+        background: bg,
+        color: fg,
+        padding: "2px 8px",
+        borderRadius: 999,
+        fontSize: 12,
+        fontWeight: 600,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        border: "1px solid #EBECF0",
+      }}
+    >
       {text}
     </span>
   );
 }
 
-// Utility functions
 function fmtDuration(sec: number) {
   if (!sec || sec < 60) return `${Math.max(0, Math.round(sec / 60))}m`;
   const h = Math.floor(sec / 3600);
@@ -119,4 +150,18 @@ function relativeDate(iso: string) {
 
 function truncate(s: string, n: number) {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
+}
+
+function statusPillStyle(category?: string): React.CSSProperties {
+  const k = (category || "").toLowerCase();
+  const base = {
+    padding: "2px 8px",
+    borderRadius: 999,
+    fontSize: 12,
+    fontWeight: 600 as const,
+  };
+  if (k === "done") return { ...base, background: "#E3FCEF", color: "#006644" };
+  if (k === "indeterminate")
+    return { ...base, background: "#DEEBFF", color: "#0747A6" };
+  return { ...base, background: "#F4F5F7", color: "#42526E" };
 }
