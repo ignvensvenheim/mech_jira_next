@@ -2,8 +2,8 @@
 
 import React from "react";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
-import { FilterBar } from "@/components/FilterBar";
-import { IssueCard } from "@/components/IssueCard";
+import { IssueCard } from "@/components/TicketCard/TicketCard";
+import "./page.css";
 
 export default function Page() {
   const {
@@ -22,57 +22,38 @@ export default function Page() {
     resetFilters,
   } = useJiraSearch();
 
-  return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <FilterBar
-        filters={filters}
-        setFilters={setFilters}
-        statusOptions={statusOptions}
-        priorityOptions={priorityOptions}
-        requestTypeOptions={requestTypeOptions}
-        assigneeOptions={assigneeOptions}
-        onReset={resetFilters}
-      />
+  const isLoadMoreDisabled =
+    !paging?.nextPageToken || paging?.isLast || loadingMore || !!error;
 
-      {loadingInitial && <div>Loading…</div>}
+  return (
+    <div className="page">
+      {loadingInitial && <div className="page__loading">Loading…</div>}
+
       {error && !loadingInitial && (
-        <div style={{ color: "crimson", whiteSpace: "pre-wrap" }}>
-          {String(error)}
-        </div>
+        <div className="page__error">{String(error)}</div>
       )}
 
-      <section
-        style={{
-          display: "grid",
-          gap: 12,
-          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-        }}
-      >
+      <section className="page__issues">
         {issues.map((i) => (
           <IssueCard key={i.id} issue={i} />
         ))}
       </section>
 
       {!loadingInitial && !error && issues.length === 0 && (
-        <div style={{ color: "#97A0AF" }}>No issues found.</div>
+        <div className="page__empty">No issues found.</div>
       )}
 
-      <div style={{ marginTop: 8 }}>
+      <div className="page__load-more">
         <button
           onClick={loadMore}
-          disabled={
-            !paging?.nextPageToken || paging?.isLast || loadingMore || !!error
-          }
-          style={{
-            padding: "10px 14px",
-            borderRadius: 8,
-            border: "1px solid #DFE1E6",
-            background: loadingMore ? "#F4F5F7" : "white",
-            cursor:
-              !paging?.nextPageToken || paging?.isLast || loadingMore || !!error
-                ? "not-allowed"
-                : "pointer",
-          }}
+          disabled={isLoadMoreDisabled}
+          className={`page__load-more-button ${
+            loadingMore ? "page__load-more-button--loading" : ""
+          } ${
+            isLoadMoreDisabled && !loadingMore
+              ? "page__load-more-button--disabled"
+              : ""
+          }`}
         >
           {loadingMore
             ? "Loading…"

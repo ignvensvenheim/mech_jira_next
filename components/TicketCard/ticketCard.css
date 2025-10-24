@@ -1,0 +1,77 @@
+/* ticketCard.css */
+
+.ticket-card {
+  padding: 14px;
+  border: 1px solid #ebecf0;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(9, 30, 66, 0.08);
+  display: grid;
+  gap: 8px;
+}
+
+.ticket-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.ticket-card__key {
+  text-decoration: none;
+  color: #172b4d;
+  font-weight: bold;
+}
+
+.ticket-card__status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ticket-card__summary {
+  font-size: 15px;
+  color: #091e42;
+}
+
+.ticket-card__description {
+  color: #6b778c;
+  white-space: pre-wrap;
+}
+
+.ticket-card__chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ticket-card__chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #ebecf0;
+}
+
+.ticket-card__assignee,
+.ticket-card__reporter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #6b778c;
+  font-size: 13px;
+}
+
+.ticket-card__avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  background-color: #dfe1e6;
+}

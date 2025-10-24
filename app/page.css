@@ -1,0 +1,47 @@
+/* page.css */
+
+.page {
+  display: grid;
+  gap: 16px;
+}
+
+.page__issues {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.page__loading {
+  color: #000;
+}
+
+.page__error {
+  color: crimson;
+  white-space: pre-wrap;
+}
+
+.page__empty {
+  color: #97a0af;
+}
+
+.page__load-more {
+  margin-top: 8px;
+}
+
+.page__load-more-button {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #dfe1e6;
+  background: white;
+  cursor: pointer;
+}
+
+.page__load-more-button--loading {
+  background: #f4f5f7;
+  cursor: not-allowed;
+}
+
+.page__load-more-button--disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
