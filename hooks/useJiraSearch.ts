@@ -7,7 +7,7 @@ const PROJECT_KEY = "MECH";
 const PAGE_SIZE = 100;
 const MAX_PAGES = 50;
 
-export function useJiraSearch() {
+export function useJiraSearch(dateFrom?: string, dateTo?: string) {
   const [issues, setIssues] = React.useState<Issue[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -15,17 +15,29 @@ export function useJiraSearch() {
     loaded: 0,
   });
 
-  const fetchPage = React.useCallback(async (token?: string) => {
-    const params = new URLSearchParams();
-    params.set("jql", `project = ${PROJECT_KEY} ORDER BY created DESC`);
-    params.set("maxResults", PAGE_SIZE.toString());
-    if (token) params.set("nextPageToken", token);
+  const fetchPage = React.useCallback(
+    async (token?: string) => {
+      const params = new URLSearchParams();
 
-    const r = await fetch(`/api/jira/search?${params}`, { cache: "no-store" });
-    const json = await r.json();
-    if (json.error) throw new Error(json.error);
-    return json as ApiResponse;
-  }, []);
+      // build JQL with optional date filters
+      let jql = `project = ${PROJECT_KEY}`;
+      if (dateFrom) jql += ` AND created >= "${dateFrom}"`;
+      if (dateTo) jql += ` AND created <= "${dateTo}"`;
+      jql += " ORDER BY created DESC";
+
+      params.set("jql", jql);
+      params.set("maxResults", PAGE_SIZE.toString());
+      if (token) params.set("nextPageToken", token);
+
+      const r = await fetch(`/api/jira/search?${params}`, {
+        cache: "no-store",
+      });
+      const json = await r.json();
+      if (json.error) throw new Error(json.error);
+      return json as ApiResponse;
+    },
+    [dateFrom, dateTo]
+  );
 
   React.useEffect(() => {
     const controller = new AbortController();
@@ -44,9 +56,7 @@ export function useJiraSearch() {
         do {
           const { issues, paging } = await fetchPage(token || undefined);
           all = all.concat(issues);
-
           setProgress({ loaded: all.length });
-
           token = paging?.nextPageToken || null;
           pages++;
         } while (token && pages < MAX_PAGES && !signal.aborted);

@@ -104,11 +104,10 @@ export default function ExportIssuesButton({ issues, ...props }: Props) {
         Assignee: i.assignee?.name ?? "",
         Reporter: i.reporter?.name ?? "",
         Created: i.created,
-        Updated: i.updated,
+        Resolved: i.resolved,
         Mechanics: i.mechanics?.join(", ") ?? "",
         "Time Spent (h:mm)": secondsToExcelDays(secs), // sums correctly in Excel
         "Time Spent (pretty)": humanizeSeconds(secs), // human-readable
-        URL: i.requestUrl ?? "",
       };
     });
 

@@ -2,6 +2,7 @@
 
 import "./page.css";
 import React, { useMemo, useState } from "react";
+import type { Issue, NormalizedIssue } from "@/lib/types";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
 import ExportIssuesButton from "@/components/ExportIssuesButton/ExportIssuesButton";
 import { Oval } from "react-loader-spinner";
@@ -9,7 +10,7 @@ import { SortFilter } from "@/components/SortFilter/SortFilter";
 import { TicketsGrid } from "@/components/TicketsGrid/TicketsGrid";
 
 export default function Page() {
-  const { issues, loadingInitial, error } = useJiraSearch();
+  const { issues, loadingInitial, error, progress } = useJiraSearch();
 
   const ITEMS_PER_PAGE = 20;
   const [page, setPage] = useState(1);
@@ -27,34 +28,48 @@ export default function Page() {
   }, [issues, sort]);
 
   // filtered issues
-
   const filteredIssues = useMemo(() => {
-    return issues
-      .filter((i) => {
-        const created = new Date(i.created).getTime();
-        const from = dateFrom ? new Date(dateFrom).getTime() : -Infinity;
-        const to = dateTo ? new Date(dateTo).getTime() : Infinity;
-        return created >= from && created <= to;
-      })
-      .sort((a, b) => {
-        const da = new Date(a.created).getTime();
-        const db = new Date(b.created).getTime();
-        return sort === "newest" ? db - da : da - db;
-      });
-  }, [issues, sort, dateFrom, dateTo]);
+    return sortedIssues.filter((i) => {
+      const created = new Date(i.created).getTime();
+      const from = dateFrom ? new Date(dateFrom).getTime() : -Infinity;
+      const to = dateTo ? new Date(dateTo).getTime() : Infinity;
+      return created >= from && created <= to;
+    });
+  }, [sortedIssues, dateFrom, dateTo]);
+
   // slice for current page
   const visibleIssues = useMemo(() => {
     const start = (page - 1) * ITEMS_PER_PAGE;
     return filteredIssues.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredIssues, page]);
 
-  const totalPages = Math.ceil(sortedIssues.length / ITEMS_PER_PAGE);
+  // map Issue[] -> NormalizedIssue[]
+  const normalizedVisibleIssues: NormalizedIssue[] = useMemo(() => {
+    return visibleIssues.map((i) => ({
+      ...i,
+      remainingEstimateSeconds: i.remainingEstimateSeconds ?? 0,
+      issueType: i.issueType ?? "Task",
+      project: i.project ?? "MECH",
+      worklogs: i.worklogs ?? [],
+    }));
+  }, [visibleIssues]);
+
+  // calculate total pages based on filtered issues
+  const totalPages = Math.ceil(filteredIssues.length / ITEMS_PER_PAGE);
 
   return (
     <div className="page">
       <div className="page__header">
         <h1 className="page__title">Issues filtering & export</h1>
-        <ExportIssuesButton issues={issues} />
+        <ExportIssuesButton
+          issues={filteredIssues.map((i) => ({
+            ...i,
+            remainingEstimateSeconds: i.remainingEstimateSeconds ?? 0,
+            issueType: i.issueType ?? "Task",
+            project: i.project ?? "MECH",
+            worklogs: i.worklogs ?? [],
+          }))}
+        />
       </div>
 
       <SortFilter
@@ -76,7 +91,7 @@ export default function Page() {
       />
 
       {/* tickets grid */}
-      <TicketsGrid issues={visibleIssues} />
+      <TicketsGrid issues={normalizedVisibleIssues} />
 
       {/* error */}
       {error && !loadingInitial && (
@@ -102,7 +117,7 @@ export default function Page() {
       )}
 
       {/* pagination */}
-      {sortedIssues.length > ITEMS_PER_PAGE && (
+      {totalPages > 1 && (
         <div className="page__pagination">
           <button
             className="page__pagination-button"

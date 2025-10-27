@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
       "assignee",
       "reporter",
       "created",
+      "resolved",
       "resolutiondate",
       "timetracking",
       "worklog",

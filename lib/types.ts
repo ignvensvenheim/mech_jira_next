@@ -5,6 +5,11 @@ export type UserLite = {
 } | null;
 
 export type Issue = {
+  resolved: any;
+  remainingEstimateSeconds: number;
+  issueType: string;
+  project: string;
+  worklogs: never[];
   mechanicsRaw: any;
   mechanics: any;
   id: string;
@@ -55,3 +60,9 @@ export type Filters = {
   orderBy: "created desc" | "created asc" | "updated desc" | "updated asc";
   maxResults: number | "all";
 };
+
+export interface NormalizedIssue extends Issue {
+  remainingEstimateSeconds: number;
+  issueType: string;
+  project: string;
+}

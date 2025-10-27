@@ -8,7 +8,7 @@ export function IssueCard({ issue: i }: { issue: Issue }) {
   const url = i.requestUrl ?? `https://svenheim.atlassian.net/browse/${i.key}`;
 
   return (
-    <article className="ticket-card">
+    <article className="ticket-card" onClick={() => console.log(i.id)}>
       <div className="ticket-card__header">
         <a
           href={url}

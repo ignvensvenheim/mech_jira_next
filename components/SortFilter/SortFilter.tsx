@@ -6,8 +6,8 @@ import "./sortFilter.css";
 type Props = {
   sort: "newest" | "oldest";
   onSortChange: (sort: "newest" | "oldest") => void;
-  dateFrom?: string;
-  dateTo?: string;
+  dateFrom: string;
+  dateTo: string;
   onDateChange: (from: string, to: string) => void;
   onReset: () => void;
 };
@@ -46,21 +46,18 @@ export function SortFilter({
       </select>
 
       <label className="sort-filter__label">From:</label>
+      <label>From:</label>
       <input
         type="date"
-        className="sort-filter__date"
-        value={from}
-        onChange={(e) => setFrom(e.target.value)}
-        onBlur={handleDateChange}
+        value={dateFrom} // use dateFrom prop
+        onChange={(e) => onDateChange(e.target.value, dateTo)} // dateTo prop
       />
 
-      <label className="sort-filter__label">To:</label>
+      <label>To:</label>
       <input
         type="date"
-        className="sort-filter__date"
-        value={to}
-        onChange={(e) => setTo(e.target.value)}
-        onBlur={handleDateChange}
+        value={dateTo} // use dateTo prop
+        onChange={(e) => onDateChange(dateFrom, e.target.value)} // dateFrom prop
       />
 
       <button className="sort-filter__reset" onClick={handleReset}>
