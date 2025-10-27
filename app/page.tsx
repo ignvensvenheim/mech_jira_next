@@ -2,9 +2,9 @@
 
 import "./page.css";
 import React, { useMemo, useState } from "react";
-import type { Issue, NormalizedIssue } from "@/lib/types";
+import type { Issue } from "@/lib/types";
+import { normalizeIssues } from "@/lib/normalizeIssue";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
-import ExportIssuesButton from "@/components/ExportIssuesButton/ExportIssuesButton";
 import { Oval } from "react-loader-spinner";
 import { SortFilter } from "@/components/SortFilter/SortFilter";
 import { TicketsGrid } from "@/components/TicketsGrid/TicketsGrid";
@@ -44,16 +44,10 @@ export default function Page() {
   }, [filteredIssues, page]);
 
   // map Issue[] -> NormalizedIssue[]
-  const normalizedVisibleIssues: NormalizedIssue[] = useMemo(() => {
-    return visibleIssues.map((i) => ({
-      ...i,
-      remainingEstimateSeconds: i.remainingEstimateSeconds ?? 0,
-      issueType: i.issueType ?? "Task",
-      project: i.project ?? "MECH",
-      worklogs: i.worklogs ?? [],
-    }));
-  }, [visibleIssues]);
-
+  const normalizedVisibleIssues = useMemo(
+    () => normalizeIssues(visibleIssues),
+    [visibleIssues]
+  );
   // calculate total pages based on filtered issues
   const totalPages = Math.ceil(filteredIssues.length / ITEMS_PER_PAGE);
 
@@ -61,15 +55,6 @@ export default function Page() {
     <div className="page">
       <div className="page__header">
         <h1 className="page__title">Issues filtering & export</h1>
-        <ExportIssuesButton
-          issues={filteredIssues.map((i) => ({
-            ...i,
-            remainingEstimateSeconds: i.remainingEstimateSeconds ?? 0,
-            issueType: i.issueType ?? "Task",
-            project: i.project ?? "MECH",
-            worklogs: i.worklogs ?? [],
-          }))}
-        />
       </div>
 
       <SortFilter

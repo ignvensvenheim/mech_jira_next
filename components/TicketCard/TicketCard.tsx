@@ -3,8 +3,9 @@
 import React from "react";
 import type { Issue } from "@/lib/types";
 import "./ticketCard.css";
+import type { NormalizedIssue } from "@/lib/jira";
 
-export function IssueCard({ issue: i }: { issue: Issue }) {
+export function TicketCard({ issue: i }: { issue: NormalizedIssue }) {
   const url = i.requestUrl ?? `https://svenheim.atlassian.net/browse/${i.key}`;
 
   return (
@@ -38,7 +39,7 @@ export function IssueCard({ issue: i }: { issue: Issue }) {
         <div className="ticket-card__user">
           <Avatar url="https://cdn-icons-png.flaticon.com/512/2494/2494496.png" />
           <div className="ticket-card__mechanics">
-            {i.mechanicsRaw?.length
+            {Array.isArray(i.mechanicsRaw)
               ? i.mechanicsRaw.map((m: { value: any }) => m.value).join(", ")
               : "—"}
           </div>
