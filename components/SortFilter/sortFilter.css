@@ -1,0 +1,40 @@
+.sort-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.sort-filter__label {
+  font-size: 14px;
+  color: #444;
+}
+
+.sort-filter__select,
+.sort-filter__date {
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid #aaa;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.sort-filter__select:hover,
+.sort-filter__date:hover {
+  border-color: #666;
+}
+
+.sort-filter__reset {
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid #aaa;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: auto;
+}
+
+.sort-filter__reset:hover {
+  background: #f0f0f0;
+}

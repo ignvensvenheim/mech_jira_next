@@ -1,26 +1,54 @@
 "use client";
 
-import React from "react";
-import { useJiraSearch } from "@/hooks/useJiraSearch";
-import { IssueCard } from "@/components/TicketCard/TicketCard";
-import ExportIssuesButton from "@/components/ExportIssuesButton/ExportIssuesButton";
 import "./page.css";
+import React, { useMemo, useState } from "react";
+import { useJiraSearch } from "@/hooks/useJiraSearch";
+import ExportIssuesButton from "@/components/ExportIssuesButton/ExportIssuesButton";
+import { Oval } from "react-loader-spinner";
+import { SortFilter } from "@/components/SortFilter/SortFilter";
+import { TicketsGrid } from "@/components/TicketsGrid/TicketsGrid";
 
 export default function Page() {
-  const { filters, setFilters, issues, loadingInitial, error, progress } =
-    useJiraSearch();
+  const { issues, loadingInitial, error } = useJiraSearch();
 
-  const ITEMS_PER_PAGE = 30;
-  const [page, setPage] = React.useState(1);
+  const ITEMS_PER_PAGE = 20;
+  const [page, setPage] = useState(1);
+  const [sort, setSort] = useState<"newest" | "oldest">("newest");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
-  const totalPages = Math.ceil(issues.length / ITEMS_PER_PAGE);
-  const visibleIssues = issues.slice(
-    (page - 1) * ITEMS_PER_PAGE,
-    page * ITEMS_PER_PAGE
-  );
+  // sort first
+  const sortedIssues = useMemo(() => {
+    return [...issues].sort((a, b) => {
+      const da = new Date(a.created).getTime();
+      const db = new Date(b.created).getTime();
+      return sort === "newest" ? db - da : da - db;
+    });
+  }, [issues, sort]);
 
-  // Reset page to 1 when filters change
-  React.useEffect(() => setPage(1), [filters]);
+  // filtered issues
+
+  const filteredIssues = useMemo(() => {
+    return issues
+      .filter((i) => {
+        const created = new Date(i.created).getTime();
+        const from = dateFrom ? new Date(dateFrom).getTime() : -Infinity;
+        const to = dateTo ? new Date(dateTo).getTime() : Infinity;
+        return created >= from && created <= to;
+      })
+      .sort((a, b) => {
+        const da = new Date(a.created).getTime();
+        const db = new Date(b.created).getTime();
+        return sort === "newest" ? db - da : da - db;
+      });
+  }, [issues, sort, dateFrom, dateTo]);
+  // slice for current page
+  const visibleIssues = useMemo(() => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    return filteredIssues.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredIssues, page]);
+
+  const totalPages = Math.ceil(sortedIssues.length / ITEMS_PER_PAGE);
 
   return (
     <div className="page">
@@ -29,23 +57,52 @@ export default function Page() {
         <ExportIssuesButton issues={issues} />
       </div>
 
-      {loadingInitial && <div className="page__loading">Loading…</div>}
+      <SortFilter
+        sort={sort}
+        onSortChange={setSort}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateChange={(from, to) => {
+          setDateFrom(from);
+          setDateTo(to);
+          setPage(1); // reset to first page when filter changes
+        }}
+        onReset={() => {
+          setSort("newest");
+          setDateFrom("");
+          setDateTo("");
+          setPage(1);
+        }}
+      />
 
+      {/* tickets grid */}
+      <TicketsGrid issues={visibleIssues} />
+
+      {/* error */}
       {error && !loadingInitial && (
         <div className="page__error">{String(error)}</div>
       )}
 
-      <section className="page__issues">
-        {visibleIssues.map((i) => (
-          <IssueCard key={i.id} issue={i} />
-        ))}
-      </section>
-
+      {/* empty state */}
       {!loadingInitial && !error && issues.length === 0 && (
         <div className="page__empty">No issues found.</div>
       )}
 
-      {issues.length > ITEMS_PER_PAGE && (
+      {/* loader */}
+      {loadingInitial && (
+        <div className="page__loading">
+          <Oval
+            visible={true}
+            height="80"
+            width="80"
+            color="#4fa94d"
+            ariaLabel="oval-loading"
+          />
+        </div>
+      )}
+
+      {/* pagination */}
+      {sortedIssues.length > ITEMS_PER_PAGE && (
         <div className="page__pagination">
           <button
             className="page__pagination-button"

@@ -93,14 +93,14 @@ export default function ExportIssuesButton({ issues, ...props }: Props) {
 
     const rows = issues.map((i) => {
       const secs = i.timeSpentSeconds ?? 0;
-      const mechanics = formatMechanics((i as any)?.customfield_10267);
+      // const mechanics = formatMechanics((i as any)?.customfield_10267);
 
       return {
         Key: i.key,
         Summary: i.summary,
         Status: i.status,
         Priority: i.priority,
-        RequestType: i.requestType ?? "",
+        Category: i.requestType ?? "",
         Assignee: i.assignee?.name ?? "",
         Reporter: i.reporter?.name ?? "",
         Created: i.created,

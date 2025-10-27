@@ -30,10 +30,6 @@ export function IssueCard({ issue: i }: { issue: Issue }) {
       )}
 
       <div className="ticket-card__chips">
-        {i.priority ? <Chip text={`Priority: ${i.priority}`} /> : null}
-        {i.requestType ? (
-          <Chip text={`Request: ${i.requestType}`} modifier="request" />
-        ) : null}
         <Chip text={`Time: ${fmtDuration(i.timeSpentSeconds)}`} />
         <Chip text={`Created: ${relativeDate(i.created)}`} />
       </div>
@@ -41,8 +37,13 @@ export function IssueCard({ issue: i }: { issue: Issue }) {
       <div className="ticket-card__users">
         <div className="ticket-card__user">
           <Avatar url="https://cdn-icons-png.flaticon.com/512/2494/2494496.png" />
-          <span>Mechanikai: {i.mechanics}</span>
+          <div className="ticket-card__mechanics">
+            {i.mechanicsRaw?.length
+              ? i.mechanicsRaw.map((m: { value: any }) => m.value).join(", ")
+              : "—"}
+          </div>
         </div>
+
         <div className="ticket-card__user">
           <Avatar url={i.reporter?.avatar} />
           <span>Reporter: {i.reporter?.name || "—"}</span>
@@ -61,12 +62,8 @@ function Avatar({ url }: { url?: string | null }) {
   );
 }
 
-function Chip({ text, modifier }: { text: string; modifier?: string }) {
-  const className = modifier
-    ? `ticket-card__chip ticket-card__chip--${modifier}`
-    : "ticket-card__chip";
-
-  return <span className={className}>{text}</span>;
+function Chip({ text }: { text: string }) {
+  return <span className="ticket-card__chip">{text}</span>;
 }
 
 function getStatusClassName(category?: string): string {

@@ -5,6 +5,7 @@ export type UserLite = {
 } | null;
 
 export type Issue = {
+  mechanicsRaw: any;
   mechanics: any;
   id: string;
   key: string;
@@ -12,26 +13,20 @@ export type Issue = {
   status: string;
   statusCategory?: string;
   priority: string;
-
   assignee?: {
     id: string;
     name: string;
     avatar?: string;
   } | null;
-
   reporter?: {
     id: string;
     name: string;
     avatar?: string;
   } | null;
-
   created: string;
   updated: string;
-
   descriptionText?: string | null;
-
   timeSpentSeconds: number;
-
   requestType?: string | null;
   requestUrl?: string | null;
 };
