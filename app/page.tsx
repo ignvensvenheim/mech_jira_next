@@ -3,7 +3,7 @@
 import React from "react";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { IssueCard } from "@/components/TicketCard/TicketCard";
-import ExportIssuesButton from "@/components/ExportIssuesButton";
+import ExportIssuesButton from "@/components/ExportIssuesButton/ExportIssuesButton";
 import "./page.css";
 
 export default function Page() {

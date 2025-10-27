@@ -14,6 +14,7 @@ export type NormalizedIssue = {
   assignee: UserLite;
   reporter: UserLite;
   created: string;
+  updated: string; // added
   resolved?: string | null;
   timeSpentSeconds: number;
   remainingEstimateSeconds: number;
@@ -22,6 +23,8 @@ export type NormalizedIssue = {
   requestType?: string | null; // JSM request type (customfield_10010)
   requestUrl?: string | null; // Agent/browse URL if present
   descriptionText?: string | null;
+  mechanics?: string[]; // added
+  mechanicsRaw?: unknown; // added
   worklogs: {
     id: string;
     author: UserLite;
@@ -70,8 +73,20 @@ export function adfToPlainText(doc: any): string | null {
   return out.replace(/\n{3,}/g, "\n\n").trim();
 }
 
+export function mechanicsToNames(val: unknown): string[] {
+  if (!val) return [];
+  const label = (u: any) =>
+    u?.displayName || u?.name || u?.value || u?.label || u?.key || "";
+
+  if (Array.isArray(val)) return val.map(label).filter(Boolean);
+  if (typeof val === "object") return [label(val)].filter(Boolean);
+  return [String(val)];
+}
+
 export function normalizeIssue(issue: any): NormalizedIssue {
   const f = issue.fields ?? {};
+  const mechanicsRaw = f.customfield_10267; // define before using
+
   return {
     id: issue.id,
     key: issue.key,
@@ -82,6 +97,7 @@ export function normalizeIssue(issue: any): NormalizedIssue {
     assignee: userLite(f.assignee),
     reporter: userLite(f.reporter),
     created: f.created,
+    updated: f.updated, // added
     resolved: f.resolutiondate ?? null,
     timeSpentSeconds: f.timetracking?.timeSpentSeconds ?? f.timespent ?? 0,
     remainingEstimateSeconds: f.timetracking?.remainingEstimateSeconds ?? 0,
@@ -90,6 +106,8 @@ export function normalizeIssue(issue: any): NormalizedIssue {
     requestType: f.customfield_10010?.requestType?.name ?? null,
     requestUrl: f.customfield_10010?._links?.agent ?? null,
     descriptionText: adfToPlainText(f.description),
+    mechanics: mechanicsToNames(mechanicsRaw),
+    mechanicsRaw,
     worklogs: (f.worklog?.worklogs ?? []).map((w: any) => ({
       id: w.id,
       author: userLite(w.author),

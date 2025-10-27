@@ -5,7 +5,7 @@ import type { Issue } from "@/lib/types";
 import "./ticketCard.css";
 
 export function IssueCard({ issue: i }: { issue: Issue }) {
-  const url = i.requestUrl ?? `https://svenheim.atlassian.net/browse/${i.key}`; // replace your-domain
+  const url = i.requestUrl ?? `https://svenheim.atlassian.net/browse/${i.key}`;
 
   return (
     <article className="ticket-card">
@@ -40,8 +40,8 @@ export function IssueCard({ issue: i }: { issue: Issue }) {
 
       <div className="ticket-card__users">
         <div className="ticket-card__user">
-          <Avatar url={i.assignee?.avatar} />
-          <span>Assignee: {i.assignee?.name || "—"}</span>
+          <Avatar url="https://cdn-icons-png.flaticon.com/512/2494/2494496.png" />
+          <span>Mechanikai: {i.mechanics}</span>
         </div>
         <div className="ticket-card__user">
           <Avatar url={i.reporter?.avatar} />

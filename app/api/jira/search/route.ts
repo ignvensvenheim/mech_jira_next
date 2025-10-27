@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
       "issuetype",
       "project",
       "description",
-      "customfield_10010",
+      "customfield_10010", // request type
+      "customfield_10267", // <-- mechanics
     ].join(",")
   );
   params.set("expand", "customfield_10010.requestType");

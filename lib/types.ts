@@ -5,6 +5,7 @@ export type UserLite = {
 } | null;
 
 export type Issue = {
+  mechanics: any;
   id: string;
   key: string;
   summary: string;
