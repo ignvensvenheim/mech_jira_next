@@ -25,20 +25,11 @@ export default function Page() {
   return (
     <div className="page">
       <div className="page__header">
-        <h1 className="page__title">Issues</h1>
+        <h1 className="page__title">Issues filtering & export</h1>
         <ExportIssuesButton issues={issues} />
       </div>
 
-      {loadingInitial && (
-        <div className="page__loading">
-          Loading… {progress.loaded}
-          {progress.total
-            ? ` / ${progress.total} (${Math.round(
-                (progress.loaded / progress.total) * 100
-              )}%)`
-            : ""}
-        </div>
-      )}
+      {loadingInitial && <div className="page__loading">Loading…</div>}
 
       {error && !loadingInitial && (
         <div className="page__error">{String(error)}</div>
