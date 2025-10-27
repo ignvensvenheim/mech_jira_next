@@ -31,8 +31,8 @@ export function TicketCard({ issue: i }: { issue: NormalizedIssue }) {
       )}
 
       <div className="ticket-card__chips">
-        <Chip text={`Time: ${fmtDuration(i.timeSpentSeconds)}`} />
-        <Chip text={`Created: ${relativeDate(i.created)}`} />
+        <Chip text={`Time spent: ${fmtDuration(i.timeSpentSeconds)}`} />
+        <Chip text={`${relativeDate(i.created)}`} />
       </div>
 
       <div className="ticket-card__users">
@@ -85,13 +85,13 @@ function fmtDuration(sec: number) {
 
 function relativeDate(iso: string) {
   const d = new Date(iso);
-  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
-  const diff = (Date.now() - d.getTime()) / 1000;
-  const abs = Math.abs(diff);
-  if (abs < 60) return rtf.format(Math.round(-diff), "second");
-  if (abs < 3600) return rtf.format(Math.round(-diff / 60), "minute");
-  if (abs < 86400) return rtf.format(Math.round(-diff / 3600), "hour");
-  return rtf.format(Math.round(-diff / 86400), "day");
+
+  const hh = d.getHours().toString().padStart(2, "0");
+  const mm = d.getMinutes().toString().padStart(2, "0");
+  const day = d.getDate().toString().padStart(2, "0");
+  const month = (d.getMonth() + 1).toString().padStart(2, "0");
+
+  return `${hh}:${mm} ${month}/${day}`;
 }
 
 function truncate(s: string, n: number) {
