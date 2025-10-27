@@ -30,6 +30,21 @@
   font-weight: 600;
 }
 
+.ticket-card__status--done {
+  background: #e3fcef;
+  color: #006644;
+}
+
+.ticket-card__status--indeterminate {
+  background: #deebff;
+  color: #0747a6;
+}
+
+.ticket-card__status--default {
+  background: #f4f5f7;
+  color: #42526e;
+}
+
 .ticket-card__summary {
   font-size: 15px;
   color: #091e42;
@@ -56,15 +71,27 @@
   align-items: center;
   gap: 6px;
   border: 1px solid #ebecf0;
+  background: #f4f5f7;
+  color: #42526e;
 }
 
-.ticket-card__assignee,
-.ticket-card__reporter {
+.ticket-card__chip--request {
+  background: #eae6ff;
+  color: #403294;
+}
+
+.ticket-card__users {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  color: #6b778c;
+  font-size: 13px;
+}
+
+.ticket-card__user {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #6b778c;
-  font-size: 13px;
 }
 
 .ticket-card__avatar {
@@ -74,4 +101,5 @@
   background-size: cover;
   background-position: center;
   background-color: #dfe1e6;
+  display: inline-block;
 }

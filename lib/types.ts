@@ -10,24 +10,29 @@ export type Issue = {
   summary: string;
   status: string;
   statusCategory?: string;
-  priority?: string | null;
-  assignee: UserLite;
-  reporter: UserLite;
+  priority: string;
+
+  assignee?: {
+    id: string;
+    name: string;
+    avatar?: string;
+  } | null;
+
+  reporter?: {
+    id: string;
+    name: string;
+    avatar?: string;
+  } | null;
+
   created: string;
-  resolved?: string | null;
+  updated: string;
+
+  descriptionText?: string | null;
+
   timeSpentSeconds: number;
-  remainingEstimateSeconds: number;
-  issueType: string;
-  project: string;
+
   requestType?: string | null;
   requestUrl?: string | null;
-  descriptionText?: string | null;
-  worklogs: {
-    id: string;
-    author: UserLite;
-    started: string;
-    timeSpentSeconds: number;
-  }[];
 };
 
 export type Paging = {

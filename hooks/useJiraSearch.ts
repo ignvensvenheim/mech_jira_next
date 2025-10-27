@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { Issue, Paging, ApiResponse, Filters } from "@/lib/types";
+import type { Issue, ApiResponse, Filters } from "@/lib/types";
 
 const PROJECT_KEY = "MECH";
 
@@ -14,12 +14,12 @@ export const DEFAULT_FILTERS: Filters = {
   createdFrom: "",
   createdTo: "",
   orderBy: "created desc",
-  maxResults: 20, // or 'all'
+  maxResults: "all", // ✅ always load everything
 };
 
 const DEBOUNCE_MS = 500;
-const PAGE_CAP_FOR_ALL = 100;
-const MAX_AUTO_PAGES = 50;
+const PAGE_SIZE = 100;
+const MAX_PAGES = 50;
 
 function jqlQuote(s: string) {
   return `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;
@@ -27,14 +27,14 @@ function jqlQuote(s: string) {
 
 export function useJiraSearch() {
   const [filters, setFilters] = React.useState<Filters>(DEFAULT_FILTERS);
-  const [activeJql, setActiveJql] = React.useState<string>("");
   const [issues, setIssues] = React.useState<Issue[]>([]);
-  const [paging, setPaging] = React.useState<Paging | undefined>(undefined);
-  const [loadingInitial, setLoadingInitial] = React.useState(true);
-  const [loadingMore, setLoadingMore] = React.useState(false);
+  const [progress, setProgress] = React.useState<{
+    loaded: number;
+    total?: number;
+  }>({ loaded: 0 });
+  const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Options fetched from metadata
   const [statusOptions, setStatusOptions] = React.useState<string[]>([]);
   const [priorityOptions, setPriorityOptions] = React.useState<string[]>([]);
   const [requestTypeOptions, setRequestTypeOptions] = React.useState<string[]>(
@@ -46,9 +46,8 @@ export function useJiraSearch() {
   const [requestTypeFieldName, setRequestTypeFieldName] =
     React.useState<string>("Request Type");
 
-  // Load options from our meta endpoint once
+  // Load meta options
   React.useEffect(() => {
-    let cancelled = false;
     (async () => {
       try {
         const r = await fetch(
@@ -56,55 +55,24 @@ export function useJiraSearch() {
           { cache: "no-store" }
         );
         const data = await r.json();
-        if (cancelled) return;
-        if (data?.options) {
-          setStatusOptions(data.options.statuses || []);
-          setPriorityOptions(data.options.priorities || []);
-          setRequestTypeOptions(data.options.requestTypes || []);
-          setAssigneeOptions(
-            (data.options.assignees || []).map((a: any) => ({
-              id: a.id,
-              name: a.name,
-            }))
-          );
-        }
-        if (data?.fieldNames?.requestType)
+        setStatusOptions(data.options.statuses || []);
+        setPriorityOptions(data.options.priorities || []);
+        setRequestTypeOptions(data.options.requestTypes || []);
+        setAssigneeOptions(
+          (data.options.assignees || []).map((a: any) => ({
+            id: a.id,
+            name: a.name,
+          }))
+        );
+        if (data.fieldNames?.requestType)
           setRequestTypeFieldName(data.fieldNames.requestType);
-      } catch {
-        // leave empty on failure
-      }
+      } catch {}
     })();
-    return () => {
-      cancelled = true;
-    };
   }, []);
-
-  const searchAbortRef = React.useRef<AbortController | null>(null);
-  const loadMoreAbortRef = React.useRef<AbortController | null>(null);
-
-  const fetchPage = React.useCallback(
-    async (opts: {
-      jql: string;
-      token?: string;
-      maxResults: number;
-      signal?: AbortSignal;
-    }) => {
-      const url =
-        `/api/jira/search?maxResults=${opts.maxResults}` +
-        `&jql=${encodeURIComponent(opts.jql)}` +
-        (opts.token ? `&nextPageToken=${encodeURIComponent(opts.token)}` : "");
-      const r = await fetch(url, { cache: "no-store", signal: opts.signal });
-      const text = await r.text();
-      if (!r.ok) throw new Error(`API ${r.status}: ${text}`);
-      return JSON.parse(text) as ApiResponse;
-    },
-    []
-  );
 
   const buildJql = React.useCallback(
     (f: Filters) => {
-      const clauses: string[] = [];
-      clauses.push(`project = ${PROJECT_KEY}`);
+      const clauses: string[] = [`project = ${PROJECT_KEY}`];
 
       if (f.text.trim()) {
         const t = f.text.trim();
@@ -118,13 +86,12 @@ export function useJiraSearch() {
         clauses.push(`status in (${f.statuses.map(jqlQuote).join(", ")})`);
       if (f.priorities.length)
         clauses.push(`priority in (${f.priorities.map(jqlQuote).join(", ")})`);
-      if (f.requestTypes.length && requestTypeFieldName) {
+      if (f.requestTypes.length)
         clauses.push(
           `"${requestTypeFieldName}" in (${f.requestTypes
             .map(jqlQuote)
             .join(", ")})`
         );
-      }
       if (f.assignee === "me") clauses.push("assignee = currentUser()");
       else if (f.assignee === "unassigned") clauses.push("assignee is EMPTY");
       else if (f.assignee)
@@ -132,171 +99,84 @@ export function useJiraSearch() {
       if (f.createdFrom) clauses.push(`created >= ${f.createdFrom}`);
       if (f.createdTo) clauses.push(`created <= ${f.createdTo}`);
 
-      let jql = clauses.join(" AND ");
-      switch (f.orderBy) {
-        case "created asc":
-          jql += " ORDER BY created ASC";
-          break;
-        case "updated desc":
-          jql += " ORDER BY updated DESC";
-          break;
-        case "updated asc":
-          jql += " ORDER BY updated ASC";
-          break;
-        default:
-          jql += " ORDER BY created DESC";
-      }
-      return jql.trim();
+      return clauses.join(" AND ") + " ORDER BY created DESC";
     },
     [requestTypeFieldName]
   );
 
-  // Debounced auto search; fetch ALL when typing or Size='all'
+  const fetchPage = React.useCallback(async (jql: string, token?: string) => {
+    const params = new URLSearchParams();
+    params.set("jql", jql);
+    params.set("maxResults", PAGE_SIZE.toString());
+    if (token) params.set("nextPageToken", token);
+    const r = await fetch(`/api/jira/search?${params}`, { cache: "no-store" });
+    const json = await r.json();
+    if (json.error) throw new Error(json.error);
+    return json as ApiResponse;
+  }, []);
+
   React.useEffect(() => {
-    loadMoreAbortRef.current?.abort();
-    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    const signal = controller.signal;
 
-    const ctrl = new AbortController();
-    searchAbortRef.current = ctrl;
-
-    const t = setTimeout(async () => {
+    const run = async () => {
       try {
-        setLoadingInitial(true);
+        setLoading(true);
         setError(null);
+        setProgress({ loaded: 0, total: undefined });
 
         const jql = buildJql(filters);
-        setActiveJql(jql);
 
-        const searchingText = filters.text.trim().length > 0;
-        const wantAll = searchingText || filters.maxResults === "all";
-        const firstPageSize = wantAll
-          ? PAGE_CAP_FOR_ALL
-          : (filters.maxResults as number);
+        let all: Issue[] = [];
+        let token: string | null = null;
+        let pages = 0;
 
-        // First page
-        const first = await fetchPage({
-          jql,
-          maxResults: firstPageSize,
-          signal: ctrl.signal,
-        });
-        let allIssues = Array.isArray(first.issues) ? first.issues : [];
-        let lastPaging = first.paging;
+        do {
+          const { issues, paging } = await fetchPage(jql, token || undefined);
+          all = all.concat(issues);
 
-        // Auto-fetch rest if needed
-        if (
-          wantAll &&
-          first.paging?.nextPageToken &&
-          !first.paging?.isLast &&
-          !ctrl.signal.aborted
-        ) {
-          setLoadingMore(true);
-          let token = first.paging.nextPageToken || null;
-          let pages = 1;
-          while (
-            token &&
-            !lastPaging?.isLast &&
-            pages < MAX_AUTO_PAGES &&
-            !ctrl.signal.aborted
-          ) {
-            const more = await fetchPage({
-              jql,
-              maxResults: PAGE_CAP_FOR_ALL,
-              token,
-              signal: ctrl.signal,
-            });
-            allIssues = allIssues.concat(
-              Array.isArray(more.issues) ? more.issues : []
-            );
-            lastPaging = more.paging || lastPaging;
-            token = more.paging?.nextPageToken || null;
-            pages += 1;
-          }
-          if (!ctrl.signal.aborted) setLoadingMore(false);
-        }
+          setProgress({
+            loaded: all.length,
+          });
 
-        if (!ctrl.signal.aborted) {
-          setIssues(allIssues);
-          setPaging(lastPaging);
-          setLoadingInitial(false);
+          token = paging?.nextPageToken || null;
+          pages++;
+        } while (token && pages < MAX_PAGES && !signal.aborted);
+
+        if (!signal.aborted) {
+          setIssues(all);
+          setLoading(false);
+          try {
+            localStorage.setItem("jiraIssuesCache", JSON.stringify(all));
+          } catch {}
         }
       } catch (e: any) {
-        if (e?.name !== "AbortError") {
+        if (!signal.aborted) {
+          setError(String(e.message || e));
           setIssues([]);
-          setPaging(undefined);
-          setError(e?.message || String(e));
-          setLoadingInitial(false);
-          setLoadingMore(false);
+          setLoading(false);
         }
       }
-    }, DEBOUNCE_MS);
+    };
 
+    const timer = setTimeout(run, DEBOUNCE_MS);
     return () => {
-      clearTimeout(t);
-      ctrl.abort();
+      clearTimeout(timer);
+      controller.abort();
     };
   }, [filters, buildJql, fetchPage]);
 
-  const loadMore = React.useCallback(async () => {
-    if (!paging?.nextPageToken || paging.isLast || loadingMore) return;
-    loadMoreAbortRef.current?.abort();
-    const ctrl = new AbortController();
-    loadMoreAbortRef.current = ctrl;
-
-    try {
-      setLoadingMore(true);
-      setError(null);
-
-      const searchingText = filters.text.trim().length > 0;
-      const pageSize =
-        filters.maxResults === "all" || searchingText
-          ? PAGE_CAP_FOR_ALL
-          : (filters.maxResults as number);
-
-      const json = await fetchPage({
-        jql: activeJql || buildJql(filters),
-        token: paging.nextPageToken || undefined,
-        maxResults: pageSize,
-        signal: ctrl.signal,
-      });
-      setIssues((prev) =>
-        prev.concat(Array.isArray(json.issues) ? json.issues : [])
-      );
-      setPaging(json.paging);
-    } catch (e: any) {
-      if (e?.name !== "AbortError") setError(e?.message || String(e));
-    } finally {
-      if (!ctrl.signal.aborted) setLoadingMore(false);
-    }
-  }, [
-    paging?.nextPageToken,
-    paging?.isLast,
-    loadingMore,
-    fetchPage,
-    activeJql,
-    filters,
-    buildJql,
-  ]);
-
-  const resetFilters = React.useCallback(() => {
-    setFilters(DEFAULT_FILTERS);
-  }, []);
-
   return {
-    // state
     filters,
     setFilters,
     issues,
-    paging,
-    loadingInitial,
-    loadingMore,
+    loadingInitial: loading,
     error,
-    // options
     statusOptions,
     priorityOptions,
     requestTypeOptions,
     assigneeOptions,
-    // actions
-    loadMore,
-    resetFilters,
+    resetFilters: () => setFilters(DEFAULT_FILTERS),
+    progress,
   };
 }
