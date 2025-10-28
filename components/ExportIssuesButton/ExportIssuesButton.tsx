@@ -87,13 +87,16 @@ function formatMechanics(value: unknown): string {
   return String(value);
 }
 
+function extractBetweenPipes(summary: string = ""): string {
+  const parts = summary.split("|").map((p) => p.trim());
+  return parts.length >= 3 ? parts[1] : ""; // the text between the first two pipes
+}
+
 export default function ExportIssuesButton({ issues, ...props }: Props) {
   function exportToExcel() {
     if (!issues?.length) return;
-
     const rows = issues.map((i) => {
       const secs = i.timeSpentSeconds ?? 0;
-      // const mechanics = formatMechanics((i as any)?.customfield_10267);
 
       return {
         Key: i.key,
@@ -101,20 +104,21 @@ export default function ExportIssuesButton({ issues, ...props }: Props) {
         Status: i.status,
         Priority: i.priority,
         Category: i.requestType ?? "",
-        Assignee: i.assignee?.name ?? "",
+        Sub_Category: extractBetweenPipes(i.summary),
         Reporter: i.reporter?.name ?? "",
-        Created: i.created,
-        Resolved: i.resolved,
         Mechanics: i.mechanics?.join(", ") ?? "",
-        "Time Spent (h:mm)": secondsToExcelDays(secs), // sums correctly in Excel
-        "Time Spent (pretty)": humanizeSeconds(secs), // human-readable
+        Created: i.created ? new Date(i.created) : "",
+        Resolved: i.resolved ? new Date(i.resolved) : "",
+        "Time Spent (h:mm)": secondsToExcelDays(secs),
       };
     });
-
     const worksheet = XLSX.utils.json_to_sheet(rows);
+    setColumnNumberFormat(worksheet, "Created", "yyyy-mm-dd hh:mm");
+    setColumnNumberFormat(worksheet, "Resolved", "yyyy-mm-dd hh:mm");
     setColumnNumberFormat(worksheet, "Time Spent (h:mm)", "[h]:mm");
 
     const workbook = XLSX.utils.book_new();
+
     XLSX.utils.book_append_sheet(workbook, worksheet, "Issues");
     XLSX.writeFile(workbook, "jira_issues.xlsx");
   }
