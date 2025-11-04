@@ -81,7 +81,6 @@ export function useJiraSearch(dateFrom?: string, dateTo?: string) {
     return () => controller.abort();
   }, [fetchPage]);
 
-  console.log(issues);
   return {
     issues,
     loadingInitial: loading,

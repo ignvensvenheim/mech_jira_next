@@ -1,9 +1,15 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
 import "./sortFilter.css";
 import ExportIssuesButton from "../ExportIssuesButton/ExportIssuesButton";
-import { useJiraSearch } from "@/hooks/useJiraSearch";
+
+const STATUS_OPTIONS = [
+  "To Do List",
+  "In Progress",
+  "Pending",
+  "Done",
+  "Cancelled",
+];
 
 type Props = {
   sort: "newest" | "oldest";
@@ -12,89 +18,230 @@ type Props = {
   dateTo: string;
   onDateChange: (from: string, to: string) => void;
   onReset: () => void;
+  selectedStatuses: string[];
+  onStatusChange: (statuses: string[]) => void;
+  selectedDepartment: string;
+  onDepartmentChange: (dep: string) => void;
+  selectedLine: string;
+  onLineChange: (line: string) => void;
+};
+
+const DEPARTMENT_LINES: Record<string, string[]> = {
+  AB: [
+    "UV linijos",
+    "UV apdailos linija",
+    "UV dažymo kameros ir pompos",
+    "CEFLA linijos",
+    "CEFLA dažymo linija",
+  ],
+  LPB: [
+    "Josting - I giljotina",
+    "Josting - II giljotina",
+    "Josting - III giljotina",
+    "Ompec - I giljotina",
+    "Ompec - II giljotina",
+    "Kuper - I",
+    "Kuper - II",
+    "Josting atliekų kapoklė",
+    "Kuper lukšto klijavimo",
+  ],
+  SB: [
+    "SIGNODE (nauja)",
+    "SIGNODE (sena)",
+    "ECOMAT apvyniojimo ireng.",
+    "Surinkimo linija",
+  ],
+  PB: [],
+  MB1: [
+    "IMA line",
+    "HOLZMA nauja",
+    "HOLZMA sena",
+    "Homag FLEXLINE",
+    "Homag POWER LINE",
+    "FRIZ presas",
+    "ORMA presas",
+    "ITALPRESS presas",
+    "BURKLE presas",
+    "HOLZMA laminatui",
+    "Laminato formatavimo pjūklas",
+    "Laminato giljotina",
+  ],
+  MB2: [
+    "ALTENDORF pjūklas",
+    "MAW kaiščiavimas",
+    "BAUERLE frezeris",
+    "ARMINIUS br. šlif. staklės",
+    "TAGLIABUE kalibravimas",
+    "BRANDT stalų briaunavimo",
+    "BAZ 222-60 +keltuvas",
+    "Weeke CNC_II",
+    "Weeke CNC _I",
+    "Weeke BHX500",
+    "BAZ 32 +keltuvas",
+    "Weeke BST500 kaiščiavimas",
+    "Rover 24L +keltuvas",
+    "Weeke BHX055",
+    "Weeke BHT500",
+    "Homag KAL370 vienpusis",
+    "BAZ 222-40 +keltuvas",
+    "Homag CENTATEQ P-210",
+  ],
+  MB3: [
+    "Homag KAL310 briaunavimas",
+    "Weeke BHP200 nestingas",
+    "Dulkių nutraukimas",
+    "Gannomat kaiščiavimas",
+    "DRILLTEQ V200 gręžimas",
+  ],
+  SPEC: [],
+  Elektrokrautuvai: [
+    "Nr. 6 LINDE dyz.",
+    "Nr. 2 BT elektrinis vežimėlis",
+    "Nr. 11 BOSS elektr.",
+    "Nr. 21 CARRELLFICIO keltuvas",
+    "Nr. 10 TOYOTA elektr.",
+    "Nr. 1 STILL elektr.",
+    "Nr. 7 ROCLA keltuvas",
+    "Nr. 22 MITSUBISHI elektr.",
+    "Nr. 5 LANSING elektr.",
+    "Nr. 16 BT-100M elektr.",
+    "Nr. 8 BT-100M elektr.",
+    "Nr. 9 LANSING elektr.",
+    "Nr. 13 KALMAR elektr.",
+    "Nr. 23 SKYJACK žirklinis",
+    "Nr. 4 JUNGHEINRICH elektr.",
+    "Nr. 24 JUNGHEINRICH duj.",
+    "Nr. 25 JUNGHEINRICH elektr.",
+    "Nr. 14 JUNGHEINRICH elektr.",
+  ],
+  KITA: [
+    "Įrankių galandinimas",
+    "Suspausto oro vamzdynai",
+    "Pirkimo užsakymai gamybai",
+    "Ištraukimo sistemos",
+    "Kompresoriai",
+    "Drėkinimo sistema UNIFOG",
+    "Hidrauliniai vežimėliai / keltuvai",
+    "Matavimo priemonės",
+    "Rankiniai įrankiai",
+    "Apšvietimo ir jėgos el. tinklai",
+    "Pastatų priežiūra, ūkio darbai",
+    "Signalizacijos ir komp. tinklai",
+  ],
+  // Add your departments and lines here
 };
 
 export function SortFilter({
   sort,
   onSortChange,
-  dateFrom = "",
-  dateTo = "",
+  dateFrom,
+  dateTo,
   onDateChange,
   onReset,
+  selectedStatuses,
+  onStatusChange,
+  selectedDepartment,
+  onDepartmentChange,
+  selectedLine,
+  onLineChange,
 }: Props) {
-  const [from, setFrom] = useState(dateFrom);
-  const [to, setTo] = useState(dateTo);
-  const { issues } = useJiraSearch();
-  const handleDateChange = () => {
-    onDateChange(from, to);
+  const toggleStatus = (status: string) => {
+    if (selectedStatuses.includes(status)) {
+      onStatusChange(selectedStatuses.filter((s) => s !== status));
+    } else {
+      onStatusChange([...selectedStatuses, status]);
+    }
   };
-
-  const handleReset = () => {
-    setFrom("");
-    setTo("");
-    onReset();
-  };
-
-  // sort first
-  const sortedIssues = useMemo(() => {
-    return [...issues].sort((a, b) => {
-      const da = new Date(a.created).getTime();
-      const db = new Date(b.created).getTime();
-      return sort === "newest" ? db - da : da - db;
-    });
-  }, [issues, sort]);
-
-  // filtered issues
-  const filteredIssues = useMemo(() => {
-    return sortedIssues.filter((i) => {
-      const created = new Date(i.created).getTime();
-      const from = dateFrom ? new Date(dateFrom).getTime() : -Infinity;
-      const to = dateTo ? new Date(dateTo).getTime() : Infinity;
-      return created >= from && created <= to;
-    });
-  }, [sortedIssues, dateFrom, dateTo]);
 
   return (
     <div className="sort-filter">
-      <label className="sort-filter__label">Sort by date:</label>
-      <select
-        className="sort-filter__select"
-        value={sort}
-        onChange={(e) => onSortChange(e.target.value as "newest" | "oldest")}
-      >
-        <option value="newest">Newest first</option>
-        <option value="oldest">Oldest first</option>
-      </select>
+      <div className="sort-filter__controls">
+        <div className="sort-filter__new-old">
+          <label>Show:</label>
+          <select
+            className="sort-filter__pill"
+            value={sort}
+            onChange={(e) =>
+              onSortChange(e.target.value as "newest" | "oldest")
+            }
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+        </div>
 
-      <label>From:</label>
-      <input
-        className="sort-filter__input"
-        type="date"
-        value={dateFrom} // use dateFrom prop
-        onChange={(e) => onDateChange(e.target.value, dateTo)} // dateTo prop
-      />
+        <div className="sort-filter__date">
+          <label>From:</label>
+          <input
+            className="sort-filter__pill"
+            type="date"
+            value={dateFrom}
+            onChange={(e) => onDateChange(e.target.value, dateTo)}
+          />
+          <label>To:</label>
+          <input
+            className="sort-filter__pill"
+            type="date"
+            value={dateTo}
+            onChange={(e) => onDateChange(dateFrom, e.target.value)}
+          />
+        </div>
 
-      <label>To:</label>
-      <input
-        className="sort-filter__input"
-        type="date"
-        value={dateTo} // use dateTo prop
-        onChange={(e) => onDateChange(dateFrom, e.target.value)} // dateFrom prop
-      />
-      <>
-        <button className="sort-filter__reset" onClick={handleReset}>
+        <div className="sort-filter__status-pills">
+          <label>Status:</label>
+          {STATUS_OPTIONS.map((status) => (
+            <button
+              key={status}
+              type="button"
+              className={`sort-filter__pill ${
+                selectedStatuses.includes(status)
+                  ? "sort-filter__pill--active"
+                  : ""
+              }`}
+              onClick={() => toggleStatus(status)}
+            >
+              {status}
+            </button>
+          ))}
+        </div>
+
+        <div className="sort-filter__department-line">
+          <label>Department:</label>
+          <select
+            value={selectedDepartment}
+            onChange={(e) => onDepartmentChange(e.target.value)}
+          >
+            <option value="">All</option>
+            {Object.keys(DEPARTMENT_LINES).map((dep) => (
+              <option key={dep} value={dep}>
+                {dep}
+              </option>
+            ))}
+          </select>
+
+          <label>Line:</label>
+          <select
+            value={selectedLine}
+            onChange={(e) => onLineChange(e.target.value)}
+            disabled={!selectedDepartment}
+          >
+            <option value="">All</option>
+            {(DEPARTMENT_LINES[selectedDepartment] || []).map((line) => (
+              <option key={line} value={line}>
+                {line}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="sort-filter__actions">
+        <button className="sort-filter__reset" onClick={onReset}>
           Reset filters
-        </button>{" "}
-        <ExportIssuesButton
-          issues={filteredIssues.map((i) => ({
-            ...i,
-            remainingEstimateSeconds: i.remainingEstimateSeconds ?? 0,
-            issueType: i.issueType ?? "Task",
-            project: i.project ?? "MECH",
-            worklogs: i.worklogs ?? [],
-          }))}
-        />
-      </>
+        </button>
+        <ExportIssuesButton issues={[]} />{" "}
+        {/* You can pass filtered issues if needed */}
+      </div>
     </div>
   );
 }
