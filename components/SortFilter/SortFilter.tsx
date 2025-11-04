@@ -206,7 +206,7 @@ export function SortFilter({
         </div>
 
         <div className="sort-filter__department-line">
-          <label>Department:</label>
+          <label>Category:</label>
           <select
             value={selectedDepartment}
             onChange={(e) => onDepartmentChange(e.target.value)}
@@ -219,7 +219,7 @@ export function SortFilter({
             ))}
           </select>
 
-          <label>Line:</label>
+          <label>Sub. Category:</label>
           <select
             value={selectedLine}
             onChange={(e) => onLineChange(e.target.value)}
