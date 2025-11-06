@@ -11,11 +11,10 @@ export function TicketCard({ issue: i }: { issue: NormalizedIssue }) {
 
   return (
     <Link
+      href={`/${i.key}`}
       target="_blank"
       rel="noopener noreferrer"
       className="ticket-card"
-      onClick={() => console.log(i.id)}
-      href={`/${i.key}`}
     >
       <div className="ticket-card__header">
         <p className="ticket-card__key">{i.key}</p>

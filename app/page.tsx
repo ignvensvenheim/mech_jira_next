@@ -1,15 +1,17 @@
 "use client";
 
 import "./page.css";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { normalizeIssues } from "@/lib/normalizeIssue";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { Oval } from "react-loader-spinner";
 import { SortFilter } from "@/components/SortFilter/SortFilter";
 import { TicketsGrid } from "@/components/TicketsGrid/TicketsGrid";
+import { useIssues } from "@/lib/IssuesContext";
 
 export default function Page() {
-  const { issues, loadingInitial, error } = useJiraSearch();
+  const { loadingInitial, error } = useJiraSearch();
+  const { issues, setIssues } = useIssues();
 
   const ITEMS_PER_PAGE = 20;
   const [page, setPage] = useState(1);
@@ -19,6 +21,12 @@ export default function Page() {
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedLine, setSelectedLine] = useState("");
+
+  // ✅ Sync fetched issues to global context (normalized)
+
+  // If no issues yet in context, fallback to fetchedIssues
+  // const baseIssues =
+  //   issues.length > 0 ? issues : normalizeIssues(fetchedIssues);
 
   // Sort issues
   const sortedIssues = useMemo(() => {
@@ -34,7 +42,7 @@ export default function Page() {
     return sortedIssues.filter((i) => {
       const [depPart = "", linePart = ""] = (i.summary ?? "")
         .split("|")
-        .map((s) => s.trim().toLowerCase());
+        .map((s: string) => s.trim().toLowerCase());
 
       const dep = selectedDepartment.toLowerCase();
       const lin = selectedLine.toLowerCase();
@@ -68,10 +76,10 @@ export default function Page() {
     return filteredIssues.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredIssues, page]);
 
-  const normalizedVisibleIssues = useMemo(
-    () => normalizeIssues(visibleIssues),
-    [visibleIssues]
-  );
+  // const normalizedVisibleIssues = useMemo(
+  //   () => normalizeIssues(visibleIssues),
+  //   [visibleIssues]
+  // );
 
   const totalPages = Math.ceil(filteredIssues.length / ITEMS_PER_PAGE);
 
@@ -117,13 +125,13 @@ export default function Page() {
         }}
       />
 
-      <TicketsGrid issues={normalizedVisibleIssues} />
+      <TicketsGrid issues={visibleIssues} />
 
       {error && !loadingInitial && (
         <div className="page__error">{String(error)}</div>
       )}
 
-      {!loadingInitial && !error && issues.length === 0 && (
+      {!loadingInitial && !error && (
         <div className="page__empty">No issues found.</div>
       )}
 
