@@ -4,21 +4,20 @@ import React from "react";
 import type { Issue } from "@/lib/types";
 import "./ticketCard.css";
 import type { NormalizedIssue } from "@/lib/jira";
+import Link from "next/link";
 
 export function TicketCard({ issue: i }: { issue: NormalizedIssue }) {
   const url = i.requestUrl ?? `https://svenheim.atlassian.net/browse/${i.key}`;
 
   return (
-    <article className="ticket-card" onClick={() => console.log(i.id)}>
+    <Link
+      href={`/${i.key}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="ticket-card"
+    >
       <div className="ticket-card__header">
-        <a
-          href={url}
-          target="_blank"
-          rel="noreferrer"
-          className="ticket-card__key"
-        >
-          {i.key}
-        </a>
+        <p className="ticket-card__key">{i.key}</p>
         <span className={getStatusClassName(i.statusCategory)}>{i.status}</span>
       </div>
 
@@ -50,7 +49,7 @@ export function TicketCard({ issue: i }: { issue: NormalizedIssue }) {
           <span>Reporter: {i.reporter?.name || "—"}</span>
         </div>
       </div>
-    </article>
+    </Link>
   );
 }
 

@@ -31,6 +31,7 @@ export type NormalizedIssue = {
     started: string;
     timeSpentSeconds: number;
   }[];
+  attachment: [];
 };
 
 function userLite(u: any): UserLite {
@@ -114,5 +115,6 @@ export function normalizeIssue(issue: any): NormalizedIssue {
       started: w.started,
       timeSpentSeconds: w.timeSpentSeconds,
     })),
+    attachment: f.attachment,
   };
 }

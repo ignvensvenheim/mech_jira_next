@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
       "issuetype",
       "project",
       "description",
+      "attachment",
       "customfield_10010", // request type
       "customfield_10267", // <-- mechanics
     ].join(",")
