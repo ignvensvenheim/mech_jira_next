@@ -1,3 +1,7 @@
+.attachment-list {
+  display: flex;
+}
+
 .ticket-card {
   max-width: 1200px;
   margin: 0 auto;
@@ -9,4 +13,98 @@
   box-shadow: 0 1px 2px rgba(9, 30, 66, 0.08);
   display: grid;
   gap: 8px;
+}
+
+.ticket-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.ticket-card__key {
+  text-decoration: none;
+  color: #172b4d;
+  font-weight: bold;
+}
+
+.ticket-card__status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ticket-card__status--done {
+  background: #e3fcef;
+  color: #006644;
+}
+
+.ticket-card__status--indeterminate {
+  background: #deebff;
+  color: #0747a6;
+}
+
+.ticket-card__status--default {
+  background: #f4f5f7;
+  color: #42526e;
+}
+
+.ticket-card__summary {
+  font-size: 15px;
+  color: #091e42;
+}
+
+.ticket-card__description {
+  color: #6b778c;
+  white-space: pre-wrap;
+}
+
+.ticket-card__chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ticket-card__chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #ebecf0;
+  background: #f4f5f7;
+  color: #42526e;
+}
+
+.ticket-card__chip--request {
+  background: #eae6ff;
+  color: #403294;
+}
+
+.ticket-card__users {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  color: #6b778c;
+  font-size: 13px;
+}
+
+.ticket-card__user {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ticket-card__avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  background-color: #dfe1e6;
+  display: inline-block;
 }

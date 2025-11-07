@@ -85,12 +85,48 @@ export function DetailedSingleTicket({ issue: i }: { issue: NormalizedIssue }) {
 
   if (loading) return <div>Loading issue...</div>;
   if (!issue) return <div>Issue not found.</div>;
+  function getStatusClassName(category?: string): string {
+    const k = (category || "").toLowerCase();
+    const baseClass = "ticket-card__status";
+
+    if (k === "done") return `${baseClass} ${baseClass}--done`;
+    if (k === "indeterminate")
+      return `${baseClass} ${baseClass}--indeterminate`;
+    return `${baseClass} ${baseClass}--default`;
+  }
 
   return (
     <div className="ticket-card">
-      <h1>
-        {issue.key}: {issue.summary}
-      </h1>
+      <div className="ticket-card__header">
+        <p className="ticket-card__key">{issue.key}</p>
+        <span className={getStatusClassName(issue.statusCategory)}>
+          {issue.status}
+        </span>
+      </div>
+      {/* 📎 Display attachments */}
+      {!loadingInitial && attachments.length > 0 && (
+        <div className="attachments">
+          <div className="attachment-list">
+            {attachments.map((a) => (
+              <div key={a.id} className="attachment-item">
+                {a.mimeType?.startsWith("image/") ? (
+                  <img
+                    src={a.blobUrl}
+                    alt={a.filename}
+                    style={{ maxWidth: "400px", borderRadius: "8px" }}
+                  />
+                ) : (
+                  <a href={a.blobUrl} download={a.filename}>
+                    Download file
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <p>{issue.summary}</p>
       <p>Status: {issue.status}</p>
       <p>Created: {new Date(issue.created).toLocaleString()}</p>
       <p>Updated: {new Date(issue.updated).toLocaleString()}</p>
@@ -106,40 +142,12 @@ export function DetailedSingleTicket({ issue: i }: { issue: NormalizedIssue }) {
         <div key={idx}>{m}</div>
       ))}
 
-      <div>
-        <strong>Reporter:</strong> {issue.reporter?.name || "—"} <br />
-        <strong>Assignee:</strong> {issue.assignee?.name || "—"}
-      </div>
+      <div>Reporter: {issue.reporter?.name || "—"}</div>
 
       {/* 🌀 Loader for attachments */}
       {loadingInitial && (
         <div className="page__loading">
           <Oval visible={true} height={80} width={80} color="#4fa94d" />
-        </div>
-      )}
-
-      {/* 📎 Display attachments */}
-      {!loadingInitial && attachments.length > 0 && (
-        <div className="attachments">
-          <h2>Attachments</h2>
-          <div className="attachment-list">
-            {attachments.map((a) => (
-              <div key={a.id} className="attachment-item">
-                <p>{a.filename}</p>
-                {a.mimeType?.startsWith("image/") ? (
-                  <img
-                    src={a.blobUrl}
-                    alt={a.filename}
-                    style={{ maxWidth: "300px", borderRadius: "8px" }}
-                  />
-                ) : (
-                  <a href={a.blobUrl} download={a.filename}>
-                    Download file
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
         </div>
       )}
     </div>
