@@ -34,6 +34,7 @@ export type Issue = {
   timeSpentSeconds: number;
   requestType?: string | null;
   requestUrl?: string | null;
+  attachment: [] | null;
 };
 
 export type Paging = {
