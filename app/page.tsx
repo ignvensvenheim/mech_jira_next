@@ -131,10 +131,6 @@ export default function Page() {
         <div className="page__error">{String(error)}</div>
       )}
 
-      {!loadingInitial && !error && (
-        <div className="page__empty">No issues found.</div>
-      )}
-
       {loadingInitial && (
         <div className="page__loading">
           <Oval visible={true} height={80} width={80} color="#4fa94d" />
