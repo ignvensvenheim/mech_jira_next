@@ -7,6 +7,8 @@ import { useParams } from "next/navigation";
 import type { NormalizedIssue } from "@/lib/jira";
 import { ParamValue } from "next/dist/server/request/params";
 import { Oval } from "react-loader-spinner"; // 👈 add your existing loader
+import { relativeDate } from "@/helpers/relativeDate";
+import Avatar from "../Avatar";
 
 type Attachment = {
   id: string;
@@ -98,11 +100,19 @@ export function DetailedSingleTicket({ issue: i }: { issue: NormalizedIssue }) {
   return (
     <div className="ticket-card">
       <div className="ticket-card__header">
-        <p className="ticket-card__key">{issue.key}</p>
+        <p className="ticket-card__key">
+          {issue.key} | {issue.summary}
+        </p>
         <span className={getStatusClassName(issue.statusCategory)}>
           {issue.status}
         </span>
       </div>
+      {/* 🌀 Loader for attachments */}
+      {loadingInitial && (
+        <div className="page__loading">
+          <Oval visible={true} height={80} width={80} color="#4fa94d" />
+        </div>
+      )}
       {/* 📎 Display attachments */}
       {!loadingInitial && attachments.length > 0 && (
         <div className="attachments">
@@ -125,31 +135,21 @@ export function DetailedSingleTicket({ issue: i }: { issue: NormalizedIssue }) {
           </div>
         </div>
       )}
-
-      <p>{issue.summary}</p>
-      <p>Status: {issue.status}</p>
-      <p>Created: {new Date(issue.created).toLocaleString()}</p>
-      <p>Updated: {new Date(issue.updated).toLocaleString()}</p>
-
-      {issue.descriptionText && (
-        <div>
-          <h2>Description</h2>
-          <p>{issue.descriptionText}</p>
+      <div className="ticket-card__user">
+        <Avatar url={issue.reporter?.avatar} />
+        <span>Reporter: {issue.reporter?.name || "—"}</span>
+      </div>
+      <div className="ticket-card__user">
+        <Avatar url="https://cdn-icons-png.flaticon.com/512/2494/2494496.png" />
+        <div className="ticket-card__mechanics">
+          <span>Mechanics: </span>
+          {Array.isArray(issue.mechanicsRaw)
+            ? issue.mechanicsRaw.map((m: { value: any }) => m.value).join(", ")
+            : "—"}
         </div>
-      )}
-
-      {issue.mechanics?.map((m, idx) => (
-        <div key={idx}>{m}</div>
-      ))}
-
-      <div>Reporter: {issue.reporter?.name || "—"}</div>
-
-      {/* 🌀 Loader for attachments */}
-      {loadingInitial && (
-        <div className="page__loading">
-          <Oval visible={true} height={80} width={80} color="#4fa94d" />
-        </div>
-      )}
+      </div>
+      <p>Created: {relativeDate(issue.created)}</p>
+      {issue.descriptionText && <p>Description: {issue.descriptionText}</p>}
     </div>
   );
 }
