@@ -24,6 +24,7 @@ type Props = {
   onDepartmentChange: (dep: string) => void;
   selectedLine: string;
   onLineChange: (line: string) => void;
+  issues: any[];
 };
 
 const DEPARTMENT_LINES: Record<string, string[]> = {
@@ -144,6 +145,7 @@ export function SortFilter({
   onDepartmentChange,
   selectedLine,
   onLineChange,
+  issues = [],
 }: Props) {
   const toggleStatus = (status: string) => {
     if (selectedStatuses.includes(status)) {
@@ -239,7 +241,16 @@ export function SortFilter({
         <button className="sort-filter__reset" onClick={onReset}>
           Reset filters
         </button>
-        <ExportIssuesButton issues={[]} />{" "}
+        <ExportIssuesButton
+          issues={(issues ?? []).map((i) => ({
+            ...i,
+            remainingEstimateSeconds: i.remainingEstimateSeconds ?? 0,
+            issueType: i.issueType ?? "Task",
+            project: i.project ?? "MECH",
+            worklogs: i.worklogs ?? [],
+          }))}
+        />
+
         {/* You can pass filtered issues if needed */}
       </div>
     </div>
