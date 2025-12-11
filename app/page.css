@@ -1,23 +1,8 @@
 /* page.css */
 
 .page {
-  max-width: 1400px;
+  max-width: 1300px;
   margin: 0 auto;
-  padding: 24px;
-}
-
-.page__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1rem;
-}
-
-.page__title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #172b4d;
-  margin: 0;
 }
 
 .page__count {

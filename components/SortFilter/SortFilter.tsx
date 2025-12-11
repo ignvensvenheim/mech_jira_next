@@ -25,6 +25,8 @@ type Props = {
   selectedLine: string;
   onLineChange: (line: string) => void;
   issues: any[];
+  searchText: string;
+  onSearchTextChange: (value: string) => void;
 };
 
 const DEPARTMENT_LINES: Record<string, string[]> = {
@@ -145,6 +147,8 @@ export function SortFilter({
   onDepartmentChange,
   selectedLine,
   onLineChange,
+  searchText,
+  onSearchTextChange,
   issues = [],
 }: Props) {
   const toggleStatus = (status: string) => {
@@ -171,7 +175,6 @@ export function SortFilter({
             <option value="oldest">Oldest first</option>
           </select>
         </div>
-
         <div className="sort-filter__date">
           <label>From:</label>
           <input
@@ -188,7 +191,6 @@ export function SortFilter({
             onChange={(e) => onDateChange(dateFrom, e.target.value)}
           />
         </div>
-
         <div className="sort-filter__status-pills">
           <label>Status:</label>
           {STATUS_OPTIONS.map((status) => (
@@ -206,7 +208,6 @@ export function SortFilter({
             </button>
           ))}
         </div>
-
         <div className="sort-filter__department-line">
           <label>Category:</label>
           <select
@@ -236,7 +237,16 @@ export function SortFilter({
           </select>
         </div>
       </div>
-
+      <div className="sort-filter__search">
+        <label>Search:</label>
+        <input
+          className="sort-filter__pill"
+          type="text"
+          placeholder="search by text.."
+          value={searchText}
+          onChange={(e) => onSearchTextChange(e.target.value)}
+        />
+      </div>
       <div className="sort-filter__actions">
         <button className="sort-filter__reset" onClick={onReset}>
           Reset filters
