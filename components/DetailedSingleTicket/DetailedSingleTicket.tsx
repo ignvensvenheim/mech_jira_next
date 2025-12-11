@@ -28,9 +28,8 @@ export function DetailedSingleTicket({ issue: i }: { issue: NormalizedIssue }) {
   );
   const [loading, setLoading] = useState(!issue);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [loadingInitial, setLoadingInitial] = useState(false); // 👈 same pattern you use elsewhere
+  const [loadingInitial, setLoadingInitial] = useState(false); //
 
-  // 🔁 Load from cache if not already in context
   useEffect(() => {
     if (!issue) {
       setLoading(true);
@@ -49,12 +48,11 @@ export function DetailedSingleTicket({ issue: i }: { issue: NormalizedIssue }) {
     }
   }, [issue, issueKey, setIssues]);
 
-  // 📎 Fetch attachments via API proxy (server-side)
   useEffect(() => {
     if (!issue?.attachment?.length) return;
 
     const fetchAttachments = async () => {
-      setLoadingInitial(true); // 👈 show loader
+      setLoadingInitial(true); //
       try {
         const results = await Promise.all(
           issue.attachment.map(async (a: any) => {
@@ -78,7 +76,7 @@ export function DetailedSingleTicket({ issue: i }: { issue: NormalizedIssue }) {
       } catch (err) {
         console.error("Error fetching attachments:", err);
       } finally {
-        setLoadingInitial(false); // 👈 hide loader when done
+        setLoadingInitial(false);
       }
     };
 
@@ -123,7 +121,7 @@ export function DetailedSingleTicket({ issue: i }: { issue: NormalizedIssue }) {
                   <img
                     src={a.blobUrl}
                     alt={a.filename}
-                    style={{ maxWidth: "400px", borderRadius: "8px" }}
+                    style={{ borderRadius: "8px" }}
                   />
                 ) : (
                   <a href={a.blobUrl} download={a.filename}>
