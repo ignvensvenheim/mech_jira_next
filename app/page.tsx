@@ -123,6 +123,7 @@ export default function Page() {
           setSelectedLine("");
           setPage(1);
         }}
+        issues={filteredIssues}
       />
 
       <TicketsGrid issues={visibleIssues} />
