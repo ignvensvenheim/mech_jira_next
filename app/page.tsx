@@ -1,8 +1,7 @@
 "use client";
 
 import "./page.css";
-import React, { useMemo, useState, useEffect } from "react";
-import { normalizeIssues } from "@/lib/normalizeIssue";
+import React, { useMemo, useState } from "react";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { Oval } from "react-loader-spinner";
 import { SortFilter } from "@/components/SortFilter/SortFilter";
@@ -11,7 +10,7 @@ import { useIssues } from "@/lib/IssuesContext";
 
 export default function Page() {
   const { loadingInitial, error } = useJiraSearch();
-  const { issues, setIssues } = useIssues();
+  const { issues } = useIssues();
 
   const ITEMS_PER_PAGE = 20;
   const [page, setPage] = useState(1);
@@ -21,12 +20,7 @@ export default function Page() {
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedLine, setSelectedLine] = useState("");
-
-  // ✅ Sync fetched issues to global context (normalized)
-
-  // If no issues yet in context, fallback to fetchedIssues
-  // const baseIssues =
-  //   issues.length > 0 ? issues : normalizeIssues(fetchedIssues);
+  const [searchText, setSearchText] = useState("");
 
   // Sort issues
   const sortedIssues = useMemo(() => {
@@ -37,16 +31,24 @@ export default function Page() {
     });
   }, [issues, sort]);
 
-  // Filter issues by department, line, status, and date
+  // Filter issues
   const filteredIssues = useMemo(() => {
+    const search = searchText.trim().toLowerCase();
+
     return sortedIssues.filter((i) => {
+      const matchesText =
+        !search ||
+        Object.values(i)
+          .filter((v) => v != null)
+          .some((v) => String(v).toLowerCase().includes(search));
+
+      if (!matchesText) return false;
+
       const [depPart = "", linePart = ""] = (i.summary ?? "")
         .split("|")
         .map((s: string) => s.trim().toLowerCase());
-
       const dep = selectedDepartment.toLowerCase();
       const lin = selectedLine.toLowerCase();
-
       const matchDepartment = !selectedDepartment || depPart === dep;
       const matchLine = !selectedLine || linePart === lin;
 
@@ -59,10 +61,11 @@ export default function Page() {
         selectedStatuses.length === 0 ||
         selectedStatuses.includes(i.status ?? "");
 
-      return matchDepartment && matchLine && matchStatus && matchDate;
+      return matchDepartment && matchLine && matchDate && matchStatus;
     });
   }, [
     sortedIssues,
+    searchText,
     selectedDepartment,
     selectedLine,
     selectedStatuses,
@@ -70,25 +73,15 @@ export default function Page() {
     dateTo,
   ]);
 
-  // Paginate filtered issues
   const visibleIssues = useMemo(() => {
     const start = (page - 1) * ITEMS_PER_PAGE;
     return filteredIssues.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredIssues, page]);
 
-  // const normalizedVisibleIssues = useMemo(
-  //   () => normalizeIssues(visibleIssues),
-  //   [visibleIssues]
-  // );
-
   const totalPages = Math.ceil(filteredIssues.length / ITEMS_PER_PAGE);
 
   return (
     <div className="page">
-      <div className="page__header">
-        <h1 className="page__title">Issues filtering & export</h1>
-      </div>
-
       <SortFilter
         sort={sort}
         onSortChange={setSort}
@@ -121,9 +114,12 @@ export default function Page() {
           setSelectedStatuses([]);
           setSelectedDepartment("");
           setSelectedLine("");
+          setSearchText("");
           setPage(1);
         }}
         issues={filteredIssues}
+        searchText={searchText}
+        onSearchTextChange={setSearchText}
       />
 
       <TicketsGrid issues={visibleIssues} />
