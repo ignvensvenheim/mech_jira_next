@@ -1,0 +1,28 @@
+.ticket-modal__overlay {
+  background: rgba(0, 0, 0, 0.6);
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ticket-modal {
+  background: #fff;
+  padding: 24px;
+  max-width: 900px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 10px;
+  position: relative;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  font-size: 20px;
+  cursor: pointer;
+  border: none;
+}

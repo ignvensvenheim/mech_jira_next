@@ -13,6 +13,7 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-loader-spinner": "^7.0.3",
+    "react-modal": "^3.16.3",
     "swr": "^2.3.6",
     "xlsx": "^0.18.5"
   },
@@ -21,6 +22,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/react-modal": "^3.16.3",
     "baseline-browser-mapping": "^2.8.32",
     "eslint": "^9",
     "eslint-config-next": "16.0.0",

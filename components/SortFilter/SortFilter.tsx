@@ -2,14 +2,8 @@
 
 import "./sortFilter.css";
 import ExportIssuesButton from "../ExportIssuesButton/ExportIssuesButton";
-
-const STATUS_OPTIONS = [
-  "To Do List",
-  "In Progress",
-  "Pending",
-  "Done",
-  "Cancelled",
-];
+import { STATUS_OPTIONS } from "@/data/listData";
+import { DEPARTMENT_LINES } from "@/data/listData";
 
 type Props = {
   sort: "newest" | "oldest";
@@ -27,111 +21,6 @@ type Props = {
   issues: any[];
   searchText: string;
   onSearchTextChange: (value: string) => void;
-};
-
-const DEPARTMENT_LINES: Record<string, string[]> = {
-  AB: [
-    "UV linijos",
-    "UV apdailos linija",
-    "UV dažymo kameros ir pompos",
-    "CEFLA linijos",
-    "CEFLA dažymo linija",
-  ],
-  LPB: [
-    "Josting - I giljotina",
-    "Josting - II giljotina",
-    "Josting - III giljotina",
-    "Ompec - I giljotina",
-    "Ompec - II giljotina",
-    "Kuper - I",
-    "Kuper - II",
-    "Josting atliekų kapoklė",
-    "Kuper lukšto klijavimo",
-  ],
-  SB: [
-    "SIGNODE (nauja)",
-    "SIGNODE (sena)",
-    "ECOMAT apvyniojimo ireng.",
-    "Surinkimo linija",
-  ],
-  PB: [],
-  MB1: [
-    "IMA line",
-    "HOLZMA nauja",
-    "HOLZMA sena",
-    "Homag FLEXLINE",
-    "Homag POWER LINE",
-    "FRIZ presas",
-    "ORMA presas",
-    "ITALPRESS presas",
-    "BURKLE presas",
-    "HOLZMA laminatui",
-    "Laminato formatavimo pjūklas",
-    "Laminato giljotina",
-  ],
-  MB2: [
-    "ALTENDORF pjūklas",
-    "MAW kaiščiavimas",
-    "BAUERLE frezeris",
-    "ARMINIUS br. šlif. staklės",
-    "TAGLIABUE kalibravimas",
-    "BRANDT stalų briaunavimo",
-    "BAZ 222-60 +keltuvas",
-    "Weeke CNC_II",
-    "Weeke CNC _I",
-    "Weeke BHX500",
-    "BAZ 32 +keltuvas",
-    "Weeke BST500 kaiščiavimas",
-    "Rover 24L +keltuvas",
-    "Weeke BHX055",
-    "Weeke BHT500",
-    "Homag KAL370 vienpusis",
-    "BAZ 222-40 +keltuvas",
-    "Homag CENTATEQ P-210",
-  ],
-  MB3: [
-    "Homag KAL310 briaunavimas",
-    "Weeke BHP200 nestingas",
-    "Dulkių nutraukimas",
-    "Gannomat kaiščiavimas",
-    "DRILLTEQ V200 gręžimas",
-  ],
-  SPEC: [],
-  Elektrokrautuvai: [
-    "Nr. 6 LINDE dyz.",
-    "Nr. 2 BT elektrinis vežimėlis",
-    "Nr. 11 BOSS elektr.",
-    "Nr. 21 CARRELLFICIO keltuvas",
-    "Nr. 10 TOYOTA elektr.",
-    "Nr. 1 STILL elektr.",
-    "Nr. 7 ROCLA keltuvas",
-    "Nr. 22 MITSUBISHI elektr.",
-    "Nr. 5 LANSING elektr.",
-    "Nr. 16 BT-100M elektr.",
-    "Nr. 8 BT-100M elektr.",
-    "Nr. 9 LANSING elektr.",
-    "Nr. 13 KALMAR elektr.",
-    "Nr. 23 SKYJACK žirklinis",
-    "Nr. 4 JUNGHEINRICH elektr.",
-    "Nr. 24 JUNGHEINRICH duj.",
-    "Nr. 25 JUNGHEINRICH elektr.",
-    "Nr. 14 JUNGHEINRICH elektr.",
-  ],
-  KITA: [
-    "Įrankių galandinimas",
-    "Suspausto oro vamzdynai",
-    "Pirkimo užsakymai gamybai",
-    "Ištraukimo sistemos",
-    "Kompresoriai",
-    "Drėkinimo sistema UNIFOG",
-    "Hidrauliniai vežimėliai / keltuvai",
-    "Matavimo priemonės",
-    "Rankiniai įrankiai",
-    "Apšvietimo ir jėgos el. tinklai",
-    "Pastatų priežiūra, ūkio darbai",
-    "Signalizacijos ir komp. tinklai",
-  ],
-  // Add your departments and lines here
 };
 
 export function SortFilter({
@@ -260,8 +149,6 @@ export function SortFilter({
             worklogs: i.worklogs ?? [],
           }))}
         />
-
-        {/* You can pass filtered issues if needed */}
       </div>
     </div>
   );
