@@ -14,6 +14,8 @@ import TicketModal from "../TicketModal/TicketModal";
 export function TicketCard({ issue: i }: { issue: NormalizedIssue }) {
   const [isOpen, setIsOpen] = useState(false);
 
+  const hasAttachments = i.attachment && i.attachment.length > 0;
+
   return (
     <>
       {/* Card */}
@@ -36,6 +38,9 @@ export function TicketCard({ issue: i }: { issue: NormalizedIssue }) {
         <div className="ticket-card__chips">
           <Chip text={`Time spent: ${fmtDuration(i.timeSpentSeconds)}`} />
           <Chip text={`${relativeDate(i.created)}`} />
+          {hasAttachments && (
+            <Avatar url="https://cdn-icons-png.flaticon.com/512/8625/8625343.png" />
+          )}
         </div>
 
         <div className="ticket-card__users">

@@ -123,14 +123,18 @@ export function DetailedSingleTicket({ issue }: { issue: NormalizedIssue }) {
             : "—"}
         </div>
       </div>
-
-      <p>Created: {relativeDate(issue.created)}</p>
-
-      {issue.descriptionText && (
-        <p className="ticket-card__description-full">
-          Description: {issue.descriptionText}
-        </p>
-      )}
+      <div className="ticket-card__user">
+        <Avatar url="https://cdn-icons-png.flaticon.com/512/10023/10023858.png" />
+        <p>Created: {relativeDate(issue.created)}</p>
+      </div>
+      <div className="ticket-card__user">
+        <Avatar url="https://cdn-icons-png.flaticon.com/512/134/134723.png" />
+        {issue.descriptionText && (
+          <p className="ticket-card__description-full">
+            Comments: {issue.descriptionText}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
