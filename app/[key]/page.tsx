@@ -27,6 +27,7 @@ export default function Page() {
         mechanics: undefined,
         mechanicsRaw: undefined,
         worklogs: [],
+        comments: [],
         attachment: [],
       }}
     />

@@ -31,6 +31,16 @@ export type Issue = {
   created: string;
   updated: string;
   descriptionText?: string | null;
+  comments?: {
+    id: string;
+    author: {
+      id: string;
+      name: string;
+      avatar?: string;
+    } | null;
+    created: string;
+    body: string;
+  }[];
   timeSpentSeconds: number;
   requestType?: string | null;
   requestUrl?: string | null;

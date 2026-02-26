@@ -1,9 +1,9 @@
 .tickets-grid {
-  padding: 0px 1px;
+  padding: 0 2px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(300px, 1fr));
-  gap: 16px;
-  margin: 2rem 0;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin: 1rem 0 1.5rem;
 }
 
 .tickets-grid__empty {

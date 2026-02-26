@@ -1,9 +1,131 @@
-.attachment-list {
-  display: flex;
+.detailed-ticket {
+  display: grid;
+  gap: 14px;
 }
 
-.ticket-card.detailed {
-  border: none;
-  box-shadow: none;
-  cursor: auto;
+.detailed-ticket__section {
+  border: 1px solid #e4eaf2;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fbfdff;
+}
+
+.detailed-ticket__section-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #203146;
+}
+
+.detailed-ticket__meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.detailed-ticket__meta-item {
+  display: grid;
+  gap: 2px;
+  color: #243447;
+  font-size: 14px;
+}
+
+.detailed-ticket__label {
+  color: #63758b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.detailed-ticket__person-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #2a3c52;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.detailed-ticket__person-row:last-child {
+  margin-bottom: 0;
+}
+
+.detailed-ticket__attachments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.detailed-ticket__attachment-item {
+  border: 1px solid #dfe7f1;
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+}
+
+.detailed-ticket__attachment-name {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #41546a;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.detailed-ticket__attachment-image {
+  width: 100%;
+  border-radius: 8px;
+  display: block;
+}
+
+.detailed-ticket__download-link {
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f4e79;
+  text-decoration: none;
+}
+
+.detailed-ticket__comment {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  color: #23364d;
+  font-size: 14px;
+}
+
+.detailed-ticket__comments-list {
+  display: grid;
+  gap: 10px;
+}
+
+.detailed-ticket__comment-item {
+  border: 1px solid #dfe7f1;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fff;
+}
+
+.detailed-ticket__comment-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.detailed-ticket__comment-author {
+  font-size: 13px;
+  font-weight: 700;
+  color: #29405a;
+}
+
+.detailed-ticket__comment-date {
+  font-size: 12px;
+  color: #63758b;
+}
+
+.detailed-ticket__empty {
+  margin: 0;
+  color: #6a7b90;
+  font-size: 13px;
 }

@@ -7,6 +7,8 @@ import { Oval } from "react-loader-spinner";
 import { SortFilter } from "@/components/SortFilter/SortFilter";
 import { TicketsGrid } from "@/components/TicketsGrid/TicketsGrid";
 import { useIssues } from "@/lib/IssuesContext";
+import { NormalizedIssue } from "@/lib/jira";
+import TicketModal from "@/components/TicketModal/TicketModal";
 
 export default function Page() {
   const { loadingInitial, error } = useJiraSearch();
@@ -20,7 +22,9 @@ export default function Page() {
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedLine, setSelectedLine] = useState("");
-  const [searchText, setSearchText] = useState("");
+  const [selectedIssue, setSelectedIssue] = useState<NormalizedIssue | null>(
+    null,
+  );
 
   // Sort issues
   const sortedIssues = useMemo(() => {
@@ -33,17 +37,7 @@ export default function Page() {
 
   // Filter issues
   const filteredIssues = useMemo(() => {
-    const search = searchText.trim().toLowerCase();
-
     return sortedIssues.filter((i) => {
-      const matchesText =
-        !search ||
-        Object.values(i)
-          .filter((v) => v != null)
-          .some((v) => String(v).toLowerCase().includes(search));
-
-      if (!matchesText) return false;
-
       const [depPart = "", linePart = ""] = (i.summary ?? "")
         .split("|")
         .map((s: string) => s.trim().toLowerCase());
@@ -65,7 +59,6 @@ export default function Page() {
     });
   }, [
     sortedIssues,
-    searchText,
     selectedDepartment,
     selectedLine,
     selectedStatuses,
@@ -82,91 +75,103 @@ export default function Page() {
 
   return (
     <div className="page">
-      <SortFilter
-        sort={sort}
-        onSortChange={setSort}
-        dateFrom={dateFrom}
-        dateTo={dateTo}
-        onDateChange={(from, to) => {
-          setDateFrom(from);
-          setDateTo(to);
-          setPage(1);
-        }}
-        selectedStatuses={selectedStatuses}
-        onStatusChange={(statuses) => {
-          setSelectedStatuses(statuses);
-          setPage(1);
-        }}
-        selectedDepartment={selectedDepartment}
-        onDepartmentChange={(dep) => {
-          setSelectedDepartment(dep);
-          setPage(1);
-        }}
-        selectedLine={selectedLine}
-        onLineChange={(line) => {
-          setSelectedLine(line);
-          setPage(1);
-        }}
-        onReset={() => {
-          setSort("newest");
-          setDateFrom("");
-          setDateTo("");
-          setSelectedStatuses([]);
-          setSelectedDepartment("");
-          setSelectedLine("");
-          setSearchText("");
-          setPage(1);
-        }}
-        issues={filteredIssues}
-        searchText={searchText}
-        onSearchTextChange={setSearchText}
-      />
+      <div className="page__layout">
+        <aside className="page__sidebar">
+          <SortFilter
+            sort={sort}
+            onSortChange={setSort}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateChange={(from, to) => {
+              setDateFrom(from);
+              setDateTo(to);
+              setPage(1);
+            }}
+            selectedStatuses={selectedStatuses}
+            onStatusChange={(statuses) => {
+              setSelectedStatuses(statuses);
+              setPage(1);
+            }}
+            selectedDepartment={selectedDepartment}
+            onDepartmentChange={(dep) => {
+              setSelectedDepartment(dep);
+              setPage(1);
+            }}
+            selectedLine={selectedLine}
+            onLineChange={(line) => {
+              setSelectedLine(line);
+              setPage(1);
+            }}
+            resultCount={filteredIssues.length}
+            onReset={() => {
+              setSort("newest");
+              setDateFrom("");
+              setDateTo("");
+              setSelectedStatuses([]);
+              setSelectedDepartment("");
+              setSelectedLine("");
+              setPage(1);
+            }}
+            issues={filteredIssues}
+          />
+        </aside>
 
-      <TicketsGrid issues={visibleIssues} />
+        <section className="page__content">
+          <TicketsGrid issues={visibleIssues} onOpen={setSelectedIssue} />
 
-      {error && !loadingInitial && (
-        <div className="page__error">{String(error)}</div>
-      )}
+          <TicketModal
+            isOpen={!!selectedIssue}
+            onClose={() => setSelectedIssue(null)}
+            issue={selectedIssue}
+          />
 
-      {loadingInitial && (
-        <div className="page__loading">
-          <Oval visible={true} height={80} width={80} color="#4fa94d" />
-        </div>
-      )}
+          {error && !loadingInitial && (
+            <div className="page__error">{String(error)}</div>
+          )}
 
-      {totalPages > 1 && (
-        <div className="page__pagination">
-          <button
-            className="page__pagination-button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            &lt; Prev
-          </button>
+          {loadingInitial && (
+            <div className="page__loading">
+              <Oval visible={true} height={80} width={80} color="#4fa94d" />
+            </div>
+          )}
 
-          <div className="page__pagination-pages">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+          {totalPages > 1 && (
+            <div className="page__pagination">
               <button
-                key={num}
-                className={`page__pagination-button ${
-                  num === page ? "page__pagination-button--active" : ""
-                }`}
-                onClick={() => setPage(num)}
+                className="page__pagination-button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
               >
-                {num}
+                &lt; Prev
               </button>
-            ))}
-          </div>
 
-          <button
-            className="page__pagination-button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-          >
-            Next &gt;
-          </button>
-        </div>
-      )}
+              <div className="page__pagination-pages">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (num) => (
+                    <button
+                      key={num}
+                      className={`page__pagination-button ${
+                        num === page ? "page__pagination-button--active" : ""
+                      }`}
+                      onClick={() => setPage(num)}
+                    >
+                      {num}
+                    </button>
+                  ),
+                )}
+              </div>
+
+              <button
+                className="page__pagination-button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next &gt;
+              </button>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

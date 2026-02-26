@@ -6,13 +6,14 @@ import "./ticketsGrid.css";
 
 type Props = {
   issues: NormalizedIssue[];
+  onOpen: (issue: NormalizedIssue) => void;
 };
 
-export function TicketsGrid({ issues }: Props) {
+export function TicketsGrid({ issues, onOpen }: Props) {
   return (
     <section className="tickets-grid">
       {issues.map((i) => (
-        <TicketCard key={i.id} issue={i} />
+        <TicketCard key={i.id} issue={i} onOpen={onOpen} />
       ))}
     </section>
   );
