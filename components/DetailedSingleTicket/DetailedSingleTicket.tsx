@@ -82,8 +82,7 @@ export function DetailedSingleTicket({
 
   return (
     <div className="detailed-ticket">
-      <section className="detailed-ticket__section">
-        <h3 className="detailed-ticket__section-title">Overview</h3>
+      <section className="detailed-ticket__section detailed-ticket__section--compact">
         <div className="detailed-ticket__meta-grid">
           <div className="detailed-ticket__meta-item">
             <span className="detailed-ticket__label">Created</span>
@@ -104,15 +103,16 @@ export function DetailedSingleTicket({
         </div>
       </section>
 
-      <section className="detailed-ticket__section">
-        <h3 className="detailed-ticket__section-title">People</h3>
-        <div className="detailed-ticket__person-row">
-          <Avatar url={issue.reporter?.avatar} />
-          <span>Reporter: {issue.reporter?.name || "-"}</span>
-        </div>
-        <div className="detailed-ticket__person-row">
-          <Avatar url="https://cdn-icons-png.flaticon.com/512/2494/2494496.png" />
-          <span>Mechanics: {mechanics || "-"}</span>
+      <section className="detailed-ticket__section detailed-ticket__section--compact">
+        <div className="detailed-ticket__people-row">
+          <div className="detailed-ticket__person-row">
+            <Avatar url={issue.reporter?.avatar} />
+            <span>Reporter: {issue.reporter?.name || "-"}</span>
+          </div>
+          <div className="detailed-ticket__person-row">
+            <Avatar url="https://cdn-icons-png.flaticon.com/512/2494/2494496.png" />
+            <span>Mechanics: {mechanics || "-"}</span>
+          </div>
         </div>
       </section>
 
