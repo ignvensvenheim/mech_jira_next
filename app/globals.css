@@ -1,16 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --background: #eef2f5;
+  --foreground: #2b3946;
 
-/* @media (prefers-color-scheme: light) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-} */
+  --color-header-bg: #3e4f5c;
+  --color-primary: #2b3946;
+  --color-text-light: #7a8793;
+
+  --color-card-bg: #ffffff;
+  --color-card-bg-hover: #f8fafc;
+  --border-color: #d8dee5;
+  --border-radius: 10px;
+
+  --shadow-soft: 0 6px 18px rgba(20, 37, 56, 0.08);
+}
 
 body {
   background: var(--background);
