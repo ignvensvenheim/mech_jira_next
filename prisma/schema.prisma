@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+model User {
+  id           String        @id @default(cuid())
+  email        String        @unique
+  name         String?
+  passwordHash String
+  role         UserRole      @default(USER)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  machineRates MachineRate[]
+  manualEntries ManualEntry[]
+  ticketFixCosts TicketFixCost[]
+}
+
+model MachineRate {
+  id          String   @id @default(cuid())
+  machineKey  String   @unique
+  hourlyRate  Float    @default(0)
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+model ManualEntry {
+  id          String   @id @default(cuid())
+  machineKey  String
+  date        String
+  amount      Float
+  comment     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([machineKey])
+  @@index([date])
+}
+
+model TicketFixCost {
+  id          String   @id @default(cuid())
+  issueKey    String   @unique
+  machineKey  String
+  date        String
+  amount      Float
+  comment     String
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([machineKey])
+  @@index([date])
+}

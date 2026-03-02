@@ -16,35 +16,40 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const jql = searchParams.get("jql") ?? "project = MECH ORDER BY created DESC";
+  const jql = searchParams.get("jql") ?? "project = MECH ORDER BY updated DESC";
   const maxResults = Number(searchParams.get("maxResults") ?? 20);
   const nextPageToken = searchParams.get("nextPageToken") ?? undefined;
+  const profile = searchParams.get("profile") ?? "list";
 
   const params = new URLSearchParams();
   params.set("jql", jql);
   params.set("maxResults", String(maxResults));
   if (nextPageToken) params.set("nextPageToken", nextPageToken);
-  params.set(
-    "fields",
-    [
-      "summary",
-      "status",
-      "priority",
-      "assignee",
-      "reporter",
-      "created",
-      "resolved",
-      "resolutiondate",
-      "timetracking",
-      "worklog",
-      "issuetype",
-      "project",
-      "description",
-      "attachment",
-      "customfield_10010", // request type
-      "customfield_10267", // <-- mechanics
-    ].join(",")
-  );
+  const listFields = [
+    "summary",
+    "status",
+    "priority",
+    "assignee",
+    "reporter",
+    "created",
+    "updated",
+    "resolved",
+    "resolutiondate",
+    "timetracking",
+    "issuetype",
+    "project",
+    "attachment",
+    "customfield_10010",
+    "customfield_10267",
+  ];
+  const detailFields = [
+    ...listFields,
+    "worklog",
+    "comment",
+    "description",
+    "attachment",
+  ];
+  params.set("fields", (profile === "detail" ? detailFields : listFields).join(","));
   params.set("expand", "customfield_10010.requestType");
 
   const upstream = await fetch(

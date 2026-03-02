@@ -1,137 +1,160 @@
 .sort-filter {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-rows: auto auto;
-  max-width: 1305px;
-  gap: 12px;
-
-  background-color: white;
-  position: sticky;
-  top: 0px;
-  padding: 24px 12px;
-  border-bottom: 1px solid #091e4214;
-}
-
-/* Left column: filters */
-.sort-filter__controls {
-  grid-column: 1 / -1;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  width: 100%;
   gap: 12px;
-  align-items: center;
+  background: var(--color-card-bg);
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  backdrop-filter: blur(6px);
+  box-shadow: var(--shadow-soft);
 }
 
-/* Sort select and date inputs row */
+.sort-filter__count {
+  color: var(--color-text-light);
+  font-size: 12px;
+}
+
+.sort-filter__controls {
+  display: grid;
+  gap: 10px;
+}
+
 .sort-filter__new-old,
 .sort-filter__date,
 .sort-filter__status-pills,
-.sort-filter__department-line,
-.sort-filter__search {
+.sort-filter__department-line {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--color-card-bg-hover);
 }
 
-/* Labels */
-.sort-filter__controls label,
-.sort-filter__search label {
-  font-size: 14px;
-  color: #444;
+.sort-filter__controls label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-light);
 }
 
-/* Inputs and selects */
-.sort-filter__select,
-.sort-filter__input {
-  padding: 6px 10px;
-  border-radius: 4px;
-  border: 1px solid #aaa;
-  font-size: 14px;
-  cursor: pointer;
-  background: #fff;
-  color: #333;
-  transition: all 0.2s ease;
+.sort-filter__new-old select,
+.sort-filter__date input,
+.sort-filter__department-line select {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  font-size: 13px;
+  background: var(--color-card-bg);
+  color: var(--color-primary);
+  outline: none;
 }
 
-.sort-filter__select:hover,
-.sort-filter__input:hover {
-  border-color: #666;
-}
-
-/* Status pills */
 .sort-filter__status-pills {
-  display: flex;
-  align-items: center;
+  flex-direction: row;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.sort-filter__status-pills label {
+  width: 100%;
+}
+
+.sort-filter__date-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.sort-filter__date-field {
+  display: flex;
+  flex-direction: column;
   gap: 6px;
+  min-width: 0;
+}
+
+.sort-filter__date-field input {
+  min-width: 0;
 }
 
 .sort-filter__pill {
-  background-color: #fff;
-  border: 1px solid #aaa;
-  color: #333;
-  padding: 6px 10px;
-  border-radius: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  background: var(--color-card-bg);
+  color: var(--color-primary);
   cursor: pointer;
-  font-size: 13px;
-  transition: all 0.2s ease;
+  padding: 8px 10px;
+  font-size: 12px;
+  transition: background 0.12s, transform 0.12s;
 }
 
 .sort-filter__pill:hover {
-  background-color: #f0f0f0;
-  border-color: #666;
+  background: var(--color-card-bg-hover);
+}
+
+.sort-filter__pill:active {
+  transform: translateY(1px);
 }
 
 .sort-filter__pill--active {
-  background-color: var(--color-primary, #3e4f5c);
-  border-color: var(--color-primary, #3e4f5c);
+  background: var(--color-header-bg);
+  border-color: var(--color-header-bg);
   color: #fff;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
-/* Right side buttons */
-.sort-filter__actions {
-  grid-column: 2;
-  grid-row: 2;
+.sort-filter__pill--active:hover {
+  background: var(--color-header-bg);
+  border-color: var(--color-header-bg);
+  color: #fff !important;
+}
+
+.sort-filter__footer {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  justify-content: flex-end;
-  align-items: center;
+}
+
+.sort-filter__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .sort-filter__actions button {
-  white-space: nowrap;
+  width: 100%;
 }
 
-/* Reset & Export buttons */
 .sort-filter__reset {
-  padding: 6px 12px;
-  border-radius: 4px;
-  border: 1px solid #aaa;
-  background: #fff;
-  font-size: 14px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  background: var(--color-card-bg);
+  color: var(--color-primary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  padding: 10px 12px;
+  font-size: 12px;
+  transition: background 0.12s, transform 0.12s;
 }
 
 .sort-filter__reset:hover {
-  background: #f0f0f0;
-  border-color: #666;
+  background: var(--color-card-bg-hover);
 }
 
-/* Department/line selects */
-.sort-filter__department-line select {
-  padding: 6px 10px;
-  border-radius: 4px;
-  border: 1px solid #aaa;
-  font-size: 14px;
-  cursor: pointer;
-  background: #fff;
-  color: #333;
-  transition: all 0.2s ease;
+.sort-filter__reset:active {
+  transform: translateY(1px);
 }
 
 .sort-filter__department-line select:disabled {
-  background-color: #f7f7f7;
+  background: #eef2f6;
   cursor: not-allowed;
+}
+
+@media (max-width: 420px) {
+  .sort-filter__date-grid {
+    grid-template-columns: 1fr;
+  }
 }

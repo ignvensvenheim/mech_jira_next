@@ -1,14 +1,14 @@
 .tickets-grid {
-  padding: 0px 1px;
+  padding: 0 2px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(300px, 1fr));
-  gap: 16px;
-  margin: 2rem 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 1.25rem;
 }
 
 .tickets-grid__empty {
-  font-size: 14px;
-  color: #666;
+  font-size: 13px;
+  color: var(--color-text-light);
   text-align: center;
-  margin-top: 32px;
+  margin-top: 24px;
 }

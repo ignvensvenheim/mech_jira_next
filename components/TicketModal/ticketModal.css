@@ -1,28 +1,96 @@
 .ticket-modal__overlay {
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(44, 62, 80, 0.35);
   position: fixed;
   inset: 0;
   display: flex;
   justify-content: center;
   align-items: center;
+  padding: 16px;
 }
 
 .ticket-modal {
-  background: #fff;
-  padding: 24px;
-  max-width: 900px;
-  max-height: 90vh;
-  overflow-y: auto;
-  border-radius: 10px;
-  position: relative;
+  background: var(--color-card-bg-hover);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  width: min(980px, 100%);
+  max-height: 85vh;
+  overflow: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.ticket-modal__header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--color-card-bg-hover);
+}
+
+.ticket-modal__title-wrap {
+  min-width: 0;
+}
+
+.ticket-modal__key {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-light);
+}
+
+.ticket-modal__title {
+  margin: 6px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.ticket-modal__header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ticket-modal__jira-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--color-card-bg);
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ticket-modal__jira-link:hover {
+  background: var(--color-card-bg-hover);
 }
 
 .modal-close-btn {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: none;
-  font-size: 20px;
+  border: 1px solid var(--border-color);
+  background: var(--color-card-bg);
+  border-radius: var(--border-radius);
   cursor: pointer;
-  border: none;
+  color: var(--color-primary);
+  width: 34px;
+  height: 34px;
+  font-size: 14px;
+}
+
+.modal-close-btn:hover {
+  background: var(--color-card-bg-hover);
+}
+
+.ticket-modal__body {
+  padding: 12px;
+}
+
+@media (max-width: 900px) {
+  .ticket-modal__header {
+    flex-direction: column;
+  }
 }

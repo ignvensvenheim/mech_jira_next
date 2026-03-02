@@ -31,6 +31,12 @@ export type NormalizedIssue = {
     started: string;
     timeSpentSeconds: number;
   }[];
+  comments: {
+    id: string;
+    author: UserLite;
+    created: string;
+    body: string;
+  }[];
   attachment: [];
 };
 
@@ -114,6 +120,12 @@ export function normalizeIssue(issue: any): NormalizedIssue {
       author: userLite(w.author),
       started: w.started,
       timeSpentSeconds: w.timeSpentSeconds,
+    })),
+    comments: (f.comment?.comments ?? []).map((c: any) => ({
+      id: c.id,
+      author: userLite(c.author),
+      created: c.created,
+      body: adfToPlainText(c.body) ?? "",
     })),
     attachment: f.attachment,
   };

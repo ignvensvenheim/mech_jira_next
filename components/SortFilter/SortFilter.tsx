@@ -18,9 +18,9 @@ type Props = {
   onDepartmentChange: (dep: string) => void;
   selectedLine: string;
   onLineChange: (line: string) => void;
+  isLoadingTickets?: boolean;
+  resultCount: number;
   issues: any[];
-  searchText: string;
-  onSearchTextChange: (value: string) => void;
 };
 
 export function SortFilter({
@@ -36,8 +36,8 @@ export function SortFilter({
   onDepartmentChange,
   selectedLine,
   onLineChange,
-  searchText,
-  onSearchTextChange,
+  isLoadingTickets = false,
+  resultCount,
   issues = [],
 }: Props) {
   const toggleStatus = (status: string) => {
@@ -50,9 +50,11 @@ export function SortFilter({
 
   return (
     <div className="sort-filter">
+      <div className="sort-filter__count">Showing {resultCount} tickets</div>
+
       <div className="sort-filter__controls">
         <div className="sort-filter__new-old">
-          <label>Show:</label>
+          <label>Sort:</label>
           <select
             className="sort-filter__pill"
             value={sort}
@@ -65,20 +67,26 @@ export function SortFilter({
           </select>
         </div>
         <div className="sort-filter__date">
-          <label>From:</label>
-          <input
-            className="sort-filter__pill"
-            type="date"
-            value={dateFrom}
-            onChange={(e) => onDateChange(e.target.value, dateTo)}
-          />
-          <label>To:</label>
-          <input
-            className="sort-filter__pill"
-            type="date"
-            value={dateTo}
-            onChange={(e) => onDateChange(dateFrom, e.target.value)}
-          />
+          <div className="sort-filter__date-grid">
+            <div className="sort-filter__date-field">
+              <label>Date from:</label>
+              <input
+                className="sort-filter__pill"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => onDateChange(e.target.value, dateTo)}
+              />
+            </div>
+            <div className="sort-filter__date-field">
+              <label>Date to:</label>
+              <input
+                className="sort-filter__pill"
+                type="date"
+                value={dateTo}
+                onChange={(e) => onDateChange(dateFrom, e.target.value)}
+              />
+            </div>
+          </div>
         </div>
         <div className="sort-filter__status-pills">
           <label>Status:</label>
@@ -111,7 +119,7 @@ export function SortFilter({
             ))}
           </select>
 
-          <label>Sub. Category:</label>
+          <label>Subcategory:</label>
           <select
             value={selectedLine}
             onChange={(e) => onLineChange(e.target.value)}
@@ -126,29 +134,22 @@ export function SortFilter({
           </select>
         </div>
       </div>
-      <div className="sort-filter__search">
-        <label>Search:</label>
-        <input
-          className="sort-filter__pill"
-          type="text"
-          placeholder="search by text.."
-          value={searchText}
-          onChange={(e) => onSearchTextChange(e.target.value)}
-        />
-      </div>
-      <div className="sort-filter__actions">
-        <button className="sort-filter__reset" onClick={onReset}>
-          Reset filters
-        </button>
-        <ExportIssuesButton
-          issues={(issues ?? []).map((i) => ({
-            ...i,
-            remainingEstimateSeconds: i.remainingEstimateSeconds ?? 0,
-            issueType: i.issueType ?? "Task",
-            project: i.project ?? "MECH",
-            worklogs: i.worklogs ?? [],
-          }))}
-        />
+      <div className="sort-filter__footer">
+        <div className="sort-filter__actions">
+          <button className="sort-filter__reset" onClick={onReset}>
+            Reset filters
+          </button>
+          <ExportIssuesButton
+            issues={(issues ?? []).map((i) => ({
+              ...i,
+              remainingEstimateSeconds: i.remainingEstimateSeconds ?? 0,
+              issueType: i.issueType ?? "Task",
+              project: i.project ?? "MECH",
+              worklogs: i.worklogs ?? [],
+            }))}
+            disabled={isLoadingTickets}
+          />
+        </div>
       </div>
     </div>
   );
