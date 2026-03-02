@@ -85,9 +85,9 @@ export async function PUT(req: Request) {
     const rows = await prisma.$queryRaw<TicketFixCostRow[]>(
       Prisma.sql`
         INSERT INTO "TicketFixCost"
-          ("id", "issueKey", "machineKey", "date", "amount", "comment", "updatedById")
+          ("id", "issueKey", "machineKey", "date", "amount", "comment", "updatedAt", "updatedById")
         VALUES
-          (${id}, ${issueKey}, ${machineKey}, ${date}, ${amount}, ${comment}, ${
+          (${id}, ${issueKey}, ${machineKey}, ${date}, ${amount}, ${comment}, NOW(), ${
         session.user.id || null
       })
         ON CONFLICT ("issueKey")
