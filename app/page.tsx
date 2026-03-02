@@ -2,6 +2,7 @@
 
 import "./page.css";
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { Oval } from "react-loader-spinner";
 import { SortFilter } from "@/components/SortFilter/SortFilter";
@@ -117,6 +118,12 @@ export default function Page() {
         </aside>
 
         <section className="page__content">
+          <div className="page__content-actions">
+            <Link className="page__action-link" href="/login">
+              Admin Login
+            </Link>
+          </div>
+
           <TicketsGrid issues={visibleIssues} onOpen={setSelectedIssue} />
 
           <TicketModal
