@@ -4,10 +4,14 @@
   margin: 0 auto;
   padding: 16px 12px 18px;
   color: var(--color-primary);
-  background-image: url(/bg2.jpg);
-  background-position: center;
-  background-repeat: repeat;
-  background-size: 500px;
+}
+
+.login-page {
+  width: 100%;
+  max-width: 100dvw;
+  min-height: calc(100dvh - 110px);
+  max-height: calc(100dvh - 110px);
+  overflow: hidden;
 }
 
 .page__header {
@@ -51,6 +55,71 @@
 
 .page__content {
   min-width: 0;
+}
+
+.login-page__content {
+  min-height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-page__actions {
+  margin-bottom: 0;
+}
+
+.login-page__card-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  padding: 0;
+}
+
+.login-page .auth-card {
+  width: min(520px, 100%);
+  max-width: 520px;
+  margin-top: 150px;
+}
+
+.login-page__buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.login-page__buttons .auth-button,
+.login-page__buttons .auth-button--secondary {
+  min-width: 170px;
+  text-align: center;
+}
+
+.page__sidebar-login {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  background: var(--color-card-bg);
+  color: var(--color-primary);
+  border-radius: var(--border-radius);
+  text-decoration: none;
+  font-size: 12px;
+  text-align: center;
+  transition: background 0.12s, transform 0.12s;
+}
+
+.page__sidebar-login:hover {
+  background: var(--color-card-bg-hover);
+}
+
+.page__sidebar-login:active {
+  transform: translateY(1px);
 }
 
 .page__content-actions {
@@ -102,18 +171,20 @@
   justify-content: center;
   align-items: center;
   margin: 8px 0 18px;
-  gap: 10px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .page__pagination-button {
-  padding: 8px 12px;
+  padding: 5px 8px;
   border: 1px solid var(--border-color);
   background: var(--color-card-bg);
   color: var(--color-primary);
   cursor: pointer;
-  border-radius: var(--border-radius);
-  min-width: 32px;
+  border-radius: 8px;
+  min-width: 28px;
+  font-size: 11px;
+  line-height: 1.1;
   transition: background 0.12s, transform 0.12s;
 }
 
@@ -136,9 +207,22 @@
   border-color: var(--color-header-bg);
 }
 
+.page__pagination-button--active:hover:not(:disabled) {
+  background: var(--color-header-bg);
+  color: #fff !important;
+  border-color: var(--color-header-bg);
+}
+
 .page__pagination-pages {
   display: flex;
-  gap: 4px;
+  gap: 3px;
+  align-items: center;
+}
+
+.page__pagination-ellipsis {
+  font-size: 11px;
+  color: var(--color-muted);
+  padding: 0 2px;
 }
 
 .auth-card {
@@ -191,7 +275,7 @@
 }
 
 .auth-button {
-  align-self: flex-start;
+  align-self: center;
   padding: 9px 14px;
   border: 1px solid var(--color-header-bg);
   background: var(--color-header-bg);
@@ -207,6 +291,21 @@
 
 .auth-button:active {
   transform: translateY(1px);
+}
+
+.auth-button--secondary {
+  border-color: var(--border-color);
+  background: var(--color-card-bg);
+  color: var(--color-primary);
+  text-decoration: none;
+  min-width: 130px;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.auth-button--secondary:hover {
+  filter: none;
+  background: var(--color-card-bg-hover);
 }
 
 .auth-error {
@@ -577,6 +676,15 @@
 
   .page__sidebar {
     position: static;
+  }
+
+  .login-page__content {
+    min-height: 100%;
+    max-height: 100%;
+  }
+
+  .login-page__card-wrap {
+    justify-content: center;
   }
 
   .admin-filters {

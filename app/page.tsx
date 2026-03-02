@@ -12,7 +12,7 @@ import { NormalizedIssue } from "@/lib/jira";
 import TicketModal from "@/components/TicketModal/TicketModal";
 
 export default function Page() {
-  const { loadingInitial, error } = useJiraSearch();
+  const { loadingInitial, fetchingAllTickets, error } = useJiraSearch();
   const { issues } = useIssues();
 
   const ITEMS_PER_PAGE = 20;
@@ -73,6 +73,13 @@ export default function Page() {
   }, [filteredIssues, page]);
 
   const totalPages = Math.ceil(filteredIssues.length / ITEMS_PER_PAGE);
+  const paginationItems = useMemo<(number | string)[]>(() => {
+    if (totalPages <= 6) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    return [1, 2, 3, 4, 5, "ellipsis", totalPages];
+  }, [totalPages]);
 
   return (
     <div className="page">
@@ -103,6 +110,7 @@ export default function Page() {
               setSelectedLine(line);
               setPage(1);
             }}
+            isLoadingTickets={loadingInitial || fetchingAllTickets}
             resultCount={filteredIssues.length}
             onReset={() => {
               setSort("newest");
@@ -115,15 +123,12 @@ export default function Page() {
             }}
             issues={filteredIssues}
           />
+          <Link className="page__sidebar-login" href="/login">
+            Admin Login
+          </Link>
         </aside>
 
         <section className="page__content">
-          <div className="page__content-actions">
-            <Link className="page__action-link" href="/login">
-              Admin Login
-            </Link>
-          </div>
-
           <TicketsGrid issues={visibleIssues} onOpen={setSelectedIssue} />
 
           <TicketModal
@@ -149,21 +154,25 @@ export default function Page() {
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
               >
-                &lt; Prev
+                &lt;
               </button>
 
               <div className="page__pagination-pages">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (num) => (
+                {paginationItems.map((item, index) =>
+                  typeof item === "number" ? (
                     <button
-                      key={num}
+                      key={item}
                       className={`page__pagination-button ${
-                        num === page ? "page__pagination-button--active" : ""
+                        item === page ? "page__pagination-button--active" : ""
                       }`}
-                      onClick={() => setPage(num)}
+                      onClick={() => setPage(item)}
                     >
-                      {num}
+                      {item}
                     </button>
+                  ) : (
+                    <span key={`${item}-${index}`} className="page__pagination-ellipsis">
+                      ...
+                    </span>
                   ),
                 )}
               </div>
@@ -173,7 +182,7 @@ export default function Page() {
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
               >
-                Next &gt;
+                &gt;
               </button>
             </div>
           )}

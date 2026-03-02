@@ -55,11 +55,31 @@
 }
 
 .sort-filter__status-pills {
+  flex-direction: row;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .sort-filter__status-pills label {
   width: 100%;
+}
+
+.sort-filter__date-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.sort-filter__date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.sort-filter__date-field input {
+  min-width: 0;
 }
 
 .sort-filter__pill {
@@ -85,6 +105,12 @@
   background: var(--color-header-bg);
   border-color: var(--color-header-bg);
   color: #fff;
+}
+
+.sort-filter__pill--active:hover {
+  background: var(--color-header-bg);
+  border-color: var(--color-header-bg);
+  color: #fff !important;
 }
 
 .sort-filter__footer {
@@ -125,4 +151,10 @@
 .sort-filter__department-line select:disabled {
   background: #eef2f6;
   cursor: not-allowed;
+}
+
+@media (max-width: 420px) {
+  .sort-filter__date-grid {
+    grid-template-columns: 1fr;
+  }
 }

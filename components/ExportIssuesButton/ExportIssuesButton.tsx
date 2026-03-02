@@ -69,6 +69,8 @@ function extractBetweenPipes(summary: string = ""): string {
 }
 
 export default function ExportIssuesButton({ issues, ...props }: Props) {
+  const { disabled, className, ...buttonProps } = props;
+
   function exportToExcel() {
     if (!issues?.length) return;
 
@@ -102,8 +104,14 @@ export default function ExportIssuesButton({ issues, ...props }: Props) {
   }
 
   return (
-    <button {...props} onClick={exportToExcel} className="export-button">
-      Export to Excel
+    <button
+      {...buttonProps}
+      disabled={disabled}
+      aria-busy={disabled}
+      onClick={exportToExcel}
+      className={`export-button ${className ?? ""}`.trim()}
+    >
+      {disabled ? "Fetching tickets..." : "Export to Excel"}
     </button>
   );
 }

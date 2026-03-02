@@ -53,6 +53,7 @@ function isRecentIso(raw: string | null, maxAgeMs: number): boolean {
 
 export function useJiraSearch(dateFrom?: string, dateTo?: string) {
   const [loading, setLoading] = React.useState(true);
+  const [fetchingAllTickets, setFetchingAllTickets] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [progress, setProgress] = React.useState<{ loaded: number }>({
     loaded: 0,
@@ -135,6 +136,7 @@ export function useJiraSearch(dateFrom?: string, dateTo?: string) {
         const fullJql = buildJql(null);
         const shouldFullSync =
           !safeLastSync || !isRecentIso(storedLastFullSync, FULL_SYNC_EVERY_MS);
+        setFetchingAllTickets(shouldFullSync);
 
         let merged = shouldFullSync
           ? []
@@ -188,6 +190,7 @@ export function useJiraSearch(dateFrom?: string, dateTo?: string) {
         if (loaded === 0 && merged.length === 0 && safeLastSync) {
           localStorage.removeItem(LAST_SYNC_KEY);
           lastSeenUpdated = new Date(0).toISOString();
+          setFetchingAllTickets(true);
           await fetchAllPages(fullJql);
         }
 
@@ -209,6 +212,7 @@ export function useJiraSearch(dateFrom?: string, dateTo?: string) {
           setLoading(false);
         }
       } finally {
+        setFetchingAllTickets(false);
         isRunning = false;
       }
     };
@@ -247,6 +251,7 @@ export function useJiraSearch(dateFrom?: string, dateTo?: string) {
   return {
     issues,
     loadingInitial: loading,
+    fetchingAllTickets,
     error,
     progress,
   };

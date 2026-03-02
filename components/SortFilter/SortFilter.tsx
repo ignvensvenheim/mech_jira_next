@@ -18,6 +18,7 @@ type Props = {
   onDepartmentChange: (dep: string) => void;
   selectedLine: string;
   onLineChange: (line: string) => void;
+  isLoadingTickets?: boolean;
   resultCount: number;
   issues: any[];
 };
@@ -35,6 +36,7 @@ export function SortFilter({
   onDepartmentChange,
   selectedLine,
   onLineChange,
+  isLoadingTickets = false,
   resultCount,
   issues = [],
 }: Props) {
@@ -65,20 +67,26 @@ export function SortFilter({
           </select>
         </div>
         <div className="sort-filter__date">
-          <label>Date from:</label>
-          <input
-            className="sort-filter__pill"
-            type="date"
-            value={dateFrom}
-            onChange={(e) => onDateChange(e.target.value, dateTo)}
-          />
-          <label>Date to:</label>
-          <input
-            className="sort-filter__pill"
-            type="date"
-            value={dateTo}
-            onChange={(e) => onDateChange(dateFrom, e.target.value)}
-          />
+          <div className="sort-filter__date-grid">
+            <div className="sort-filter__date-field">
+              <label>Date from:</label>
+              <input
+                className="sort-filter__pill"
+                type="date"
+                value={dateFrom}
+                onChange={(e) => onDateChange(e.target.value, dateTo)}
+              />
+            </div>
+            <div className="sort-filter__date-field">
+              <label>Date to:</label>
+              <input
+                className="sort-filter__pill"
+                type="date"
+                value={dateTo}
+                onChange={(e) => onDateChange(dateFrom, e.target.value)}
+              />
+            </div>
+          </div>
         </div>
         <div className="sort-filter__status-pills">
           <label>Status:</label>
@@ -139,6 +147,7 @@ export function SortFilter({
               project: i.project ?? "MECH",
               worklogs: i.worklogs ?? [],
             }))}
+            disabled={isLoadingTickets}
           />
         </div>
       </div>
