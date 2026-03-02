@@ -15,26 +15,47 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         try {
-          const email = String(credentials?.email || "").trim().toLowerCase();
+          const identifier = String(credentials?.email || "").trim();
           const password = String(credentials?.password || "");
 
-          if (!email || !password) return null;
+          if (!identifier || !password) return null;
 
-          let user = await prisma.user.findUnique({ where: { email } });
+          const identifierLower = identifier.toLowerCase();
+          let user = await prisma.user.findFirst({
+            where: {
+              OR: [
+                { email: identifierLower },
+                { name: identifier },
+                { name: identifierLower },
+              ],
+            },
+          });
 
           // Bootstrap first admin user from env on first login attempt.
           if (!user) {
             const adminEmail = (process.env.ADMIN_EMAIL || "")
               .trim()
               .toLowerCase();
+            const adminName = (process.env.ADMIN_NAME || "").trim();
             const adminPassword = process.env.ADMIN_PASSWORD || "";
 
-            if (email === adminEmail && password === adminPassword) {
+            const matchesBootstrapIdentity =
+              (adminEmail && identifierLower === adminEmail) ||
+              (adminName &&
+                (identifier === adminName ||
+                  identifierLower === adminName.toLowerCase()));
+
+            if (matchesBootstrapIdentity && password === adminPassword) {
+              // If ADMIN_EMAIL is not a valid email-like value, keep it deterministic.
+              const bootstrapEmail =
+                adminEmail && adminEmail.includes("@")
+                  ? adminEmail
+                  : `${adminName || "admin"}@local.invalid`;
               const passwordHash = await bcrypt.hash(password, 10);
               user = await prisma.user.create({
                 data: {
-                  email,
-                  name: "Admin",
+                  email: bootstrapEmail,
+                  name: adminName || "Admin",
                   passwordHash,
                   role: "ADMIN",
                 },
