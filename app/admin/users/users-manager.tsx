@@ -23,7 +23,13 @@ async function parseJson<T>(response: Response): Promise<T> {
   return json as T;
 }
 
-export default function UsersManager({ currentUserId }: { currentUserId: string }) {
+export default function UsersManager({
+  currentUserId,
+  currentUserLabel,
+}: {
+  currentUserId: string;
+  currentUserLabel: string;
+}) {
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -147,13 +153,18 @@ export default function UsersManager({ currentUserId }: { currentUserId: string 
     <div className="page">
       <div className="page__layout page__layout--full">
         <section className="page__content">
-          <div className="page__content-actions page__content-actions--gap">
-            <Link href="/" className="page__action-link">
-              Back to home
-            </Link>
-            <Link href="/admin" className="page__action-link">
-              Back to admin
-            </Link>
+          <div className="page__topbar">
+            <div className="page__content-actions page__content-actions--gap">
+              <Link href="/" className="page__action-link">
+                Back to home
+              </Link>
+              <Link href="/admin" className="page__action-link">
+                Admin home
+              </Link>
+            </div>
+            <div className="page__session-label">
+              {currentUserLabel ? `Logged in as ${currentUserLabel}` : ""}
+            </div>
           </div>
 
           <div className="admin-dashboard">

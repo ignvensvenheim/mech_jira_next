@@ -1,6 +1,7 @@
 "use client";
 
 import "./sortFilter.css";
+import Link from "next/link";
 import ExportIssuesButton from "../ExportIssuesButton/ExportIssuesButton";
 import { STATUS_OPTIONS } from "@/data/listData";
 import { DEPARTMENT_LINES } from "@/data/listData";
@@ -8,6 +9,8 @@ import { DEPARTMENT_LINES } from "@/data/listData";
 type Props = {
   sort: "newest" | "oldest";
   onSortChange: (sort: "newest" | "oldest") => void;
+  searchText: string;
+  onSearchChange: (value: string) => void;
   dateFrom: string;
   dateTo: string;
   onDateChange: (from: string, to: string) => void;
@@ -26,6 +29,8 @@ type Props = {
 export function SortFilter({
   sort,
   onSortChange,
+  searchText,
+  onSearchChange,
   dateFrom,
   dateTo,
   onDateChange,
@@ -65,6 +70,15 @@ export function SortFilter({
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
           </select>
+        </div>
+        <div className="sort-filter__search">
+          <label>Search:</label>
+          <input
+            type="text"
+            value={searchText}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search tickets..."
+          />
         </div>
         <div className="sort-filter__date">
           <div className="sort-filter__date-grid">
@@ -149,6 +163,9 @@ export function SortFilter({
             }))}
             disabled={isLoadingTickets}
           />
+          <Link className="sort-filter__admin-login" href="/login">
+            Admin Login
+          </Link>
         </div>
       </div>
     </div>

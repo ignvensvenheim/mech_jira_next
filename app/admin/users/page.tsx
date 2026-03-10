@@ -11,5 +11,11 @@ export default async function AdminUsersPage() {
     redirect("/admin");
   }
 
-  return <UsersManager currentUserId={session.user.id} />;
+  const currentUserLabel = session.user.name || session.user.email || "";
+  return (
+    <UsersManager
+      currentUserId={session.user.id}
+      currentUserLabel={currentUserLabel}
+    />
+  );
 }

@@ -36,6 +36,22 @@ type TicketFixDraft = {
   comment: string;
 };
 
+type EquipmentDetailsResponse = {
+  machineKey: string;
+  model: string;
+  serialNumber: string;
+  manufacturer: string;
+  updatedAt: string | null;
+};
+
+type EquipmentDraft = {
+  model: string;
+  serialNumber: string;
+  manufacturer: string;
+};
+
+type AdminFunction = "costs" | "inventory" | null;
+
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -118,11 +134,45 @@ export default function AdminPage() {
   );
   const [ticketCostsLoading, setTicketCostsLoading] = useState(false);
   const [savingTicketKey, setSavingTicketKey] = useState<string | null>(null);
+  const [equipmentModel, setEquipmentModel] = useState("");
+  const [equipmentSerialNumber, setEquipmentSerialNumber] = useState("");
+  const [equipmentManufacturer, setEquipmentManufacturer] = useState("");
+  const [equipmentLoading, setEquipmentLoading] = useState(false);
+  const [equipmentSaving, setEquipmentSaving] = useState(false);
+  const [equipmentError, setEquipmentError] = useState("");
+  const [activeFunction, setActiveFunction] = useState<AdminFunction>(null);
+  const [inventoryQuery, setInventoryQuery] = useState("");
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [inventoryError, setInventoryError] = useState("");
+  const [inventorySavingKey, setInventorySavingKey] = useState<string | null>(null);
+  const [loggedInAs, setLoggedInAs] = useState("");
+  const [inventoryDrafts, setInventoryDrafts] = useState<
+    Record<string, EquipmentDraft>
+  >({});
 
   const subCategoryOptions = useMemo(
     () => (category ? DEPARTMENT_LINES[category] || [] : []),
     [category]
   );
+  const machineCatalog = useMemo(
+    () =>
+      Object.entries(DEPARTMENT_LINES).flatMap(([dep, lines]) =>
+        lines.map((line) => ({
+          category: dep,
+          subcategory: line,
+          machineKey: `${dep}::${line}`,
+        }))
+      ),
+    []
+  );
+  const filteredMachineCatalog = useMemo(() => {
+    const needle = inventoryQuery.trim().toLowerCase();
+    if (!needle) return machineCatalog;
+    return machineCatalog.filter((m) => {
+      const source = `${m.category} ${m.subcategory} ${m.machineKey}`.toLowerCase();
+      return source.includes(needle);
+    });
+  }, [machineCatalog, inventoryQuery]);
 
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [editDate, setEditDate] = useState("");
@@ -238,6 +288,74 @@ export default function AdminPage() {
     }
   }, [hasMachineSelection, selectedMachineKey]);
 
+  const loadEquipmentData = useCallback(async () => {
+    if (!hasMachineSelection) {
+      setEquipmentModel("");
+      setEquipmentSerialNumber("");
+      setEquipmentManufacturer("");
+      setEquipmentError("");
+      return;
+    }
+
+    setEquipmentLoading(true);
+    setEquipmentError("");
+    try {
+      const res = await fetch(
+        `/api/admin/equipment?machineKey=${encodeURIComponent(selectedMachineKey)}`,
+        { cache: "no-store" }
+      );
+      const data = await parseJson<EquipmentDetailsResponse>(res);
+      setEquipmentModel(data.model || "");
+      setEquipmentSerialNumber(data.serialNumber || "");
+      setEquipmentManufacturer(data.manufacturer || "");
+    } catch (e: unknown) {
+      setEquipmentError(String((e as Error).message || e));
+      setEquipmentModel("");
+      setEquipmentSerialNumber("");
+      setEquipmentManufacturer("");
+    } finally {
+      setEquipmentLoading(false);
+    }
+  }, [hasMachineSelection, selectedMachineKey]);
+
+  const loadInventoryData = useCallback(async () => {
+    if (machineCatalog.length === 0) {
+      setInventoryDrafts({});
+      return;
+    }
+
+    setInventoryLoading(true);
+    setInventoryError("");
+    try {
+      const res = await fetch("/api/admin/equipment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          machineKeys: machineCatalog.map((m) => m.machineKey),
+        }),
+      });
+      const data = await parseJson<{ items: EquipmentDetailsResponse[] }>(res);
+      const byMachineKey: Record<string, EquipmentDetailsResponse> = {};
+      for (const item of data.items) {
+        byMachineKey[item.machineKey] = item;
+      }
+      const nextDrafts: Record<string, EquipmentDraft> = {};
+      for (const machine of machineCatalog) {
+        const existing = byMachineKey[machine.machineKey];
+        nextDrafts[machine.machineKey] = {
+          model: existing?.model || "",
+          serialNumber: existing?.serialNumber || "",
+          manufacturer: existing?.manufacturer || "",
+        };
+      }
+      setInventoryDrafts(nextDrafts);
+    } catch (e: unknown) {
+      setInventoryError(String((e as Error).message || e));
+    } finally {
+      setInventoryLoading(false);
+    }
+  }, [machineCatalog]);
+
   useEffect(() => {
     loadMachineData();
     setEditingEntryId(null);
@@ -245,6 +363,30 @@ export default function AdminPage() {
     setEditAmount("");
     setEditComment("");
   }, [loadMachineData]);
+
+  useEffect(() => {
+    loadEquipmentData();
+  }, [loadEquipmentData]);
+
+  useEffect(() => {
+    loadInventoryData();
+  }, [loadInventoryData]);
+
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const res = await fetch("/api/auth/session", { cache: "no-store" });
+        const data = (await res.json().catch(() => ({}))) as {
+          user?: { name?: string | null; email?: string | null };
+        };
+        const label = String(data.user?.name || data.user?.email || "").trim();
+        setLoggedInAs(label);
+      } catch {
+        setLoggedInAs("");
+      }
+    };
+    void loadSession();
+  }, []);
 
   useEffect(() => {
     const loadTicketCosts = async () => {
@@ -365,6 +507,90 @@ export default function AdminPage() {
       setRateInput(String(data.hourlyRate));
     } catch (e: unknown) {
       setMachineDataError(String((e as Error).message || e));
+    }
+  };
+
+  const saveEquipmentDetails = async () => {
+    if (!hasMachineSelection) return;
+    const model = equipmentModel.trim();
+    const serialNumber = equipmentSerialNumber.trim();
+    const manufacturer = equipmentManufacturer.trim();
+    if (!model || !serialNumber || !manufacturer) return;
+
+    setEquipmentSaving(true);
+    setEquipmentError("");
+    try {
+      const res = await fetch("/api/admin/equipment", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          machineKey: selectedMachineKey,
+          model,
+          serialNumber,
+          manufacturer,
+        }),
+      });
+      const data = await parseJson<EquipmentDetailsResponse>(res);
+      setEquipmentModel(data.model || "");
+      setEquipmentSerialNumber(data.serialNumber || "");
+      setEquipmentManufacturer(data.manufacturer || "");
+    } catch (e: unknown) {
+      setEquipmentError(String((e as Error).message || e));
+    } finally {
+      setEquipmentSaving(false);
+    }
+  };
+
+  const setInventoryDraftField = (
+    machineKey: string,
+    field: keyof EquipmentDraft,
+    value: string
+  ) => {
+    setInventoryDrafts((prev) => ({
+      ...prev,
+      [machineKey]: {
+        model: prev[machineKey]?.model || "",
+        serialNumber: prev[machineKey]?.serialNumber || "",
+        manufacturer: prev[machineKey]?.manufacturer || "",
+        [field]: value,
+      },
+    }));
+  };
+
+  const saveInventoryMachine = async (machineKey: string) => {
+    const draft = inventoryDrafts[machineKey];
+    if (!draft) return;
+    const model = draft.model.trim();
+    const serialNumber = draft.serialNumber.trim();
+    const manufacturer = draft.manufacturer.trim();
+    if (!model || !serialNumber || !manufacturer) return;
+
+    setInventorySavingKey(machineKey);
+    setInventoryError("");
+    try {
+      const res = await fetch("/api/admin/equipment", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          machineKey,
+          model,
+          serialNumber,
+          manufacturer,
+        }),
+      });
+      const saved = await parseJson<EquipmentDetailsResponse>(res);
+      setInventoryDrafts((prev) => ({
+        ...prev,
+        [machineKey]: {
+          model: saved.model || "",
+          serialNumber: saved.serialNumber || "",
+          manufacturer: saved.manufacturer || "",
+        },
+      }));
+    } catch (e: unknown) {
+      setInventoryError(String((e as Error).message || e));
+    } finally {
+      setInventorySavingKey(null);
     }
   };
 
@@ -551,15 +777,52 @@ export default function AdminPage() {
     <div className="page">
       <div className="page__layout page__layout--full">
         <section className="page__content">
-          <div className="page__content-actions">
-            <Link href="/" className="page__action-link">
-              Back to home
-            </Link>
-            <Link href="/admin/users" className="page__action-link">
-              Manage users
-            </Link>
+          <div className="page__topbar">
+            <div className="page__content-actions page__content-actions--gap">
+              <Link href="/" className="page__action-link">
+                Back to home
+              </Link>
+              <Link href="/admin" className="page__action-link">
+                Admin home
+              </Link>
+            </div>
+            <div className="page__session-label">
+              {loggedInAs ? `Logged in as ${loggedInAs}` : ""}
+            </div>
           </div>
           <div className="admin-dashboard">
+            <div className="admin-card">
+              <h1 className="admin-title">Admin Panel</h1>
+              <p className="admin-subtitle">Choose a function to manage.</p>
+              <div className="admin-function-grid">
+                <button
+                  type="button"
+                  className={`admin-function-button ${
+                    activeFunction === "costs" ? "admin-function-button--active" : ""
+                  }`}
+                  onClick={() => setActiveFunction("costs")}
+                >
+                  Add machine and ticket costs
+                </button>
+                <button
+                  type="button"
+                  className={`admin-function-button ${
+                    activeFunction === "inventory"
+                      ? "admin-function-button--active"
+                      : ""
+                  }`}
+                  onClick={() => setActiveFunction("inventory")}
+                >
+                  Manage inventory
+                </button>
+                <Link href="/admin/users" className="admin-function-button">
+                  Manage users
+                </Link>
+              </div>
+            </div>
+
+            {activeFunction === "costs" && (
+              <>
             <div className="admin-card">
               <h1 className="admin-title">Admin Panel</h1>
               <p className="admin-subtitle">
@@ -711,6 +974,54 @@ export default function AdminPage() {
               <div className="admin-chart">
                 {hasTicketScope && machineDataError && (
                   <div className="page__error">{machineDataError}</div>
+                )}
+
+                {hasMachineSelection && equipmentError && (
+                  <div className="page__error">{equipmentError}</div>
+                )}
+
+                {hasMachineSelection && !equipmentLoading && (
+                  <div className="admin-manual-costs">
+                    <div className="admin-chart-title">Equipment Details</div>
+                    <div className="admin-equipment-form">
+                      <input
+                        type="text"
+                        className="admin-input"
+                        value={equipmentModel}
+                        onChange={(e) => setEquipmentModel(e.target.value)}
+                        placeholder="Model"
+                      />
+                      <input
+                        type="text"
+                        className="admin-input"
+                        value={equipmentSerialNumber}
+                        onChange={(e) => setEquipmentSerialNumber(e.target.value)}
+                        placeholder="Serial number"
+                      />
+                      <input
+                        type="text"
+                        className="admin-input"
+                        value={equipmentManufacturer}
+                        onChange={(e) => setEquipmentManufacturer(e.target.value)}
+                        placeholder="Manufacturer"
+                      />
+                      <button
+                        type="button"
+                        className="admin-reset-button"
+                        onClick={() => {
+                          void saveEquipmentDetails();
+                        }}
+                        disabled={
+                          equipmentSaving ||
+                          !equipmentModel.trim() ||
+                          !equipmentSerialNumber.trim() ||
+                          !equipmentManufacturer.trim()
+                        }
+                      >
+                        {equipmentSaving ? "Saving..." : "Save details"}
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 {hasCategorySelection && !machineDataLoading && (
@@ -929,6 +1240,135 @@ export default function AdminPage() {
                 )}
               </div>
             </div>
+              </>
+            )}
+
+            {activeFunction === "inventory" && (
+              <>
+                <div className="admin-card">
+                  <h1 className="admin-title">Inventory Management</h1>
+                  <p className="admin-subtitle">
+                    View all machines and maintain equipment details.
+                  </p>
+                  <div className="admin-filters">
+                    <label>
+                      <div className="admin-label">Search machines</div>
+                      <input
+                        type="text"
+                        className="admin-input"
+                        value={inventoryQuery}
+                        onChange={(e) => setInventoryQuery(e.target.value)}
+                        placeholder="Category, subcategory, or key"
+                      />
+                    </label>
+                    <div className="admin-filters-actions">
+                      <button
+                        type="button"
+                        className="admin-reset-button"
+                        onClick={() => {
+                          void loadInventoryData();
+                        }}
+                        disabled={inventoryLoading}
+                      >
+                        {inventoryLoading ? "Loading..." : "Refresh list"}
+                      </button>
+                    </div>
+                  </div>
+                  {inventoryError && <div className="page__error">{inventoryError}</div>}
+                </div>
+
+                <div className="admin-panel">
+                  <div className="admin-chart-title">
+                    Machines ({filteredMachineCatalog.length})
+                  </div>
+                  {inventoryLoading && (
+                    <div className="admin-buffering">
+                      <div className="admin-buffering-spinner" />
+                      <div className="admin-chart-empty">Loading machines...</div>
+                    </div>
+                  )}
+                  {!inventoryLoading && filteredMachineCatalog.length === 0 && (
+                    <div className="admin-chart-empty">No machines found.</div>
+                  )}
+                  {!inventoryLoading &&
+                    filteredMachineCatalog.map((machine) => {
+                      const draft = inventoryDrafts[machine.machineKey] || {
+                        model: "",
+                        serialNumber: "",
+                        manufacturer: "",
+                      };
+                      const isSaving = inventorySavingKey === machine.machineKey;
+                      return (
+                        <div
+                          key={machine.machineKey}
+                          className="admin-inventory-row"
+                        >
+                          <div className="admin-ticket-meta">
+                            <div className="admin-ticket-key">{machine.category}</div>
+                            <div className="admin-ticket-summary">
+                              {machine.subcategory} ({machine.machineKey})
+                            </div>
+                          </div>
+                          <input
+                            type="text"
+                            className="admin-input"
+                            value={draft.model}
+                            onChange={(e) =>
+                              setInventoryDraftField(
+                                machine.machineKey,
+                                "model",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Model"
+                          />
+                          <input
+                            type="text"
+                            className="admin-input"
+                            value={draft.serialNumber}
+                            onChange={(e) =>
+                              setInventoryDraftField(
+                                machine.machineKey,
+                                "serialNumber",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Serial number"
+                          />
+                          <input
+                            type="text"
+                            className="admin-input"
+                            value={draft.manufacturer}
+                            onChange={(e) =>
+                              setInventoryDraftField(
+                                machine.machineKey,
+                                "manufacturer",
+                                e.target.value
+                              )
+                            }
+                            placeholder="Manufacturer"
+                          />
+                          <button
+                            type="button"
+                            className="admin-reset-button"
+                            onClick={() => {
+                              void saveInventoryMachine(machine.machineKey);
+                            }}
+                            disabled={
+                              isSaving ||
+                              !draft.model.trim() ||
+                              !draft.serialNumber.trim() ||
+                              !draft.manufacturer.trim()
+                            }
+                          >
+                            {isSaving ? "Saving..." : "Save"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
+              </>
+            )}
           </div>
         </section>
       </div>

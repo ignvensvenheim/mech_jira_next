@@ -22,6 +22,7 @@
 }
 
 .sort-filter__new-old,
+.sort-filter__search,
 .sort-filter__date,
 .sort-filter__status-pills,
 .sort-filter__department-line {
@@ -41,6 +42,7 @@
 }
 
 .sort-filter__new-old select,
+.sort-filter__search input,
 .sort-filter__date input,
 .sort-filter__department-line select {
   width: 100%;
@@ -127,6 +129,28 @@
 
 .sort-filter__actions button {
   width: 100%;
+}
+
+.sort-filter__admin-login {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  background: var(--color-card-bg);
+  color: var(--color-primary);
+  border-radius: var(--border-radius);
+  text-decoration: none;
+  font-size: 12px;
+  text-align: center;
+  transition: background 0.12s, transform 0.12s;
+}
+
+.sort-filter__admin-login:hover {
+  background: var(--color-card-bg-hover);
+}
+
+.sort-filter__admin-login:active {
+  transform: translateY(1px);
 }
 
 .sort-filter__reset {

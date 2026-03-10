@@ -44,7 +44,6 @@ export const TicketCard = React.memo(function TicketCard({
       <div className="ticket-card__chips">
         <Chip text={`Created: ${relativeDate(i.created)}`} />
         <Chip text={`Time: ${fmtDuration(i.timeSpentSeconds)}`} />
-        {attachmentCount > 0 && <Chip text={`Attachments: ${attachmentCount}`} />}
       </div>
 
       <div className="ticket-card__users">
