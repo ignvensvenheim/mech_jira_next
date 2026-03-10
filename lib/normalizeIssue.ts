@@ -11,6 +11,8 @@ export function normalizeIssue(i: Issue): NormalizedIssue {
     assignee: i.assignee ?? null,
     reporter: i.reporter ?? null,
     mechanicsRaw: Array.isArray(i.mechanicsRaw) ? i.mechanicsRaw : [],
+    comments: Array.isArray(i.comments) ? i.comments : [],
+    attachment: Array.isArray(i.attachment) ? i.attachment : [],
   };
 }
 

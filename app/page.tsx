@@ -2,23 +2,34 @@
 
 import "./page.css";
 import React, { useMemo, useState } from "react";
-import type { Issue } from "@/lib/types";
-import { normalizeIssues } from "@/lib/normalizeIssue";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { Oval } from "react-loader-spinner";
 import { SortFilter } from "@/components/SortFilter/SortFilter";
 import { TicketsGrid } from "@/components/TicketsGrid/TicketsGrid";
+import { useIssues } from "@/lib/IssuesContext";
+import { NormalizedIssue } from "@/lib/jira";
+import TicketModal from "@/components/TicketModal/TicketModal";
+import { fmtDuration } from "@/helpers/fmtDuration";
+import { relativeDate } from "@/helpers/relativeDate";
 
 export default function Page() {
-  const { issues, loadingInitial, error, progress } = useJiraSearch();
+  const { loadingInitial, fetchingAllTickets, error } = useJiraSearch();
+  const { issues } = useIssues();
 
   const ITEMS_PER_PAGE = 20;
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<"newest" | "oldest">("newest");
+  const [searchText, setSearchText] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [selectedDepartment, setSelectedDepartment] = useState("");
+  const [selectedLine, setSelectedLine] = useState("");
+  const [selectedIssue, setSelectedIssue] = useState<NormalizedIssue | null>(
+    null,
+  );
 
-  // sort first
+  // Sort issues
   const sortedIssues = useMemo(() => {
     return [...issues].sort((a, b) => {
       const da = new Date(a.created).getTime();
@@ -27,114 +38,188 @@ export default function Page() {
     });
   }, [issues, sort]);
 
-  // filtered issues
+  // Filter issues
   const filteredIssues = useMemo(() => {
     return sortedIssues.filter((i) => {
+      const [depPart = "", linePart = ""] = (i.summary ?? "")
+        .split("|")
+        .map((s: string) => s.trim().toLowerCase());
+      const dep = selectedDepartment.toLowerCase();
+      const lin = selectedLine.toLowerCase();
+      const matchDepartment = !selectedDepartment || depPart === dep;
+      const matchLine = !selectedLine || linePart === lin;
+
       const created = new Date(i.created).getTime();
       const from = dateFrom ? new Date(dateFrom).getTime() : -Infinity;
       const to = dateTo ? new Date(dateTo).getTime() : Infinity;
-      return created >= from && created <= to;
-    });
-  }, [sortedIssues, dateFrom, dateTo]);
+      const matchDate = created >= from && created <= to;
 
-  // slice for current page
+      const matchStatus =
+        selectedStatuses.length === 0 ||
+        selectedStatuses.includes(i.status ?? "");
+
+      const query = searchText.trim().toLowerCase();
+      const matchSearch =
+        !query ||
+        [
+          i.key,
+          i.summary,
+          i.status,
+          i.descriptionText ?? "",
+          i.reporter?.name ?? "",
+          relativeDate(i.created),
+          fmtDuration(i.timeSpentSeconds),
+          ...(Array.isArray(i.mechanics) ? i.mechanics : []),
+          Array.isArray(i.attachment) && i.attachment.length > 0
+            ? "attachment attachments"
+            : "",
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(query);
+
+      return (
+        matchDepartment &&
+        matchLine &&
+        matchDate &&
+        matchStatus &&
+        matchSearch
+      );
+    });
+  }, [
+    sortedIssues,
+    searchText,
+    selectedDepartment,
+    selectedLine,
+    selectedStatuses,
+    dateFrom,
+    dateTo,
+  ]);
+
   const visibleIssues = useMemo(() => {
     const start = (page - 1) * ITEMS_PER_PAGE;
     return filteredIssues.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredIssues, page]);
 
-  // map Issue[] -> NormalizedIssue[]
-  const normalizedVisibleIssues = useMemo(
-    () => normalizeIssues(visibleIssues),
-    [visibleIssues]
-  );
-  // calculate total pages based on filtered issues
   const totalPages = Math.ceil(filteredIssues.length / ITEMS_PER_PAGE);
+  const paginationItems = useMemo<(number | string)[]>(() => {
+    if (totalPages <= 6) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    return [1, 2, 3, 4, 5, "ellipsis", totalPages];
+  }, [totalPages]);
 
   return (
     <div className="page">
-      <div className="page__header">
-        <h1 className="page__title">Issues filtering & export</h1>
-      </div>
-
-      <SortFilter
-        sort={sort}
-        onSortChange={setSort}
-        dateFrom={dateFrom}
-        dateTo={dateTo}
-        onDateChange={(from, to) => {
-          setDateFrom(from);
-          setDateTo(to);
-          setPage(1); // reset to first page when filter changes
-        }}
-        onReset={() => {
-          setSort("newest");
-          setDateFrom("");
-          setDateTo("");
-          setPage(1);
-        }}
-      />
-
-      {/* tickets grid */}
-      <TicketsGrid issues={normalizedVisibleIssues} />
-
-      {/* error */}
-      {error && !loadingInitial && (
-        <div className="page__error">{String(error)}</div>
-      )}
-
-      {/* empty state */}
-      {!loadingInitial && !error && issues.length === 0 && (
-        <div className="page__empty">No issues found.</div>
-      )}
-
-      {/* loader */}
-      {loadingInitial && (
-        <div className="page__loading">
-          <Oval
-            visible={true}
-            height="80"
-            width="80"
-            color="#4fa94d"
-            ariaLabel="oval-loading"
+      <div className="page__layout">
+        <aside className="page__sidebar">
+          <SortFilter
+            sort={sort}
+            onSortChange={setSort}
+            searchText={searchText}
+            onSearchChange={(value) => {
+              setSearchText(value);
+              setPage(1);
+            }}
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onDateChange={(from, to) => {
+              setDateFrom(from);
+              setDateTo(to);
+              setPage(1);
+            }}
+            selectedStatuses={selectedStatuses}
+            onStatusChange={(statuses) => {
+              setSelectedStatuses(statuses);
+              setPage(1);
+            }}
+            selectedDepartment={selectedDepartment}
+            onDepartmentChange={(dep) => {
+              setSelectedDepartment(dep);
+              setPage(1);
+            }}
+            selectedLine={selectedLine}
+            onLineChange={(line) => {
+              setSelectedLine(line);
+              setPage(1);
+            }}
+            isLoadingTickets={loadingInitial || fetchingAllTickets}
+            resultCount={filteredIssues.length}
+            onReset={() => {
+              setSort("newest");
+              setSearchText("");
+              setDateFrom("");
+              setDateTo("");
+              setSelectedStatuses([]);
+              setSelectedDepartment("");
+              setSelectedLine("");
+              setPage(1);
+            }}
+            issues={filteredIssues}
           />
-        </div>
-      )}
+        </aside>
 
-      {/* pagination */}
-      {totalPages > 1 && (
-        <div className="page__pagination">
-          <button
-            className="page__pagination-button"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            &lt; Prev
-          </button>
+        <section className="page__content">
+          <TicketsGrid issues={visibleIssues} onOpen={setSelectedIssue} />
 
-          <div className="page__pagination-pages">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((num) => (
+          <TicketModal
+            isOpen={!!selectedIssue}
+            onClose={() => setSelectedIssue(null)}
+            issue={selectedIssue}
+          />
+
+          {error && !loadingInitial && (
+            <div className="page__error">{String(error)}</div>
+          )}
+
+          {loadingInitial && (
+            <div className="page__loading">
+              <Oval visible={true} height={80} width={80} color="#4fa94d" />
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="page__pagination">
               <button
-                key={num}
-                className={`page__pagination-button ${
-                  num === page ? "page__pagination-button--active" : ""
-                }`}
-                onClick={() => setPage(num)}
+                className="page__pagination-button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
               >
-                {num}
+                &lt;
               </button>
-            ))}
-          </div>
 
-          <button
-            className="page__pagination-button"
-            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-          >
-            Next &gt;
-          </button>
-        </div>
-      )}
+              <div className="page__pagination-pages">
+                {paginationItems.map((item, index) =>
+                  typeof item === "number" ? (
+                    <button
+                      key={item}
+                      className={`page__pagination-button ${
+                        item === page ? "page__pagination-button--active" : ""
+                      }`}
+                      onClick={() => setPage(item)}
+                    >
+                      {item}
+                    </button>
+                  ) : (
+                    <span key={`${item}-${index}`} className="page__pagination-ellipsis">
+                      ...
+                    </span>
+                  ),
+                )}
+              </div>
+
+              <button
+                className="page__pagination-button"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                &gt;
+              </button>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

@@ -2,6 +2,7 @@
 import "./exportIssuesButton.css";
 import * as XLSX from "xlsx";
 import { ButtonHTMLAttributes } from "react";
+import { useI18n } from "@/components/I18nProvider";
 import type { Issue } from "@/lib/types";
 
 type Props = {
@@ -14,7 +15,6 @@ function secondsToExcelDays(seconds?: number): number {
   return seconds / 86400;
 }
 
-// Human-friendly string like "2d 3h 15m"
 function humanizeSeconds(total?: number): string {
   if (!total || total <= 0) return "";
   let s = total;
@@ -42,6 +42,7 @@ function setColumnNumberFormat(
   if (!ws["!ref"]) return;
   const range = XLSX.utils.decode_range(ws["!ref"]);
   let targetCol = -1;
+
   for (let c = range.s.c; c <= range.e.c; c++) {
     const addr = XLSX.utils.encode_cell({ r: range.s.r, c });
     const cell = ws[addr];
@@ -57,75 +58,62 @@ function setColumnNumberFormat(
     const cell = ws[addr];
     if (cell && typeof cell.v === "number") {
       cell.t = "n";
-      cell.z = format; // e.g. "[h]:mm"
+      cell.z = format;
     }
   }
 }
 
-// Make a readable list from customfield_10267
-function formatMechanics(value: unknown): string {
-  if (!value) return "";
-  const label = (u: any) =>
-    typeof u === "string"
-      ? u
-      : u?.displayName || u?.name || u?.value || u?.label || "";
-
-  if (Array.isArray(value)) {
-    const names = value.map(label).filter(Boolean);
-    // de-duplicate while preserving order
-    const seen = new Set<string>();
-    const unique = names.filter((n) =>
-      seen.has(n) ? false : (seen.add(n), true)
-    );
-    return unique.join(", ");
-  }
-
-  if (typeof value === "object") {
-    return label(value);
-  }
-
-  return String(value);
-}
-
+// extract subcategory
 function extractBetweenPipes(summary: string = ""): string {
   const parts = summary.split("|").map((p) => p.trim());
-  return parts.length >= 3 ? parts[1] : ""; // the text between the first two pipes
+  return parts.length >= 3 ? parts[1] : "";
 }
 
 export default function ExportIssuesButton({ issues, ...props }: Props) {
+  const { t } = useI18n();
+  const { disabled, className, ...buttonProps } = props;
+
   function exportToExcel() {
     if (!issues?.length) return;
+
     const rows = issues.map((i) => {
       const secs = i.timeSpentSeconds ?? 0;
 
       return {
-        Key: i.key,
-        Summary: i.summary,
-        Status: i.status,
-        Priority: i.priority,
-        Category: i.requestType ?? "",
-        Sub_Category: extractBetweenPipes(i.summary),
-        Reporter: i.reporter?.name ?? "",
-        Mechanics: i.mechanics?.join(", ") ?? "",
-        Created: i.created ? new Date(i.created) : "",
-        Resolved: i.resolved ? new Date(i.resolved) : "",
-        "Time Spent (h:mm)": secondsToExcelDays(secs),
+        [t("home.exportKey")]: i.key,
+        [t("home.exportSummary")]: i.summary,
+        [t("home.exportStatus")]: i.status,
+        [t("home.exportPriority")]: i.priority,
+        [t("home.exportCategory")]: i.requestType ?? "",
+        [t("home.exportSubcategory")]: extractBetweenPipes(i.summary),
+        [t("home.exportReporter")]: i.reporter?.name ?? "",
+        [t("home.exportMechanics")]: i.mechanics?.join(", ") ?? "",
+        [t("home.exportCreated")]: i.created ? new Date(i.created) : "",
+        [t("home.exportResolved")]: i.resolved ? new Date(i.resolved) : "",
+        [t("home.exportTimeSpent")]: secondsToExcelDays(secs),
       };
     });
+
     const worksheet = XLSX.utils.json_to_sheet(rows);
-    setColumnNumberFormat(worksheet, "Created", "yyyy-mm-dd hh:mm");
-    setColumnNumberFormat(worksheet, "Resolved", "yyyy-mm-dd hh:mm");
-    setColumnNumberFormat(worksheet, "Time Spent (h:mm)", "[h]:mm");
+
+    setColumnNumberFormat(worksheet, t("home.exportCreated"), "yyyy-mm-dd hh:mm");
+    setColumnNumberFormat(worksheet, t("home.exportResolved"), "yyyy-mm-dd hh:mm");
+    setColumnNumberFormat(worksheet, t("home.exportTimeSpent"), "[h]:mm");
 
     const workbook = XLSX.utils.book_new();
-
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Issues");
-    XLSX.writeFile(workbook, "jira_issues.xlsx");
+    XLSX.utils.book_append_sheet(workbook, worksheet, t("home.exportSheet"));
+    XLSX.writeFile(workbook, t("home.exportFile"));
   }
 
   return (
-    <button {...props} onClick={exportToExcel} className="export-button ">
-      Export to Excel
+    <button
+      {...buttonProps}
+      disabled={disabled}
+      aria-busy={disabled}
+      onClick={exportToExcel}
+      className={`export-button ${className ?? ""}`.trim()}
+    >
+      {disabled ? t("home.fetchingTickets") : t("home.exportToExcel")}
     </button>
   );
 }

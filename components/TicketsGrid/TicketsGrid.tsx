@@ -1,20 +1,19 @@
 "use client";
 
-import React from "react";
+import { TicketCard } from "@/components/TicketCard/TicketCard";
 import type { NormalizedIssue } from "@/lib/jira";
-import { TicketCard } from "@/components/TicketCard/TicketCard"; // adjust path if needed
 import "./ticketsGrid.css";
-import { Issue } from "@/lib/types";
 
 type Props = {
   issues: NormalizedIssue[];
+  onOpen: (issue: NormalizedIssue) => void;
 };
 
-export function TicketsGrid({ issues }: Props) {
+export function TicketsGrid({ issues, onOpen }: Props) {
   return (
     <section className="tickets-grid">
       {issues.map((i) => (
-        <TicketCard key={i.id} issue={i} />
+        <TicketCard key={i.id} issue={i} onOpen={onOpen} />
       ))}
     </section>
   );
