@@ -14,6 +14,7 @@
   --border-radius: 8px;
 
   --shadow-soft: 0 6px 18px rgba(20, 37, 56, 0.08);
+  --button-hover-shadow: 0 4px 10px rgba(20, 37, 56, 0.08);
 }
 
 body {
@@ -24,6 +25,26 @@ body {
   background-size: 500px;
   color: var(--foreground);
   font-family: var(--font-poppins), sans-serif;
+}
+
+:where(button, .page__action-link, .auth-button, .sort-filter__admin-login, .export-button) {
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s,
+    box-shadow 0.12s,
+    transform 0.12s,
+    filter 0.12s;
+}
+
+:where(button, .page__action-link, .auth-button, .sort-filter__admin-login, .export-button):hover:not(:disabled) {
+  box-shadow: var(--button-hover-shadow);
+  transform: translateY(-0.5px);
+}
+
+:where(button, .page__action-link, .auth-button, .sort-filter__admin-login, .export-button):active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .header {
@@ -55,8 +76,49 @@ body {
 }
 
 .header__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+}
+
+.header__title {
   color: #fff;
   font-size: 1.2rem;
   font-weight: 500;
   letter-spacing: 0.02em;
+}
+
+.language-switcher {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.lang-btn {
+  display: block;
+  color: var(--color-primary);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  font-family: Arial, sans-serif;
+  font-size: 14.4px;
+  letter-spacing: 0.5px;
+  text-align: center;
+  background: rgba(190, 190, 190, 0.5);
+  border: 1.6px solid rgba(92, 92, 92, 0.145);
+  border-radius: 4px;
+  padding: 3.2px 6.4px;
+  transition: all 0.3s ease;
+}
+
+.lang-btn.active {
+  background-color: white;
+  box-shadow: 0 4px 10px rgba(62, 79, 92, 0.2);
+}
+
+.lang-btn:hover {
+  background-color: white;
+  box-shadow: 0 4px 10px rgba(62, 79, 92, 0.16);
 }

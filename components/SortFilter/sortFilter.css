@@ -146,7 +146,7 @@
 }
 
 .sort-filter__admin-login:hover {
-  background: var(--color-card-bg-hover);
+  text-decoration: none;
 }
 
 .sort-filter__admin-login:active {

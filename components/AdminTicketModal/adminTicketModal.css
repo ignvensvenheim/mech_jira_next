@@ -1,0 +1,182 @@
+@import "../TicketModal/ticketModal.css";
+@import "../DetailedSingleTicket/detailedSingleTicket.css";
+@import "../TicketCard/ticketCard.css";
+
+.admin-ticket-modal {
+  width: min(1120px, 100%);
+}
+
+.admin-ticket-modal__content {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-ticket-modal__section--compact {
+  padding: 12px;
+}
+
+.admin-ticket-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.admin-ticket-modal__grid--compact {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.admin-ticket-modal__summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-ticket-modal__summary-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--color-card-bg-hover);
+}
+
+.admin-ticket-modal__summary-value {
+  font-size: 18px;
+  line-height: 1.2;
+  color: var(--color-primary);
+}
+
+.admin-ticket-modal__panels {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.admin-ticket-modal__panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: #fff;
+}
+
+.admin-ticket-modal__panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 10px;
+}
+
+.admin-ticket-modal__panel-copy {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-text-light);
+}
+
+.admin-ticket-modal__item {
+  display: grid;
+  gap: 2px;
+  color: var(--color-primary);
+  font-size: 12px;
+}
+
+.admin-ticket-modal__field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-ticket-modal__single-form {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.admin-ticket-modal__inline {
+  display: grid;
+  grid-template-columns: minmax(0, 110px) auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.admin-ticket-modal__ticket-cost,
+.admin-ticket-modal__manual {
+  margin-top: 10px;
+}
+
+.admin-ticket-modal__ticket-form {
+  display: grid;
+  grid-template-columns: 150px 160px minmax(0, 1fr) 120px;
+  gap: 10px;
+  align-items: end;
+}
+
+.admin-ticket-modal__entries {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-ticket-modal__entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--color-card-bg-hover);
+  color: var(--color-primary);
+  font-size: 12px;
+}
+
+.admin-ticket-modal__entry-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.admin-ticket-modal__entry-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.admin-ticket-modal__entry-comment {
+  color: var(--color-text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-ticket-modal__entry-date {
+  color: var(--color-text-light);
+  font-weight: 600;
+}
+
+.admin-ticket-modal__entry--edit {
+  grid-template-columns: 150px 160px minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+@media (max-width: 900px) {
+  .admin-ticket-modal__summary-grid,
+  .admin-ticket-modal__single-form,
+  .admin-ticket-modal__inline,
+  .admin-ticket-modal__ticket-form,
+  .admin-ticket-modal__entry,
+  .admin-ticket-modal__entry--edit {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-ticket-modal__entry {
+    align-items: start;
+  }
+
+  .admin-ticket-modal__panel {
+    padding: 10px;
+  }
+}

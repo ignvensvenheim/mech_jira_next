@@ -326,6 +326,45 @@
   box-shadow: var(--shadow-soft);
 }
 
+.admin-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--color-card-bg);
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  backdrop-filter: blur(6px);
+  box-shadow: var(--shadow-soft);
+}
+
+.admin-sidebar__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-sidebar__title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-light);
+}
+
+.admin-sidebar__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-sidebar__link {
+  width: 100%;
+  text-align: center;
+}
+
+.admin-sidebar__section--bottom {
+  margin-top: auto;
+}
+
 .admin-dashboard {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -387,6 +426,11 @@
   margin-bottom: 12px;
 }
 
+.admin-filters--compact {
+  margin-top: 14px;
+  margin-bottom: 0;
+}
+
 .admin-label {
   font-size: 12px;
   color: var(--color-muted);
@@ -413,11 +457,28 @@
   justify-content: flex-end;
 }
 
-.admin-date-presets {
-  grid-column: 1 / -1;
+.admin-filters-actions--presets {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+
+.admin-filters-actions--inline {
+  grid-column: auto;
+  align-items: end;
+}
+
+.admin-inventory-search {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+}
+
+.admin-date-presets {
+  display: flex;
+  flex-wrap: nowrap;
   gap: 8px;
+  align-items: center;
 }
 
 .admin-reset-button {
@@ -433,6 +494,17 @@
 
 .admin-reset-button:hover:not(:disabled) {
   background: var(--color-card-bg-hover);
+}
+
+.admin-reset-button--active {
+  background: #edf7ed;
+  border-color: #4fa94d;
+  color: #1f5d1f;
+  font-weight: 600;
+}
+
+.admin-reset-button--active:hover:not(:disabled) {
+  background: #e3f3e2;
 }
 
 .admin-reset-button:active:not(:disabled) {
@@ -508,6 +580,25 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
+}
+
+.admin-chart-row--compact {
+  grid-template-columns: 180px minmax(0, 1fr) 120px;
+}
+
+.admin-chart-row--tickets {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: #fff;
+  grid-template-columns: 120px minmax(0, 1fr) 140px 120px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-chart-row--tickets:hover {
+  background: var(--color-card-bg-hover);
 }
 
 .admin-chart-label {
@@ -625,7 +716,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 100px;
   gap: 10px;
-  align-items: center;
+  align-items: end;
   padding: 8px 10px;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
@@ -633,8 +724,44 @@
   margin-bottom: 8px;
 }
 
+.admin-inventory-field {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-inventory-field__label {
+  font-size: 9px;
+  line-height: 1.2;
+  color: var(--color-text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-inventory-row .admin-ticket-key {
+  font-size: 13px;
+}
+
+.admin-inventory-row .admin-ticket-summary {
+  font-size: 13px;
+}
+
 .admin-ticket-meta {
   min-width: 0;
+}
+
+.admin-ticket-open {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-ticket-open:hover .admin-ticket-key,
+.admin-ticket-open:hover .admin-ticket-summary {
+  text-decoration: underline;
 }
 
 .admin-ticket-key {
@@ -742,8 +869,14 @@
     justify-content: flex-start;
   }
 
+  .admin-filters-actions--presets {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
   .admin-date-presets {
-    grid-column: auto;
+    flex-wrap: wrap;
   }
 
   .admin-stats {
