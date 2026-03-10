@@ -1,7 +1,7 @@
 "use client";
 
 import "../page.css";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -345,7 +345,7 @@ function AdminFilters({
   );
 }
 
-export default function AdminPage() {
+function AdminPageContent() {
   const { locale, t } = useI18n();
   const ticketsPerPage = 20;
   const searchParams = useSearchParams();
@@ -2026,5 +2026,13 @@ export default function AdminPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminPageContent />
+    </Suspense>
   );
 }
