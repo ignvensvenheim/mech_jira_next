@@ -2,7 +2,7 @@
 
 import "../../page.css";
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useI18n } from "@/components/I18nProvider";
 
 type UserItem = {
   id: string;
@@ -25,11 +25,12 @@ async function parseJson<T>(response: Response): Promise<T> {
 
 export default function UsersManager({
   currentUserId,
-  currentUserLabel,
+  canManageUsers,
 }: {
   currentUserId: string;
-  currentUserLabel: string;
+  canManageUsers: boolean;
 }) {
+  const { t } = useI18n();
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -46,6 +47,7 @@ export default function UsersManager({
   const [editRole, setEditRole] = useState<"ADMIN" | "USER">("USER");
   const [editPassword, setEditPassword] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadUsers = async () => {
     setLoading(true);
@@ -137,6 +139,11 @@ export default function UsersManager({
   };
 
   const deleteUser = async (id: string) => {
+    if (!window.confirm(t("admin.deleteUserConfirm"))) {
+      return;
+    }
+
+    setDeletingId(id);
     setError("");
     try {
       const res = await fetch(`/api/admin/users/${id}`, {
@@ -146,176 +153,159 @@ export default function UsersManager({
       setUsers((prev) => prev.filter((u) => u.id !== id));
     } catch (e: unknown) {
       setError(String((e as Error).message || e));
+    } finally {
+      setDeletingId(null);
     }
   };
 
   return (
-    <div className="page">
-      <div className="page__layout page__layout--full">
-        <section className="page__content">
-          <div className="page__topbar">
-            <div className="page__content-actions page__content-actions--gap">
-              <Link href="/" className="page__action-link">
-                Back to home
-              </Link>
-              <Link href="/admin" className="page__action-link">
-                Admin home
-              </Link>
-            </div>
-            <div className="page__session-label">
-              {currentUserLabel ? `Logged in as ${currentUserLabel}` : ""}
-            </div>
-          </div>
+    <div className="admin-dashboard">
+      <div className="admin-card">
+        <h1 className="admin-title">{t("admin.userManagement")}</h1>
+        <p className="admin-subtitle">
+          {t("admin.userManagementSubtitle")}
+        </p>
 
-          <div className="admin-dashboard">
-            <div className="admin-card">
-              <h1 className="admin-title">User Management</h1>
-              <p className="admin-subtitle">
-                Create and manage application users and roles.
-              </p>
+        <div className="admin-users-form">
+          <input
+            className="admin-input"
+            type="email"
+            placeholder={t("admin.email")}
+            value={createEmail}
+            onChange={(e) => setCreateEmail(e.target.value)}
+          />
+          <input
+            className="admin-input"
+            type="text"
+            placeholder={t("admin.name")}
+            value={createName}
+            onChange={(e) => setCreateName(e.target.value)}
+          />
+          <select
+            className="admin-input"
+            value={createRole}
+            onChange={(e) => setCreateRole(e.target.value as "ADMIN" | "USER")}
+          >
+            <option value="USER">{t("admin.roleUser")}</option>
+            <option value="ADMIN">{t("admin.roleAdmin")}</option>
+          </select>
+          <input
+            className="admin-input"
+            type="password"
+            placeholder={t("admin.passwordMin")}
+            value={createPassword}
+            onChange={(e) => setCreatePassword(e.target.value)}
+          />
+          <button
+            type="button"
+            className="admin-reset-button"
+            onClick={() => {
+              void createUser();
+            }}
+            disabled={creating || !createEmail.trim() || createPassword.trim().length < 6}
+          >
+            {creating ? t("admin.creatingUser") : t("admin.createUser")}
+          </button>
+        </div>
 
-              <div className="admin-users-form">
-                <input
-                  className="admin-input"
-                  type="email"
-                  placeholder="Email"
-                  value={createEmail}
-                  onChange={(e) => setCreateEmail(e.target.value)}
-                />
-                <input
-                  className="admin-input"
-                  type="text"
-                  placeholder="Name"
-                  value={createName}
-                  onChange={(e) => setCreateName(e.target.value)}
-                />
-                <select
-                  className="admin-input"
-                  value={createRole}
-                  onChange={(e) => setCreateRole(e.target.value as "ADMIN" | "USER")}
-                >
-                  <option value="USER">USER</option>
-                  <option value="ADMIN">ADMIN</option>
-                </select>
-                <input
-                  className="admin-input"
-                  type="password"
-                  placeholder="Password (min 6)"
-                  value={createPassword}
-                  onChange={(e) => setCreatePassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="admin-reset-button"
-                  onClick={() => {
-                    void createUser();
-                  }}
-                  disabled={
-                    creating ||
-                    !createEmail.trim() ||
-                    createPassword.trim().length < 6
-                  }
-                >
-                  {creating ? "Creating..." : "Create user"}
-                </button>
-              </div>
+        {error && <div className="page__error">{error}</div>}
+      </div>
 
-              {error && <div className="page__error">{error}</div>}
-            </div>
+      <div className="admin-panel">
+        <div className="admin-chart-title">{t("admin.users")}</div>
+        {loading && <div className="admin-chart-empty">{t("admin.loadingUsers")}</div>}
+        {!loading && users.length === 0 && (
+          <div className="admin-chart-empty">{t("admin.noUsersYet")}</div>
+        )}
 
-            <div className="admin-panel">
-              <div className="admin-chart-title">Users</div>
-              {loading && <div className="admin-chart-empty">Loading users...</div>}
-              {!loading && users.length === 0 && (
-                <div className="admin-chart-empty">No users yet.</div>
-              )}
-
-              {!loading &&
-                users.map((user) => (
-                  <div key={user.id} className="admin-users-row">
-                    {editingId === user.id ? (
-                      <>
-                        <input
-                          className="admin-input"
-                          type="email"
-                          value={editEmail}
-                          onChange={(e) => setEditEmail(e.target.value)}
-                        />
-                        <input
-                          className="admin-input"
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                        />
-                        <select
-                          className="admin-input"
-                          value={editRole}
-                          onChange={(e) =>
-                            setEditRole(e.target.value as "ADMIN" | "USER")
-                          }
-                        >
-                          <option value="USER">USER</option>
-                          <option value="ADMIN">ADMIN</option>
-                        </select>
-                        <input
-                          className="admin-input"
-                          type="password"
-                          placeholder="New password (optional)"
-                          value={editPassword}
-                          onChange={(e) => setEditPassword(e.target.value)}
-                        />
-                        <div className="admin-manual-actions">
-                          <button
-                            type="button"
-                            className="admin-reset-button"
-                            onClick={() => {
-                              void saveEdit();
-                            }}
-                            disabled={savingId === user.id || !editEmail.trim()}
-                          >
-                            Save
-                          </button>
-                          <button
-                            type="button"
-                            className="admin-reset-button"
-                            onClick={cancelEdit}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div>{user.email}</div>
-                        <div>{user.name || "-"}</div>
-                        <div>{user.role}</div>
-                        <div>{new Date(user.createdAt).toLocaleDateString()}</div>
-                        <div className="admin-manual-actions">
-                          <button
-                            type="button"
-                            className="admin-reset-button"
-                            onClick={() => startEdit(user)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="admin-reset-button"
-                            onClick={() => {
-                              void deleteUser(user.id);
-                            }}
-                            disabled={user.id === currentUserId}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </>
-                    )}
+        {!loading &&
+          users.map((user) => (
+            <div key={user.id} className="admin-users-row">
+              {editingId === user.id ? (
+                <>
+                  <input
+                    className="admin-input"
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                  />
+                  <input
+                    className="admin-input"
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                  />
+                  <select
+                    className="admin-input"
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value as "ADMIN" | "USER")}
+                  >
+                    <option value="USER">{t("admin.roleUser")}</option>
+                    <option value="ADMIN">{t("admin.roleAdmin")}</option>
+                  </select>
+                  <input
+                    className="admin-input"
+                    type="password"
+                    placeholder={t("admin.newPasswordOptional")}
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                  />
+                  <div className="admin-manual-actions">
+                    <button
+                      type="button"
+                      className="admin-reset-button"
+                      onClick={() => {
+                        void saveEdit();
+                      }}
+                      disabled={savingId === user.id || !editEmail.trim()}
+                    >
+                      {t("common.save")}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-reset-button"
+                      onClick={cancelEdit}
+                    >
+                      {t("common.cancel")}
+                    </button>
                   </div>
-                ))}
+                </>
+              ) : (
+                <>
+                  <div>{user.email}</div>
+                  <div>{user.name || "-"}</div>
+                  <div>{user.role === "ADMIN" ? t("admin.roleAdmin") : t("admin.roleUser")}</div>
+                  <div>{new Date(user.createdAt).toLocaleDateString()}</div>
+                  <div className="admin-manual-actions">
+                    <button
+                      type="button"
+                      className="admin-reset-button"
+                      onClick={() => startEdit(user)}
+                      disabled={!canManageUsers}
+                    >
+                      {t("common.edit")}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-reset-button"
+                      onClick={() => {
+                        void deleteUser(user.id);
+                      }}
+                      disabled={
+                        !canManageUsers ||
+                        user.id === currentUserId ||
+                        deletingId === user.id
+                      }
+                    >
+                      {deletingId === user.id
+                        ? t("admin.deletingUser")
+                        : t("common.delete")}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-          </div>
-        </section>
+          ))}
       </div>
     </div>
   );

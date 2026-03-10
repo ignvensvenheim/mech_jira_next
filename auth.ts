@@ -2,7 +2,9 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { UserRole } from "@prisma/client";
 import authConfig from "@/auth.config";
+import { isSuperAdminIdentity } from "@/lib/superAdmin";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -64,6 +66,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
 
           if (!user) return null;
+
+          if (isSuperAdminIdentity(user) && user.role !== UserRole.ADMIN) {
+            user = await prisma.user.update({
+              where: { id: user.id },
+              data: { role: UserRole.ADMIN },
+            });
+          }
 
           const matches = await bcrypt.compare(password, user.passwordHash);
           if (!matches) return null;
