@@ -2,7 +2,6 @@
 
 import "./page.css";
 import React, { useMemo, useState } from "react";
-import Link from "next/link";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { Oval } from "react-loader-spinner";
 import { SortFilter } from "@/components/SortFilter/SortFilter";
@@ -10,6 +9,8 @@ import { TicketsGrid } from "@/components/TicketsGrid/TicketsGrid";
 import { useIssues } from "@/lib/IssuesContext";
 import { NormalizedIssue } from "@/lib/jira";
 import TicketModal from "@/components/TicketModal/TicketModal";
+import { fmtDuration } from "@/helpers/fmtDuration";
+import { relativeDate } from "@/helpers/relativeDate";
 
 export default function Page() {
   const { loadingInitial, fetchingAllTickets, error } = useJiraSearch();
@@ -18,6 +19,7 @@ export default function Page() {
   const ITEMS_PER_PAGE = 20;
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState<"newest" | "oldest">("newest");
+  const [searchText, setSearchText] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
@@ -56,10 +58,37 @@ export default function Page() {
         selectedStatuses.length === 0 ||
         selectedStatuses.includes(i.status ?? "");
 
-      return matchDepartment && matchLine && matchDate && matchStatus;
+      const query = searchText.trim().toLowerCase();
+      const matchSearch =
+        !query ||
+        [
+          i.key,
+          i.summary,
+          i.status,
+          i.descriptionText ?? "",
+          i.reporter?.name ?? "",
+          relativeDate(i.created),
+          fmtDuration(i.timeSpentSeconds),
+          ...(Array.isArray(i.mechanics) ? i.mechanics : []),
+          Array.isArray(i.attachment) && i.attachment.length > 0
+            ? "attachment attachments"
+            : "",
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(query);
+
+      return (
+        matchDepartment &&
+        matchLine &&
+        matchDate &&
+        matchStatus &&
+        matchSearch
+      );
     });
   }, [
     sortedIssues,
+    searchText,
     selectedDepartment,
     selectedLine,
     selectedStatuses,
@@ -88,6 +117,11 @@ export default function Page() {
           <SortFilter
             sort={sort}
             onSortChange={setSort}
+            searchText={searchText}
+            onSearchChange={(value) => {
+              setSearchText(value);
+              setPage(1);
+            }}
             dateFrom={dateFrom}
             dateTo={dateTo}
             onDateChange={(from, to) => {
@@ -114,6 +148,7 @@ export default function Page() {
             resultCount={filteredIssues.length}
             onReset={() => {
               setSort("newest");
+              setSearchText("");
               setDateFrom("");
               setDateTo("");
               setSelectedStatuses([]);
@@ -123,9 +158,6 @@ export default function Page() {
             }}
             issues={filteredIssues}
           />
-          <Link className="page__sidebar-login" href="/login">
-            Admin Login
-          </Link>
         </aside>
 
         <section className="page__content">

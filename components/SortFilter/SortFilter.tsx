@@ -1,6 +1,9 @@
 "use client";
 
 import "./sortFilter.css";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useI18n } from "@/components/I18nProvider";
 import ExportIssuesButton from "../ExportIssuesButton/ExportIssuesButton";
 import { STATUS_OPTIONS } from "@/data/listData";
 import { DEPARTMENT_LINES } from "@/data/listData";
@@ -8,6 +11,8 @@ import { DEPARTMENT_LINES } from "@/data/listData";
 type Props = {
   sort: "newest" | "oldest";
   onSortChange: (sort: "newest" | "oldest") => void;
+  searchText: string;
+  onSearchChange: (value: string) => void;
   dateFrom: string;
   dateTo: string;
   onDateChange: (from: string, to: string) => void;
@@ -26,6 +31,8 @@ type Props = {
 export function SortFilter({
   sort,
   onSortChange,
+  searchText,
+  onSearchChange,
   dateFrom,
   dateTo,
   onDateChange,
@@ -40,6 +47,51 @@ export function SortFilter({
   resultCount,
   issues = [],
 }: Props) {
+  const { t } = useI18n();
+  const [isAdminSession, setIsAdminSession] = useState(false);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadSession = async () => {
+      try {
+        const res = await fetch("/api/auth/session", { cache: "no-store" });
+        const data = (await res.json().catch(() => ({}))) as {
+          user?: {
+            role?: string | null;
+            name?: string | null;
+            email?: string | null;
+          };
+        };
+
+        const normalizedRole = String(data.user?.role || "").trim().toUpperCase();
+        const normalizedName = String(data.user?.name || "").trim().toLowerCase();
+        const normalizedEmail = String(data.user?.email || "").trim().toLowerCase();
+        const emailLocalPart = normalizedEmail.includes("@")
+          ? normalizedEmail.split("@")[0]
+          : normalizedEmail;
+
+        if (!isCancelled) {
+          setIsAdminSession(
+            normalizedRole === "ADMIN" ||
+              normalizedName === "ignven" ||
+              emailLocalPart === "ignven"
+          );
+        }
+      } catch {
+        if (!isCancelled) {
+          setIsAdminSession(false);
+        }
+      }
+    };
+
+    void loadSession();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
   const toggleStatus = (status: string) => {
     if (selectedStatuses.includes(status)) {
       onStatusChange(selectedStatuses.filter((s) => s !== status));
@@ -50,11 +102,13 @@ export function SortFilter({
 
   return (
     <div className="sort-filter">
-      <div className="sort-filter__count">Showing {resultCount} tickets</div>
+      <div className="sort-filter__count">
+        {t("home.showingTickets", { count: resultCount })}
+      </div>
 
       <div className="sort-filter__controls">
         <div className="sort-filter__new-old">
-          <label>Sort:</label>
+          <label>{t("home.sort")}</label>
           <select
             className="sort-filter__pill"
             value={sort}
@@ -62,14 +116,23 @@ export function SortFilter({
               onSortChange(e.target.value as "newest" | "oldest")
             }
           >
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
+            <option value="newest">{t("home.newestFirst")}</option>
+            <option value="oldest">{t("home.oldestFirst")}</option>
           </select>
+        </div>
+        <div className="sort-filter__search">
+          <label>{t("home.search")}</label>
+          <input
+            type="text"
+            value={searchText}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={t("home.searchPlaceholder")}
+          />
         </div>
         <div className="sort-filter__date">
           <div className="sort-filter__date-grid">
             <div className="sort-filter__date-field">
-              <label>Date from:</label>
+              <label>{t("common.dateFrom")}:</label>
               <input
                 className="sort-filter__pill"
                 type="date"
@@ -78,7 +141,7 @@ export function SortFilter({
               />
             </div>
             <div className="sort-filter__date-field">
-              <label>Date to:</label>
+              <label>{t("common.dateTo")}:</label>
               <input
                 className="sort-filter__pill"
                 type="date"
@@ -88,8 +151,36 @@ export function SortFilter({
             </div>
           </div>
         </div>
+        <div className="sort-filter__department-line">
+          <label>{t("home.category")}</label>
+          <select
+            value={selectedDepartment}
+            onChange={(e) => onDepartmentChange(e.target.value)}
+          >
+            <option value="">{t("common.all")}</option>
+            {Object.keys(DEPARTMENT_LINES).map((dep) => (
+              <option key={dep} value={dep}>
+                {dep}
+              </option>
+            ))}
+          </select>
+
+          <label>{t("home.subcategory")}</label>
+          <select
+            value={selectedLine}
+            onChange={(e) => onLineChange(e.target.value)}
+            disabled={!selectedDepartment}
+          >
+            <option value="">{t("common.all")}</option>
+            {(DEPARTMENT_LINES[selectedDepartment] || []).map((line) => (
+              <option key={line} value={line}>
+                {line}
+              </option>
+            ))}
+          </select>
+        </div>
         <div className="sort-filter__status-pills">
-          <label>Status:</label>
+          <label>{t("home.status")}</label>
           {STATUS_OPTIONS.map((status) => (
             <button
               key={status}
@@ -105,39 +196,11 @@ export function SortFilter({
             </button>
           ))}
         </div>
-        <div className="sort-filter__department-line">
-          <label>Category:</label>
-          <select
-            value={selectedDepartment}
-            onChange={(e) => onDepartmentChange(e.target.value)}
-          >
-            <option value="">All</option>
-            {Object.keys(DEPARTMENT_LINES).map((dep) => (
-              <option key={dep} value={dep}>
-                {dep}
-              </option>
-            ))}
-          </select>
-
-          <label>Subcategory:</label>
-          <select
-            value={selectedLine}
-            onChange={(e) => onLineChange(e.target.value)}
-            disabled={!selectedDepartment}
-          >
-            <option value="">All</option>
-            {(DEPARTMENT_LINES[selectedDepartment] || []).map((line) => (
-              <option key={line} value={line}>
-                {line}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
       <div className="sort-filter__footer">
         <div className="sort-filter__actions">
           <button className="sort-filter__reset" onClick={onReset}>
-            Reset filters
+            {t("common.resetFilters")}
           </button>
           <ExportIssuesButton
             issues={(issues ?? []).map((i) => ({
@@ -149,6 +212,12 @@ export function SortFilter({
             }))}
             disabled={isLoadingTickets}
           />
+          <Link
+            className="sort-filter__admin-login"
+            href={isAdminSession ? "/admin" : "/login"}
+          >
+            {isAdminSession ? t("home.adminPanel") : t("home.adminLogin")}
+          </Link>
         </div>
       </div>
     </div>

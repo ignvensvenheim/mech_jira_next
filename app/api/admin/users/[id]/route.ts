@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { isSuperAdminIdentity } from "@/lib/superAdmin";
 
 export async function PATCH(
   req: Request,
@@ -11,6 +12,17 @@ export async function PATCH(
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const actor = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, name: true, email: true },
+  });
+  if (!actor || !isSuperAdminIdentity(actor)) {
+    return NextResponse.json(
+      { error: "Only super admin can edit users" },
+      { status: 403 }
+    );
   }
 
   const { id } = await context.params;
@@ -80,6 +92,17 @@ export async function DELETE(
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const actor = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, name: true, email: true },
+  });
+  if (!actor || !isSuperAdminIdentity(actor)) {
+    return NextResponse.json(
+      { error: "Only super admin can delete users" },
+      { status: 403 }
+    );
   }
 
   const { id } = await context.params;

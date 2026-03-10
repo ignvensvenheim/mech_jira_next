@@ -3,9 +3,14 @@
 import "../page.css";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { signOut } from "next-auth/react";
+import { useI18n } from "@/components/I18nProvider";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { useIssues } from "@/lib/IssuesContext";
 import { DEPARTMENT_LINES } from "@/data/listData";
+import AdminTicketModal from "@/components/AdminTicketModal/AdminTicketModal";
+import UsersManager from "./users/users-manager";
 import type { NormalizedIssue } from "@/lib/jira";
 
 type ManualCostEntry = {
@@ -17,7 +22,6 @@ type ManualCostEntry = {
 };
 
 type MachineDataResponse = {
-  hourlyRate: number;
   entries: ManualCostEntry[];
 };
 
@@ -36,8 +40,25 @@ type TicketFixDraft = {
   comment: string;
 };
 
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
+type EquipmentDetailsResponse = {
+  machineKey: string;
+  model: string;
+  serialNumber: string;
+  manufacturer: string;
+  updatedAt: string | null;
+};
+
+type EquipmentDraft = {
+  model: string;
+  serialNumber: string;
+  manufacturer: string;
+};
+
+type AdminFunction = "costs" | "inventory" | "users" | "statistics";
+type DatePreset = "" | "all" | "last7" | "thisMonth" | "lastMonth" | "last6Months";
+
+function formatCurrency(amount: number, locale: string = "en") {
+  return new Intl.NumberFormat(locale === "lt" ? "lt-LT" : "en-US", {
     style: "currency",
     currency: "EUR",
     minimumFractionDigits: 2,
@@ -56,11 +77,14 @@ function getIssueCategoryAndSubcategory(issue: NormalizedIssue) {
   };
 }
 
-function formatSeconds(total: number) {
+function formatSeconds(total: number, locale: string = "en") {
   const safe = Math.max(0, Math.floor(total || 0));
   const hours = Math.floor(safe / 3600);
   const minutes = Math.floor((safe % 3600) / 60);
   const seconds = safe % 60;
+  if (locale === "lt") {
+    return `${hours} val ${minutes} min ${seconds} s`;
+  }
   return `${hours}h ${minutes}m ${seconds}s`;
 }
 
@@ -81,26 +105,267 @@ function toDateInputValue(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function startOfIsoWeek(date: Date) {
-  const d = new Date(date);
-  const day = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  const diff = day === 0 ? -6 : 1 - day;
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
+function getLastSevenDaysRange() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(today);
+  start.setDate(today.getDate() - 6);
+
+  return {
+    from: toDateInputValue(start),
+    to: toDateInputValue(today),
+  };
+}
+
+function getThisMonthRange() {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  return {
+    from: toDateInputValue(start),
+    to: toDateInputValue(today),
+  };
+}
+
+function getLastMonthRange() {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const end = new Date(today.getFullYear(), today.getMonth(), 0);
+
+  return {
+    from: toDateInputValue(start),
+    to: toDateInputValue(end),
+  };
+}
+
+function getLastSixMonthsRange() {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+
+  return {
+    from: toDateInputValue(start),
+    to: toDateInputValue(today),
+  };
+}
+
+function formatDisplayDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("en-GB", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  }).format(date);
+}
+
+function getTicketCountLabel(
+  t: (key: string, params?: Record<string, string | number>) => string,
+  count: number
+) {
+  return t(count === 1 ? "admin.ticketsCountOne" : "admin.ticketsCountMany", {
+    count,
+  });
+}
+
+function getActiveDatePreset(from: string, to: string) {
+  const matches = (range: { from: string; to: string }) =>
+    from === range.from && to === range.to;
+
+  if (!from && !to) return "all";
+  if (matches(getLastSevenDaysRange())) return "last7";
+  if (matches(getThisMonthRange())) return "thisMonth";
+  if (matches(getLastMonthRange())) return "lastMonth";
+  if (matches(getLastSixMonthsRange())) return "last6Months";
+  return "";
+}
+
+type AdminFiltersProps = {
+  className?: string;
+  category: string;
+  subCategory: string;
+  dateFrom: string;
+  dateTo: string;
+  subCategoryOptions: string[];
+  activeDatePreset: DatePreset;
+  resetDisabled: boolean;
+  onCategoryChange: (value: string) => void;
+  onSubCategoryChange: (value: string) => void;
+  onDateFromChange: (value: string) => void;
+  onDateToChange: (value: string) => void;
+  onApplyAllTickets: () => void;
+  onApplyLastSevenDays: () => void;
+  onApplyThisMonth: () => void;
+  onApplyLastMonth: () => void;
+  onApplyLastSixMonths: () => void;
+  onResetFilters: () => void;
+};
+
+function AdminFilters({
+  className,
+  category,
+  subCategory,
+  dateFrom,
+  dateTo,
+  subCategoryOptions,
+  activeDatePreset,
+  resetDisabled,
+  onCategoryChange,
+  onSubCategoryChange,
+  onDateFromChange,
+  onDateToChange,
+  onApplyAllTickets,
+  onApplyLastSevenDays,
+  onApplyThisMonth,
+  onApplyLastMonth,
+  onApplyLastSixMonths,
+  onResetFilters,
+}: AdminFiltersProps) {
+  const { t } = useI18n();
+
+  return (
+    <div className={className ? `admin-filters ${className}` : "admin-filters"}>
+      <label>
+        <div className="admin-label">{t("home.category")}</div>
+        <select
+          value={category}
+          onChange={(e) => onCategoryChange(e.target.value)}
+          className="admin-input"
+        >
+          <option value="">{t("common.all")}</option>
+          {Object.keys(DEPARTMENT_LINES).map((dep) => (
+            <option key={dep} value={dep}>
+              {dep}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label>
+        <div className="admin-label">{t("home.subcategory")}</div>
+        <select
+          value={subCategory}
+          onChange={(e) => onSubCategoryChange(e.target.value)}
+          className="admin-input"
+          disabled={!category}
+        >
+          <option value="">{t("common.all")}</option>
+          {subCategoryOptions.map((line) => (
+            <option key={line} value={line}>
+              {line}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label>
+        <div className="admin-label">{t("common.dateFrom")}</div>
+        <input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => onDateFromChange(e.target.value)}
+          className="admin-input"
+        />
+      </label>
+
+      <label>
+        <div className="admin-label">{t("common.dateTo")}</div>
+        <input
+          type="date"
+          value={dateTo}
+          onChange={(e) => onDateToChange(e.target.value)}
+          className="admin-input"
+        />
+      </label>
+
+      <div className="admin-filters-actions admin-filters-actions--presets">
+        <div className="admin-date-presets">
+          <button
+            type="button"
+            className={`admin-reset-button${
+              activeDatePreset === "all" ? " admin-reset-button--active" : ""
+            }`}
+            onClick={onApplyAllTickets}
+          >
+            {t("common.allTickets")}
+          </button>
+          <button
+            type="button"
+            className={`admin-reset-button${
+              activeDatePreset === "last7" ? " admin-reset-button--active" : ""
+            }`}
+            onClick={onApplyLastSevenDays}
+          >
+            {t("common.last7Days")}
+          </button>
+          <button
+            type="button"
+            className={`admin-reset-button${
+              activeDatePreset === "thisMonth"
+                ? " admin-reset-button--active"
+                : ""
+            }`}
+            onClick={onApplyThisMonth}
+          >
+            {t("common.thisMonth")}
+          </button>
+          <button
+            type="button"
+            className={`admin-reset-button${
+              activeDatePreset === "lastMonth"
+                ? " admin-reset-button--active"
+                : ""
+            }`}
+            onClick={onApplyLastMonth}
+          >
+            {t("common.lastMonth")}
+          </button>
+          <button
+            type="button"
+            className={`admin-reset-button${
+              activeDatePreset === "last6Months"
+                ? " admin-reset-button--active"
+                : ""
+            }`}
+            onClick={onApplyLastSixMonths}
+          >
+            {t("common.last6Months")}
+          </button>
+        </div>
+        <button
+          type="button"
+          className="admin-reset-button"
+          onClick={onResetFilters}
+          disabled={resetDisabled}
+        >
+          {t("common.resetFilters")}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function AdminPage() {
+  const { locale, t } = useI18n();
+  const ticketsPerPage = 20;
+  const searchParams = useSearchParams();
   const { loadingInitial, error } = useJiraSearch();
   const { issues } = useIssues();
+  const [currentUserId, setCurrentUserId] = useState("");
+  const [currentUserCanManageUsers, setCurrentUserCanManageUsers] = useState(false);
+  const defaultDateRange = useMemo(() => getLastSevenDaysRange(), []);
 
-  const [category, setCategory] = useState("");
-  const [subCategory, setSubCategory] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [costsCategory, setCostsCategory] = useState("");
+  const [costsSubCategory, setCostsSubCategory] = useState("");
+  const [statisticsCategory, setStatisticsCategory] = useState("");
+  const [statisticsSubCategory, setStatisticsSubCategory] = useState("");
+  const [costsDateFrom, setCostsDateFrom] = useState(defaultDateRange.from);
+  const [costsDateTo, setCostsDateTo] = useState(defaultDateRange.to);
+  const [statisticsDateFrom, setStatisticsDateFrom] = useState(
+    defaultDateRange.from
+  );
+  const [statisticsDateTo, setStatisticsDateTo] = useState(defaultDateRange.to);
 
-  const [machineRate, setMachineRate] = useState(0);
-  const [rateInput, setRateInput] = useState("");
   const [manualEntries, setManualEntries] = useState<ManualCostEntry[]>([]);
   const [machineDataLoading, setMachineDataLoading] = useState(false);
   const [machineDataError, setMachineDataError] = useState("");
@@ -118,16 +383,132 @@ export default function AdminPage() {
   );
   const [ticketCostsLoading, setTicketCostsLoading] = useState(false);
   const [savingTicketKey, setSavingTicketKey] = useState<string | null>(null);
+  const [equipmentModel, setEquipmentModel] = useState("");
+  const [equipmentSerialNumber, setEquipmentSerialNumber] = useState("");
+  const [equipmentManufacturer, setEquipmentManufacturer] = useState("");
+  const [equipmentLoading, setEquipmentLoading] = useState(false);
+  const [equipmentSaving, setEquipmentSaving] = useState(false);
+  const [equipmentError, setEquipmentError] = useState("");
+  const [activeFunction, setActiveFunction] = useState<AdminFunction>("costs");
+  const [inventoryQuery, setInventoryQuery] = useState("");
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [inventoryError, setInventoryError] = useState("");
+  const [inventorySavingKey, setInventorySavingKey] = useState<string | null>(null);
+  const [inventoryDrafts, setInventoryDrafts] = useState<
+    Record<string, EquipmentDraft>
+  >({});
+  const [selectedIssue, setSelectedIssue] = useState<NormalizedIssue | null>(null);
+  const [ticketCostsRefreshKey, setTicketCostsRefreshKey] = useState(0);
+  const [costsCurrentPage, setCostsCurrentPage] = useState(1);
 
-  const subCategoryOptions = useMemo(
-    () => (category ? DEPARTMENT_LINES[category] || [] : []),
-    [category]
+  const handleLogout = useCallback(() => {
+    void signOut({ callbackUrl: "/login" });
+  }, []);
+
+  const costsSubCategoryOptions = useMemo(
+    () => (costsCategory ? DEPARTMENT_LINES[costsCategory] || [] : []),
+    [costsCategory]
   );
+  const statisticsSubCategoryOptions = useMemo(
+    () =>
+      statisticsCategory ? DEPARTMENT_LINES[statisticsCategory] || [] : [],
+    [statisticsCategory]
+  );
+  const machineCatalog = useMemo(
+    () =>
+      Object.entries(DEPARTMENT_LINES).flatMap(([dep, lines]) =>
+        lines.map((line) => ({
+          category: dep,
+          subcategory: line,
+          machineKey: `${dep}::${line}`,
+        }))
+      ),
+    []
+  );
+  const filteredMachineCatalog = useMemo(() => {
+    const needle = inventoryQuery.trim().toLowerCase();
+    if (!needle) return machineCatalog;
+    return machineCatalog.filter((m) => {
+      const source = `${m.category} ${m.subcategory} ${m.machineKey}`.toLowerCase();
+      return source.includes(needle);
+    });
+  }, [machineCatalog, inventoryQuery]);
 
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [editDate, setEditDate] = useState("");
   const [editAmount, setEditAmount] = useState("");
   const [editComment, setEditComment] = useState("");
+  const viewCategory =
+    activeFunction === "statistics" ? statisticsCategory : costsCategory;
+  const viewSubCategory =
+    activeFunction === "statistics"
+      ? statisticsSubCategory
+      : costsSubCategory;
+  const viewDateFrom =
+    activeFunction === "statistics" ? statisticsDateFrom : costsDateFrom;
+  const viewDateTo =
+    activeFunction === "statistics" ? statisticsDateTo : costsDateTo;
+  const costsActiveDatePreset = useMemo(
+    () => getActiveDatePreset(costsDateFrom, costsDateTo),
+    [costsDateFrom, costsDateTo]
+  );
+  const statisticsActiveDatePreset = useMemo(
+    () => getActiveDatePreset(statisticsDateFrom, statisticsDateTo),
+    [statisticsDateFrom, statisticsDateTo]
+  );
+  const statisticsTimeframeLabel = useMemo(
+    () => {
+      if (!statisticsDateFrom && !statisticsDateTo) {
+        return t("admin.timeframeAll");
+      }
+
+      if (statisticsActiveDatePreset === "last7") {
+        return t("admin.timeframeLast7", {
+          from: formatDisplayDate(statisticsDateFrom),
+          to: formatDisplayDate(statisticsDateTo),
+        });
+      }
+
+      if (statisticsActiveDatePreset === "thisMonth") {
+        return t("admin.timeframeThisMonth", {
+          from: formatDisplayDate(statisticsDateFrom),
+          to: formatDisplayDate(statisticsDateTo),
+        });
+      }
+
+      if (statisticsActiveDatePreset === "lastMonth") {
+        return t("admin.timeframeLastMonth", {
+          from: formatDisplayDate(statisticsDateFrom),
+          to: formatDisplayDate(statisticsDateTo),
+        });
+      }
+
+      if (statisticsActiveDatePreset === "last6Months") {
+        return t("admin.timeframeLast6Months", {
+          from: formatDisplayDate(statisticsDateFrom),
+          to: formatDisplayDate(statisticsDateTo),
+        });
+      }
+
+      if (statisticsDateFrom && statisticsDateTo) {
+        return t("admin.timeframeFromTo", {
+          from: formatDisplayDate(statisticsDateFrom),
+          to: formatDisplayDate(statisticsDateTo),
+        });
+      }
+
+      if (statisticsDateFrom) {
+        return t("admin.timeframeFrom", {
+          from: formatDisplayDate(statisticsDateFrom),
+        });
+      }
+
+      return t("admin.timeframeUntil", {
+        to: formatDisplayDate(statisticsDateTo),
+      });
+    },
+    [statisticsActiveDatePreset, statisticsDateFrom, statisticsDateTo, t]
+  );
 
   const filteredIssues = useMemo<NormalizedIssue[]>(() => {
     return ((issues ?? []) as NormalizedIssue[]).filter((i: NormalizedIssue) => {
@@ -135,60 +516,30 @@ export default function AdminPage() {
         getIssueCategoryAndSubcategory(i);
       const depPart = depPartRaw.toLowerCase();
       const linePart = linePartRaw.toLowerCase();
-      const dep = category.toLowerCase();
-      const line = subCategory.toLowerCase();
-      const matchCategory = !category || depPart === dep;
-      const matchSub = !subCategory || linePart === line;
+      const dep = viewCategory.toLowerCase();
+      const line = viewSubCategory.toLowerCase();
+      const matchCategory = !viewCategory || depPart === dep;
+      const matchSub = !viewSubCategory || linePart === line;
 
       const created = new Date(i.created).getTime();
-      const from = dateFrom ? new Date(dateFrom).getTime() : -Infinity;
-      const to = dateTo ? new Date(dateTo).getTime() : Infinity;
+      const from = viewDateFrom ? new Date(viewDateFrom).getTime() : -Infinity;
+      const to = viewDateTo ? new Date(viewDateTo).getTime() : Infinity;
       const matchDate = created >= from && created <= to;
 
       return matchCategory && matchSub && matchDate;
     });
-  }, [issues, category, subCategory, dateFrom, dateTo]);
+  }, [issues, viewCategory, viewSubCategory, viewDateFrom, viewDateTo]);
 
-  const hasCategorySelection = Boolean(category);
-  const hasTicketScope = Boolean(category || dateFrom || dateTo);
-  const hasMachineSelection = Boolean(category && subCategory);
+  const hasMachineSelection = Boolean(costsCategory && costsSubCategory);
   const selectedMachineKey = hasMachineSelection
-    ? `${category}::${subCategory}`
+    ? `${costsCategory}::${costsSubCategory}`
     : "";
-  const selectedTicketScopeKey = category
-    ? subCategory
-      ? `${category}::${subCategory}`
-      : `${category}::ALL`
+  const selectedTicketScopeKey = costsCategory
+    ? costsSubCategory
+      ? `${costsCategory}::${costsSubCategory}`
+      : `${costsCategory}::ALL`
     : "ALL::ALL";
 
-  const totalTimeSeconds = useMemo(() => {
-    const from = dateFrom ? new Date(dateFrom).getTime() : -Infinity;
-    const to = dateTo ? new Date(dateTo).getTime() : Infinity;
-
-    return filteredIssues.reduce((sum: number, issue: NormalizedIssue) => {
-      const worklogs = issue.worklogs ?? [];
-      if (worklogs.length > 0) {
-        const logged = worklogs.reduce((acc: number, w) => {
-          const started = new Date(w.started).getTime();
-          if (started >= from && started <= to) {
-            return acc + (w.timeSpentSeconds ?? 0);
-          }
-          return acc;
-        }, 0);
-        return sum + logged;
-      }
-
-      const created = new Date(issue.created).getTime();
-      if (created >= from && created <= to) {
-        return sum + (issue.timeSpentSeconds ?? 0);
-      }
-      return sum;
-    }, 0);
-  }, [filteredIssues, dateFrom, dateTo]);
-
-  const selectedMachineCalculatedMoney = hasMachineSelection
-    ? (totalTimeSeconds / 3600) * machineRate
-    : 0;
   const selectedMachineManualMoney = manualEntries.reduce(
     (sum: number, entry) => sum + entry.amount,
     0
@@ -197,19 +548,142 @@ export default function AdminPage() {
     const cost = ticketCostsByIssue[issue.key];
     return sum + (cost?.amount ?? 0);
   }, 0);
-  const selectedMachineTotalMoney =
-    selectedMachineCalculatedMoney +
-    selectedMachineManualMoney +
-    selectedTicketFixMoney;
-  const totalDisplayedCost = hasMachineSelection
-    ? selectedMachineTotalMoney
-    : selectedTicketFixMoney;
-  const statsLoading = loadingInitial || machineDataLoading || ticketCostsLoading;
+  const statisticsTotalTimeSeconds = useMemo(
+    () =>
+      filteredIssues.reduce(
+        (sum: number, issue: NormalizedIssue) => sum + (issue.timeSpentSeconds ?? 0),
+        0
+      ),
+    [filteredIssues]
+  );
+  const statisticsTrackedCost = selectedTicketFixMoney;
+  const ticketsByCategory = useMemo(() => {
+    const rows = Object.keys(DEPARTMENT_LINES).map((name) => ({
+      name,
+      tickets: 0,
+      seconds: 0,
+    }));
+    const byCategory = new Map(rows.map((row) => [row.name, row]));
+
+    for (const issue of filteredIssues) {
+      const { category: categoryName } = getIssueCategoryAndSubcategory(issue);
+      const row =
+        byCategory.get(categoryName) ||
+        { name: categoryName || "Unspecified", tickets: 0, seconds: 0 };
+      row.tickets += 1;
+      row.seconds += issue.timeSpentSeconds ?? 0;
+      if (!byCategory.has(row.name)) {
+        byCategory.set(row.name, row);
+      }
+    }
+
+    return Array.from(byCategory.values())
+      .filter((row) => row.tickets > 0)
+      .sort((a, b) => b.tickets - a.tickets)
+      .slice(0, 8);
+  }, [filteredIssues]);
+  const maxCategoryTickets = useMemo(
+    () => Math.max(...ticketsByCategory.map((item) => item.tickets), 1),
+    [ticketsByCategory]
+  );
+  const ticketsByStatus = useMemo(() => {
+    const byStatus = new Map<string, number>();
+    for (const issue of filteredIssues) {
+      const key = issue.status || "Unknown";
+      byStatus.set(key, (byStatus.get(key) ?? 0) + 1);
+    }
+
+    return Array.from(byStatus.entries())
+      .map(([name, tickets]) => ({ name, tickets }))
+      .sort((a, b) => b.tickets - a.tickets)
+      .slice(0, 8);
+  }, [filteredIssues]);
+  const maxStatusTickets = useMemo(
+    () => Math.max(...ticketsByStatus.map((item) => item.tickets), 1),
+    [ticketsByStatus]
+  );
+  const machineStatistics = useMemo(() => {
+    const byMachine = new Map<
+      string,
+      {
+        key: string;
+        label: string;
+        breakdowns: number;
+        repairCost: number;
+      }
+    >();
+
+    for (const issue of filteredIssues) {
+      const { category: categoryName, subcategory: subcategoryName } =
+        getIssueCategoryAndSubcategory(issue);
+      const machineKey =
+        categoryName && subcategoryName
+          ? `${categoryName}::${subcategoryName}`
+          : issue.key;
+      const label =
+        categoryName && subcategoryName
+          ? `${categoryName} / ${subcategoryName}`
+          : issue.summary || issue.key;
+      const row = byMachine.get(machineKey) || {
+        key: machineKey,
+        label,
+        breakdowns: 0,
+        repairCost: 0,
+      };
+
+      row.breakdowns += 1;
+      row.repairCost += ticketCostsByIssue[issue.key]?.amount ?? 0;
+      byMachine.set(machineKey, row);
+    }
+
+    return Array.from(byMachine.values());
+  }, [filteredIssues, ticketCostsByIssue]);
+  const machinesByBreakdowns = useMemo(
+    () =>
+      [...machineStatistics]
+        .sort((a, b) => b.breakdowns - a.breakdowns)
+        .slice(0, 10),
+    [machineStatistics]
+  );
+  const maxMachineBreakdowns = useMemo(
+    () => Math.max(...machinesByBreakdowns.map((item) => item.breakdowns), 1),
+    [machinesByBreakdowns]
+  );
+  const machinesByRepairCost = useMemo(
+    () =>
+      [...machineStatistics]
+        .filter((item) => item.repairCost > 0)
+        .sort((a, b) => b.repairCost - a.repairCost)
+        .slice(0, 10),
+    [machineStatistics]
+  );
+  const maxMachineRepairCost = useMemo(
+    () => Math.max(...machinesByRepairCost.map((item) => item.repairCost), 1),
+    [machinesByRepairCost]
+  );
+  const topTicketsByTime = useMemo(() => {
+    return [...filteredIssues]
+      .sort((a, b) => (b.timeSpentSeconds ?? 0) - (a.timeSpentSeconds ?? 0))
+      .slice(0, 5);
+  }, [filteredIssues]);
+  const costsTotalPages = Math.max(
+    1,
+    Math.ceil(filteredIssues.length / ticketsPerPage)
+  );
+  const costsPaginationItems = useMemo<(number | string)[]>(() => {
+    if (costsTotalPages <= 6) {
+      return Array.from({ length: costsTotalPages }, (_, i) => i + 1);
+    }
+
+    return [1, 2, 3, 4, 5, "ellipsis", costsTotalPages];
+  }, [costsTotalPages]);
+  const paginatedCostsIssues = useMemo(() => {
+    const start = (costsCurrentPage - 1) * ticketsPerPage;
+    return filteredIssues.slice(start, start + ticketsPerPage);
+  }, [costsCurrentPage, filteredIssues]);
 
   const loadMachineData = useCallback(async () => {
     if (!hasMachineSelection) {
-      setMachineRate(0);
-      setRateInput("");
       setManualEntries([]);
       setMachineDataError("");
       return;
@@ -225,18 +699,125 @@ export default function AdminPage() {
         { cache: "no-store" }
       );
       const data = await parseJson<MachineDataResponse>(res);
-      setMachineRate(data.hourlyRate ?? 0);
-      setRateInput(String(data.hourlyRate ?? 0));
       setManualEntries(data.entries ?? []);
     } catch (e: unknown) {
       setMachineDataError(String((e as Error).message || e));
-      setMachineRate(0);
-      setRateInput("");
       setManualEntries([]);
     } finally {
       setMachineDataLoading(false);
     }
   }, [hasMachineSelection, selectedMachineKey]);
+
+  const loadEquipmentData = useCallback(async () => {
+    if (!hasMachineSelection) {
+      setEquipmentModel("");
+      setEquipmentSerialNumber("");
+      setEquipmentManufacturer("");
+      setEquipmentError("");
+      return;
+    }
+
+    setEquipmentLoading(true);
+    setEquipmentError("");
+    try {
+      const res = await fetch(
+        `/api/admin/equipment?machineKey=${encodeURIComponent(selectedMachineKey)}`,
+        { cache: "no-store" }
+      );
+      const data = await parseJson<EquipmentDetailsResponse>(res);
+      setEquipmentModel(data.model || "");
+      setEquipmentSerialNumber(data.serialNumber || "");
+      setEquipmentManufacturer(data.manufacturer || "");
+    } catch (e: unknown) {
+      setEquipmentError(String((e as Error).message || e));
+      setEquipmentModel("");
+      setEquipmentSerialNumber("");
+      setEquipmentManufacturer("");
+    } finally {
+      setEquipmentLoading(false);
+    }
+  }, [hasMachineSelection, selectedMachineKey]);
+
+  const loadInventoryData = useCallback(async () => {
+    if (machineCatalog.length === 0) {
+      setInventoryDrafts({});
+      return;
+    }
+
+    setInventoryLoading(true);
+    setInventoryError("");
+    try {
+      const res = await fetch("/api/admin/equipment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          machineKeys: machineCatalog.map((m) => m.machineKey),
+        }),
+      });
+      const data = await parseJson<{ items: EquipmentDetailsResponse[] }>(res);
+      const byMachineKey: Record<string, EquipmentDetailsResponse> = {};
+      for (const item of data.items) {
+        byMachineKey[item.machineKey] = item;
+      }
+      const nextDrafts: Record<string, EquipmentDraft> = {};
+      for (const machine of machineCatalog) {
+        const existing = byMachineKey[machine.machineKey];
+        nextDrafts[machine.machineKey] = {
+          model: existing?.model || "",
+          serialNumber: existing?.serialNumber || "",
+          manufacturer: existing?.manufacturer || "",
+        };
+      }
+      setInventoryDrafts(nextDrafts);
+    } catch (e: unknown) {
+      setInventoryError(String((e as Error).message || e));
+    } finally {
+      setInventoryLoading(false);
+    }
+  }, [machineCatalog]);
+
+  useEffect(() => {
+    const requestedView = searchParams.get("view");
+    if (
+      requestedView === "costs" ||
+      requestedView === "inventory" ||
+      requestedView === "users" ||
+      requestedView === "statistics"
+    ) {
+      setActiveFunction(requestedView);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const res = await fetch("/api/auth/session", { cache: "no-store" });
+        const data = (await res.json().catch(() => ({}))) as {
+          user?: {
+            id?: string | null;
+            name?: string | null;
+            email?: string | null;
+          };
+        };
+        const userId = String(data.user?.id || "");
+        const normalizedName = String(data.user?.name || "").trim().toLowerCase();
+        const normalizedEmail = String(data.user?.email || "").trim().toLowerCase();
+        const emailLocalPart = normalizedEmail.includes("@")
+          ? normalizedEmail.split("@")[0]
+          : normalizedEmail;
+
+        setCurrentUserId(userId);
+        setCurrentUserCanManageUsers(
+          normalizedName === "ignven" || emailLocalPart === "ignven"
+        );
+      } catch {
+        setCurrentUserId("");
+        setCurrentUserCanManageUsers(false);
+      }
+    };
+
+    void loadSession();
+  }, []);
 
   useEffect(() => {
     loadMachineData();
@@ -247,124 +828,203 @@ export default function AdminPage() {
   }, [loadMachineData]);
 
   useEffect(() => {
-    const loadTicketCosts = async () => {
-      const issueKeys = filteredIssues.map((i: NormalizedIssue) => i.key);
-      if (issueKeys.length === 0) {
-        setTicketCostsByIssue({});
-        setTicketDrafts({});
-        setTicketCostsLoading(false);
-        return;
-      }
+    loadEquipmentData();
+  }, [loadEquipmentData]);
 
-      setTicketCostsLoading(true);
-      try {
-        const res = await fetch("/api/admin/ticket-costs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ issueKeys }),
-        });
-        const data = await parseJson<{ items: TicketFixCost[] }>(res);
-        const costsMap: Record<string, TicketFixCost> = {};
-        const draftsMap: Record<string, TicketFixDraft> = {};
+  useEffect(() => {
+    loadInventoryData();
+  }, [loadInventoryData]);
 
-        for (const issue of filteredIssues) {
-          const existing = data.items.find((item) => item.issueKey === issue.key);
-          if (existing) {
-            costsMap[issue.key] = existing;
-            draftsMap[issue.key] = {
-              date: existing.date,
-              amount: String(existing.amount),
-              comment: existing.comment,
-            };
-          } else {
-            draftsMap[issue.key] = {
-              date: new Date().toISOString().slice(0, 10),
-              amount: "",
-              comment: "",
-            };
-          }
+  const loadTicketCosts = useCallback(async () => {
+    const issueKeys = filteredIssues.map((i: NormalizedIssue) => i.key);
+    if (issueKeys.length === 0) {
+      setTicketCostsByIssue({});
+      setTicketDrafts({});
+      setTicketCostsLoading(false);
+      return;
+    }
+
+    setTicketCostsLoading(true);
+    try {
+      const res = await fetch("/api/admin/ticket-costs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ issueKeys }),
+      });
+      const data = await parseJson<{ items: TicketFixCost[] }>(res);
+      const costsMap: Record<string, TicketFixCost> = {};
+      const draftsMap: Record<string, TicketFixDraft> = {};
+
+      for (const issue of filteredIssues) {
+        const existing = data.items.find((item) => item.issueKey === issue.key);
+        if (existing) {
+          costsMap[issue.key] = existing;
+          draftsMap[issue.key] = {
+            date: existing.date,
+            amount: String(existing.amount),
+            comment: existing.comment,
+          };
+        } else {
+          draftsMap[issue.key] = {
+            date: new Date().toISOString().slice(0, 10),
+            amount: "",
+            comment: "",
+          };
         }
-
-        setTicketCostsByIssue(costsMap);
-        setTicketDrafts(draftsMap);
-      } catch (e: unknown) {
-        setMachineDataError(String((e as Error).message || e));
-      } finally {
-        setTicketCostsLoading(false);
       }
-    };
 
-    void loadTicketCosts();
+      setTicketCostsByIssue(costsMap);
+      setTicketDrafts(draftsMap);
+    } catch (e: unknown) {
+      setMachineDataError(String((e as Error).message || e));
+    } finally {
+      setTicketCostsLoading(false);
+    }
   }, [filteredIssues]);
 
-  const resetFilters = () => {
-    setCategory("");
-    setSubCategory("");
-    setDateFrom("");
-    setDateTo("");
+  useEffect(() => {
+    void loadTicketCosts();
+  }, [loadTicketCosts, ticketCostsRefreshKey]);
+
+  useEffect(() => {
+    setCostsCurrentPage(1);
+  }, [costsCategory, costsSubCategory, costsDateFrom, costsDateTo]);
+
+  useEffect(() => {
+    if (costsCurrentPage > costsTotalPages) {
+      setCostsCurrentPage(costsTotalPages);
+    }
+  }, [costsCurrentPage, costsTotalPages]);
+
+  const resetCostsFilters = () => {
+    setCostsCategory("");
+    setCostsSubCategory("");
+    setCostsDateFrom(defaultDateRange.from);
+    setCostsDateTo(defaultDateRange.to);
   };
 
-  const applyCurrentWorkWeek = () => {
-    const today = new Date();
-    const monday = startOfIsoWeek(today);
-    const friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
-    setDateFrom(toDateInputValue(monday));
-    setDateTo(toDateInputValue(friday));
+  const resetStatisticsFilters = () => {
+    setStatisticsCategory("");
+    setStatisticsSubCategory("");
+    setStatisticsDateFrom(defaultDateRange.from);
+    setStatisticsDateTo(defaultDateRange.to);
   };
 
-  const applyPreviousWorkWeek = () => {
-    const today = new Date();
-    const monday = startOfIsoWeek(today);
-    const prevMonday = new Date(monday);
-    prevMonday.setDate(monday.getDate() - 7);
-    const prevFriday = new Date(prevMonday);
-    prevFriday.setDate(prevMonday.getDate() + 4);
-    setDateFrom(toDateInputValue(prevMonday));
-    setDateTo(toDateInputValue(prevFriday));
+  const setActiveViewDateRange = (from: string, to: string) => {
+    if (activeFunction === "statistics") {
+      setStatisticsDateFrom(from);
+      setStatisticsDateTo(to);
+      return;
+    }
+
+    setCostsDateFrom(from);
+    setCostsDateTo(to);
+  };
+
+  const applyLastSevenDays = () => {
+    setActiveViewDateRange(defaultDateRange.from, defaultDateRange.to);
+  };
+
+  const applyAllTickets = () => {
+    setActiveViewDateRange("", "");
   };
 
   const applyThisMonth = () => {
-    const today = new Date();
-    const start = new Date(today.getFullYear(), today.getMonth(), 1);
-    setDateFrom(toDateInputValue(start));
-    setDateTo(toDateInputValue(today));
+    const range = getThisMonthRange();
+    setActiveViewDateRange(range.from, range.to);
   };
 
   const applyLastMonth = () => {
-    const today = new Date();
-    const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const end = new Date(today.getFullYear(), today.getMonth(), 0);
-    setDateFrom(toDateInputValue(start));
-    setDateTo(toDateInputValue(end));
+    const range = getLastMonthRange();
+    setActiveViewDateRange(range.from, range.to);
   };
 
   const applyLastSixMonths = () => {
-    const today = new Date();
-    const start = new Date(today.getFullYear(), today.getMonth() - 5, 1);
-    setDateFrom(toDateInputValue(start));
-    setDateTo(toDateInputValue(today));
+    const range = getLastSixMonthsRange();
+    setActiveViewDateRange(range.from, range.to);
   };
 
-  const saveMachineRate = async () => {
+  const saveEquipmentDetails = async () => {
     if (!hasMachineSelection) return;
-    const parsed = Number(rateInput);
-    if (!Number.isFinite(parsed) || parsed < 0) return;
+    const model = equipmentModel.trim();
+    const serialNumber = equipmentSerialNumber.trim();
+    const manufacturer = equipmentManufacturer.trim();
+    if (!model || !serialNumber || !manufacturer) return;
 
+    setEquipmentSaving(true);
+    setEquipmentError("");
     try {
-      const res = await fetch("/api/admin/machine-rate", {
+      const res = await fetch("/api/admin/equipment", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           machineKey: selectedMachineKey,
-          hourlyRate: parsed,
+          model,
+          serialNumber,
+          manufacturer,
         }),
       });
-      const data = await parseJson<{ hourlyRate: number }>(res);
-      setMachineRate(data.hourlyRate);
-      setRateInput(String(data.hourlyRate));
+      const data = await parseJson<EquipmentDetailsResponse>(res);
+      setEquipmentModel(data.model || "");
+      setEquipmentSerialNumber(data.serialNumber || "");
+      setEquipmentManufacturer(data.manufacturer || "");
     } catch (e: unknown) {
-      setMachineDataError(String((e as Error).message || e));
+      setEquipmentError(String((e as Error).message || e));
+    } finally {
+      setEquipmentSaving(false);
+    }
+  };
+
+  const setInventoryDraftField = (
+    machineKey: string,
+    field: keyof EquipmentDraft,
+    value: string
+  ) => {
+    setInventoryDrafts((prev) => ({
+      ...prev,
+      [machineKey]: {
+        model: prev[machineKey]?.model || "",
+        serialNumber: prev[machineKey]?.serialNumber || "",
+        manufacturer: prev[machineKey]?.manufacturer || "",
+        [field]: value,
+      },
+    }));
+  };
+
+  const saveInventoryMachine = async (machineKey: string) => {
+    const draft = inventoryDrafts[machineKey];
+    if (!draft) return;
+    const model = draft.model.trim();
+    const serialNumber = draft.serialNumber.trim();
+    const manufacturer = draft.manufacturer.trim();
+    if (!model || !serialNumber || !manufacturer) return;
+
+    setInventorySavingKey(machineKey);
+    setInventoryError("");
+    try {
+      const res = await fetch("/api/admin/equipment", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          machineKey,
+          model,
+          serialNumber,
+          manufacturer,
+        }),
+      });
+      const saved = await parseJson<EquipmentDetailsResponse>(res);
+      setInventoryDrafts((prev) => ({
+        ...prev,
+        [machineKey]: {
+          model: saved.model || "",
+          serialNumber: saved.serialNumber || "",
+          manufacturer: saved.manufacturer || "",
+        },
+      }));
+    } catch (e: unknown) {
+      setInventoryError(String((e as Error).message || e));
+    } finally {
+      setInventorySavingKey(null);
     }
   };
 
@@ -417,6 +1077,12 @@ export default function AdminPage() {
     } catch (e: unknown) {
       setMachineDataError(String((e as Error).message || e));
     }
+  };
+
+  const handleModalDataChanged = () => {
+    void loadMachineData();
+    void loadEquipmentData();
+    setTicketCostsRefreshKey((value) => value + 1);
   };
 
   const startEditManualCostEntry = (entry: ManualCostEntry) => {
@@ -483,7 +1149,6 @@ export default function AdminPage() {
   };
 
   const saveTicketFixCost = async (issueKey: string) => {
-    if (!hasTicketScope) return;
     const draft = ticketDrafts[issueKey];
     if (!draft) return;
     const amountRaw = draft.amount.trim();
@@ -549,173 +1214,172 @@ export default function AdminPage() {
 
   return (
     <div className="page">
-      <div className="page__layout page__layout--full">
-        <section className="page__content">
-          <div className="page__content-actions">
-            <Link href="/" className="page__action-link">
-              Back to home
-            </Link>
-            <Link href="/admin/users" className="page__action-link">
-              Manage users
-            </Link>
+      <div className="page__layout">
+        <aside className="page__sidebar">
+          <div className="admin-sidebar">
+            <div className="admin-sidebar__section">
+              <div className="admin-sidebar__title">{t("admin.tools")}</div>
+              <div className="admin-sidebar__actions">
+                <button
+                  type="button"
+                  className={`admin-function-button ${
+                    activeFunction === "costs" ? "admin-function-button--active" : ""
+                  }`}
+                  onClick={() => setActiveFunction("costs")}
+                >
+                  {t("admin.timeAndCost")}
+                </button>
+                <button
+                  type="button"
+                  className={`admin-function-button ${
+                    activeFunction === "statistics"
+                      ? "admin-function-button--active"
+                      : ""
+                  }`}
+                  onClick={() => setActiveFunction("statistics")}
+                >
+                  {t("admin.statistics")}
+                </button>
+                <button
+                  type="button"
+                  className={`admin-function-button ${
+                    activeFunction === "inventory"
+                      ? "admin-function-button--active"
+                      : ""
+                  }`}
+                  onClick={() => setActiveFunction("inventory")}
+                >
+                  {t("admin.manageInventory")}
+                </button>
+                <button
+                  type="button"
+                  className={`admin-function-button ${
+                    activeFunction === "users" ? "admin-function-button--active" : ""
+                  }`}
+                  onClick={() => setActiveFunction("users")}
+                >
+                  {t("admin.manageUsers")}
+                </button>
+              </div>
+            </div>
+
+            <div className="admin-sidebar__section admin-sidebar__section--bottom">
+              <Link href="/" className="page__action-link admin-sidebar__link">
+                {t("common.backToHome")}
+              </Link>
+              <button
+                type="button"
+                className="page__action-link admin-sidebar__link"
+                onClick={handleLogout}
+              >
+                {t("common.logout")}
+              </button>
+            </div>
           </div>
+        </aside>
+
+        <section className="page__content">
           <div className="admin-dashboard">
+            {activeFunction === "costs" && (
+              <>
             <div className="admin-card">
-              <h1 className="admin-title">Admin Panel</h1>
+              <h1 className="admin-title">{t("admin.timeAndCost")}</h1>
               <p className="admin-subtitle">
-                Filter by category and subcategory to see time spent on machines
-                in a selected period.
+                {t("admin.timeAndCostSubtitle")}
               </p>
 
-              <div className="admin-filters">
-                <label>
-                  <div className="admin-label">Category</div>
-                  <select
-                    value={category}
-                    onChange={(e) => {
-                      setCategory(e.target.value);
-                      setSubCategory("");
-                    }}
-                    className="admin-input"
-                  >
-                    <option value="">All</option>
-                    {Object.keys(DEPARTMENT_LINES).map((dep) => (
-                      <option key={dep} value={dep}>
-                        {dep}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  <div className="admin-label">Subcategory</div>
-                  <select
-                    value={subCategory}
-                    onChange={(e) => setSubCategory(e.target.value)}
-                    className="admin-input"
-                    disabled={!category}
-                  >
-                    <option value="">All</option>
-                    {subCategoryOptions.map((line) => (
-                      <option key={line} value={line}>
-                        {line}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                <label>
-                  <div className="admin-label">Date from</div>
-                  <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    className="admin-input"
-                  />
-                </label>
-                <label>
-                  <div className="admin-label">Date to</div>
-                  <input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    className="admin-input"
-                  />
-                </label>
-
-                <div className="admin-date-presets">
-                  <button
-                    type="button"
-                    className="admin-reset-button"
-                    onClick={applyCurrentWorkWeek}
-                  >
-                    Current work week
-                  </button>
-                  <button
-                    type="button"
-                    className="admin-reset-button"
-                    onClick={applyPreviousWorkWeek}
-                  >
-                    Previous work week
-                  </button>
-                  <button
-                    type="button"
-                    className="admin-reset-button"
-                    onClick={applyThisMonth}
-                  >
-                    This month
-                  </button>
-                  <button
-                    type="button"
-                    className="admin-reset-button"
-                    onClick={applyLastMonth}
-                  >
-                    Last month
-                  </button>
-                  <button
-                    type="button"
-                    className="admin-reset-button"
-                    onClick={applyLastSixMonths}
-                  >
-                    Last 6 months
-                  </button>
-                </div>
-
-                <div className="admin-filters-actions">
-                  <button
-                    type="button"
-                    className="admin-reset-button"
-                    onClick={resetFilters}
-                    disabled={!category && !subCategory && !dateFrom && !dateTo}
-                  >
-                    Reset filters
-                  </button>
-                </div>
-              </div>
+              <AdminFilters
+                category={costsCategory}
+                subCategory={costsSubCategory}
+                dateFrom={costsDateFrom}
+                dateTo={costsDateTo}
+                subCategoryOptions={costsSubCategoryOptions}
+                activeDatePreset={costsActiveDatePreset}
+                resetDisabled={
+                  !costsCategory &&
+                  !costsSubCategory &&
+                  !costsDateFrom &&
+                  !costsDateTo
+                }
+                onCategoryChange={(value) => {
+                  setCostsCategory(value);
+                  setCostsSubCategory("");
+                }}
+                onSubCategoryChange={setCostsSubCategory}
+                onDateFromChange={setCostsDateFrom}
+                onDateToChange={setCostsDateTo}
+                onApplyAllTickets={applyAllTickets}
+                onApplyLastSevenDays={applyLastSevenDays}
+                onApplyThisMonth={applyThisMonth}
+                onApplyLastMonth={applyLastMonth}
+                onApplyLastSixMonths={applyLastSixMonths}
+                onResetFilters={resetCostsFilters}
+              />
 
               {error && !loadingInitial && (
                 <div className="page__error">{String(error)}</div>
               )}
 
-              {loadingInitial && <div className="page__loading">Loading...</div>}
+              {loadingInitial && <div className="page__loading">{t("common.loading")}</div>}
             </div>
 
             <div className="admin-panel">
-              <div className="admin-stats admin-stats--compact">
-                <div className="admin-stat">
-                  <div className="admin-stat-label">Time spent</div>
-                  <div className="admin-stat-value">
-                    {statsLoading ? (
-                      <span className="admin-stat-loading">
-                        <span className="admin-buffering-spinner" />
-                      </span>
-                    ) : (
-                      formatSeconds(totalTimeSeconds)
-                    )}
-                  </div>
-                </div>
-                <div className="admin-stat">
-                  <div className="admin-stat-label">Cost (total)</div>
-                  <div className="admin-stat-value">
-                    {statsLoading ? (
-                      <span className="admin-stat-loading">
-                        <span className="admin-buffering-spinner" />
-                      </span>
-                    ) : (
-                      formatCurrency(totalDisplayedCost)
-                    )}
-                  </div>
-                </div>
-              </div>
-
               <div className="admin-chart">
-                {hasTicketScope && machineDataError && (
+                {machineDataError && (
                   <div className="page__error">{machineDataError}</div>
                 )}
 
-                {hasCategorySelection && !machineDataLoading && (
+                {hasMachineSelection && equipmentError && (
+                  <div className="page__error">{equipmentError}</div>
+                )}
+
+                {hasMachineSelection && !equipmentLoading && (
                   <div className="admin-manual-costs">
-                    <div className="admin-chart-title">Manual Cost Entries</div>
+                    <div className="admin-chart-title">{t("admin.equipmentDetails")}</div>
+                    <div className="admin-equipment-form">
+                      <input
+                        type="text"
+                        className="admin-input"
+                        value={equipmentModel}
+                        onChange={(e) => setEquipmentModel(e.target.value)}
+                        placeholder={t("admin.model")}
+                      />
+                      <input
+                        type="text"
+                        className="admin-input"
+                        value={equipmentSerialNumber}
+                        onChange={(e) => setEquipmentSerialNumber(e.target.value)}
+                        placeholder={t("admin.serialNumber")}
+                      />
+                      <input
+                        type="text"
+                        className="admin-input"
+                        value={equipmentManufacturer}
+                        onChange={(e) => setEquipmentManufacturer(e.target.value)}
+                        placeholder={t("admin.manufacturer")}
+                      />
+                      <button
+                        type="button"
+                        className="admin-reset-button"
+                        onClick={() => {
+                          void saveEquipmentDetails();
+                        }}
+                        disabled={
+                          equipmentSaving ||
+                          !equipmentModel.trim() ||
+                          !equipmentSerialNumber.trim() ||
+                          !equipmentManufacturer.trim()
+                        }
+                      >
+                        {equipmentSaving ? t("admin.saving") : t("admin.saveDetails")}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {hasMachineSelection && !machineDataLoading && (
+                  <div className="admin-manual-costs">
+                    <div className="admin-chart-title">{t("admin.manualCostEntries")}</div>
                     <div className="admin-manual-form">
                       <input
                         type="date"
@@ -730,14 +1394,14 @@ export default function AdminPage() {
                         className="admin-input"
                         value={entryAmount}
                         onChange={(e) => setEntryAmount(e.target.value)}
-                        placeholder="Amount (EUR)"
+                        placeholder={t("admin.amountEur")}
                       />
                       <input
                         type="text"
                         className="admin-input"
                         value={entryComment}
                         onChange={(e) => setEntryComment(e.target.value)}
-                        placeholder='Comment, e.g. "fixed something"'
+                        placeholder={t("admin.commentPlaceholder")}
                       />
                       <button
                         type="button"
@@ -752,17 +1416,19 @@ export default function AdminPage() {
                           !entryComment.trim()
                         }
                       >
-                        Add entry
+                        {t("admin.addEntry")}
                       </button>
                     </div>
 
                     <div className="admin-manual-total">
-                      Manual total: {formatCurrency(selectedMachineManualMoney)}
+                      {t("admin.manualTotal", {
+                        value: formatCurrency(selectedMachineManualMoney, locale),
+                      })}
                     </div>
 
                     {manualEntries.length === 0 && (
                       <div className="admin-chart-empty">
-                        No manual entries yet.
+                        {t("admin.noManualEntriesYet")}
                       </div>
                     )}
 
@@ -804,21 +1470,21 @@ export default function AdminPage() {
                                   !editComment.trim()
                                 }
                               >
-                                Save
+                                {t("common.save")}
                               </button>
                               <button
                                 type="button"
                                 className="admin-reset-button"
                                 onClick={cancelEditManualCostEntry}
                               >
-                                Cancel
+                                {t("common.cancel")}
                               </button>
                             </div>
                           </>
                         ) : (
                           <>
                             <div>{entry.date}</div>
-                            <div>{formatCurrency(entry.amount)}</div>
+                            <div>{formatCurrency(entry.amount, locale)}</div>
                             <div>{entry.comment}</div>
                             <div className="admin-manual-actions">
                               <button
@@ -826,7 +1492,7 @@ export default function AdminPage() {
                                 className="admin-reset-button"
                                 onClick={() => startEditManualCostEntry(entry)}
                               >
-                                Edit
+                                {t("common.edit")}
                               </button>
                               <button
                                 type="button"
@@ -835,7 +1501,7 @@ export default function AdminPage() {
                                   void deleteManualCostEntry(entry.id);
                                 }}
                               >
-                                Delete
+                                {t("common.delete")}
                               </button>
                             </div>
                           </>
@@ -845,25 +1511,27 @@ export default function AdminPage() {
                   </div>
                 )}
 
-                {hasTicketScope && !machineDataLoading && (
+                {!machineDataLoading && (
                   <div className="admin-manual-costs">
                     {ticketCostsLoading && (
                       <div className="admin-buffering">
                         <div className="admin-buffering-spinner" />
-                        <div className="admin-chart-empty">Loading tickets...</div>
+                        <div className="admin-chart-empty">{t("admin.loadingTickets")}</div>
                       </div>
                     )}
                     {!ticketCostsLoading && (
                       <>
                         <div className="admin-chart-title">
-                          Tickets in selected period ({filteredIssues.length})
+                          {t("admin.ticketsInPeriod", {
+                            count: filteredIssues.length,
+                          })}
                         </div>
                     {filteredIssues.length === 0 && (
                       <div className="admin-chart-empty">
-                        No tickets for selected filters.
+                        {t("admin.noTicketsForFilters")}
                       </div>
                     )}
-                        {filteredIssues.map((issue) => {
+                        {paginatedCostsIssues.map((issue) => {
                       const draft = ticketDrafts[issue.key] || {
                         date: new Date().toISOString().slice(0, 10),
                         amount: "",
@@ -871,12 +1539,18 @@ export default function AdminPage() {
                       };
                       return (
                         <div key={issue.key} className="admin-ticket-row">
-                          <div className="admin-ticket-meta">
-                            <div className="admin-ticket-key">{issue.key}</div>
-                            <div className="admin-ticket-summary">
-                              {issue.summary}
+                          <button
+                            type="button"
+                            className="admin-ticket-open"
+                            onClick={() => setSelectedIssue(issue)}
+                          >
+                            <div className="admin-ticket-meta">
+                              <div className="admin-ticket-key">{issue.key}</div>
+                              <div className="admin-ticket-summary">
+                                {issue.summary}
+                              </div>
                             </div>
-                          </div>
+                          </button>
                           <input
                             type="date"
                             className="admin-input"
@@ -894,7 +1568,7 @@ export default function AdminPage() {
                             onChange={(e) =>
                               setTicketDraftField(issue.key, "amount", e.target.value)
                             }
-                            placeholder="Fix cost (EUR)"
+                            placeholder={t("admin.fixCostEur")}
                           />
                           <input
                             type="text"
@@ -903,7 +1577,7 @@ export default function AdminPage() {
                             onChange={(e) =>
                               setTicketDraftField(issue.key, "comment", e.target.value)
                             }
-                            placeholder="Fix comment (optional)"
+                            placeholder={t("admin.fixCommentOptional")}
                           />
                           <button
                             type="button"
@@ -918,18 +1592,437 @@ export default function AdminPage() {
                                 Number(draft.amount) < 0)
                             }
                           >
-                            {savingTicketKey === issue.key ? "Saving..." : "Save"}
+                            {savingTicketKey === issue.key ? t("admin.saving") : t("common.save")}
                           </button>
                         </div>
                       );
                     })}
+                        {costsTotalPages > 1 && (
+                          <div className="page__pagination">
+                            <button
+                              type="button"
+                              className="page__pagination-button"
+                              onClick={() =>
+                                setCostsCurrentPage((prev) => Math.max(1, prev - 1))
+                              }
+                              disabled={costsCurrentPage === 1}
+                            >
+                              &lt;
+                            </button>
+                            <div className="page__pagination-pages">
+                              {costsPaginationItems.map((item, index) =>
+                                typeof item === "number" ? (
+                                  <button
+                                    key={item}
+                                    type="button"
+                                    className={`page__pagination-button ${
+                                      costsCurrentPage === item
+                                        ? "page__pagination-button--active"
+                                        : ""
+                                    }`}
+                                    onClick={() => setCostsCurrentPage(item)}
+                                  >
+                                    {item}
+                                  </button>
+                                ) : (
+                                  <span
+                                    key={`${item}-${index}`}
+                                    className="page__pagination-ellipsis"
+                                  >
+                                    ...
+                                  </span>
+                                )
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              className="page__pagination-button"
+                              onClick={() =>
+                                setCostsCurrentPage((prev) =>
+                                  Math.min(costsTotalPages, prev + 1)
+                                )
+                              }
+                              disabled={costsCurrentPage === costsTotalPages}
+                            >
+                              &gt;
+                            </button>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
                 )}
               </div>
             </div>
+              </>
+            )}
+
+            {activeFunction === "inventory" && (
+              <>
+                <div className="admin-card">
+                  <h1 className="admin-title">{t("admin.inventoryTitle")}</h1>
+                  <p className="admin-subtitle">
+                    {t("admin.inventorySubtitle")}
+                  </p>
+                  <div className="admin-filters">
+                    <label className="admin-inventory-search">
+                      <div className="admin-label">{t("admin.searchMachines")}</div>
+                      <input
+                        type="text"
+                        className="admin-input"
+                        value={inventoryQuery}
+                        onChange={(e) => setInventoryQuery(e.target.value)}
+                        placeholder={t("admin.searchMachinesPlaceholder")}
+                      />
+                    </label>
+                    <div className="admin-filters-actions admin-filters-actions--inline">
+                      <button
+                        type="button"
+                        className="admin-reset-button"
+                        onClick={() => {
+                          void loadInventoryData();
+                        }}
+                        disabled={inventoryLoading}
+                      >
+                        {inventoryLoading ? t("common.loading") : t("common.refresh")}
+                      </button>
+                    </div>
+                  </div>
+                  {inventoryError && <div className="page__error">{inventoryError}</div>}
+                </div>
+
+                <div className="admin-panel">
+                  <div className="admin-chart-title">
+                    {t("admin.machinesCount", {
+                      count: filteredMachineCatalog.length,
+                    })}
+                  </div>
+                  {inventoryLoading && (
+                    <div className="admin-buffering">
+                      <div className="admin-buffering-spinner" />
+                      <div className="admin-chart-empty">{t("admin.loadingMachines")}</div>
+                    </div>
+                  )}
+                  {!inventoryLoading && filteredMachineCatalog.length === 0 && (
+                    <div className="admin-chart-empty">{t("admin.noMachinesFound")}</div>
+                  )}
+                  {!inventoryLoading &&
+                    filteredMachineCatalog.map((machine) => {
+                      const draft = inventoryDrafts[machine.machineKey] || {
+                        model: "",
+                        serialNumber: "",
+                        manufacturer: "",
+                      };
+                      const isSaving = inventorySavingKey === machine.machineKey;
+                      return (
+                        <div
+                          key={machine.machineKey}
+                          className="admin-inventory-row"
+                        >
+                          <div className="admin-ticket-meta">
+                            <div className="admin-ticket-key">{machine.category}</div>
+                            <div className="admin-ticket-summary">
+                              {machine.subcategory}
+                            </div>
+                          </div>
+                          <label className="admin-inventory-field">
+                            <div className="admin-inventory-field__label">
+                              {t("admin.model")}
+                            </div>
+                            <input
+                              type="text"
+                              className="admin-input"
+                              value={draft.model}
+                              onChange={(e) =>
+                                setInventoryDraftField(
+                                  machine.machineKey,
+                                  "model",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </label>
+                          <label className="admin-inventory-field">
+                            <div className="admin-inventory-field__label">
+                              {t("admin.serialNumber")}
+                            </div>
+                            <input
+                              type="text"
+                              className="admin-input"
+                              value={draft.serialNumber}
+                              onChange={(e) =>
+                                setInventoryDraftField(
+                                  machine.machineKey,
+                                  "serialNumber",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </label>
+                          <label className="admin-inventory-field">
+                            <div className="admin-inventory-field__label">
+                              {t("admin.manufacturer")}
+                            </div>
+                            <input
+                              type="text"
+                              className="admin-input"
+                              value={draft.manufacturer}
+                              onChange={(e) =>
+                                setInventoryDraftField(
+                                  machine.machineKey,
+                                  "manufacturer",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            className="admin-reset-button"
+                            onClick={() => {
+                              void saveInventoryMachine(machine.machineKey);
+                            }}
+                            disabled={
+                              isSaving ||
+                              !draft.model.trim() ||
+                              !draft.serialNumber.trim() ||
+                              !draft.manufacturer.trim()
+                            }
+                          >
+                            {isSaving ? t("admin.saving") : t("common.save")}
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
+              </>
+            )}
+
+            {activeFunction === "statistics" && (
+              <>
+                <div className="admin-card">
+                  <h1 className="admin-title">{t("admin.statistics")}</h1>
+                  <p className="admin-subtitle">
+                    {t("admin.statisticsSubtitle")}
+                  </p>
+                  <p className="admin-subtitle">{statisticsTimeframeLabel}</p>
+
+                  <AdminFilters
+                    className="admin-filters--compact"
+                    category={statisticsCategory}
+                    subCategory={statisticsSubCategory}
+                    dateFrom={statisticsDateFrom}
+                    dateTo={statisticsDateTo}
+                    subCategoryOptions={statisticsSubCategoryOptions}
+                    activeDatePreset={statisticsActiveDatePreset}
+                    resetDisabled={
+                      !statisticsCategory &&
+                      !statisticsSubCategory &&
+                      !statisticsDateFrom &&
+                      !statisticsDateTo
+                    }
+                    onCategoryChange={(value) => {
+                      setStatisticsCategory(value);
+                      setStatisticsSubCategory("");
+                    }}
+                    onSubCategoryChange={setStatisticsSubCategory}
+                    onDateFromChange={setStatisticsDateFrom}
+                    onDateToChange={setStatisticsDateTo}
+                    onApplyAllTickets={applyAllTickets}
+                    onApplyLastSevenDays={applyLastSevenDays}
+                    onApplyThisMonth={applyThisMonth}
+                    onApplyLastMonth={applyLastMonth}
+                    onApplyLastSixMonths={applyLastSixMonths}
+                    onResetFilters={resetStatisticsFilters}
+                  />
+                </div>
+
+                <div className="admin-panel">
+                  <div className="admin-stats">
+                    <div className="admin-stat">
+                      <div className="admin-stat-label">{t("admin.tickets")}</div>
+                      <div className="admin-stat-value">{filteredIssues.length}</div>
+                    </div>
+                    <div className="admin-stat">
+                      <div className="admin-stat-label">{t("admin.loggedTime")}</div>
+                      <div className="admin-stat-value">
+                        {formatSeconds(statisticsTotalTimeSeconds, locale)}
+                      </div>
+                    </div>
+                    <div className="admin-stat">
+                      <div className="admin-stat-label">{t("admin.trackedCost")}</div>
+                      <div className="admin-stat-value">
+                        {formatCurrency(statisticsTrackedCost, locale)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="admin-panel">
+                  <div className="admin-chart-title">{t("admin.ticketsByCategory")}</div>
+                  {ticketsByCategory.length === 0 && (
+                    <div className="admin-chart-empty">
+                      {t("admin.noTicketData")}
+                    </div>
+                  )}
+                  {ticketsByCategory.map((row) => {
+                    const width = (row.tickets / maxCategoryTickets) * 100;
+                    return (
+                      <div key={row.name} className="admin-chart-row">
+                        <div className="admin-chart-label">{row.name}</div>
+                        <div className="admin-chart-bar">
+                          <div
+                            className="admin-chart-bar-fill"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                        <div className="admin-chart-value">
+                          {getTicketCountLabel(t, row.tickets)}
+                        </div>
+                        <div className="admin-chart-money">
+                          {formatSeconds(row.seconds, locale)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="admin-panel">
+                  <div className="admin-chart-title">
+                    {t("admin.breakdownsByMachine")}
+                  </div>
+                  {machinesByBreakdowns.length === 0 && (
+                    <div className="admin-chart-empty">
+                      {t("admin.noMachineBreakdownData")}
+                    </div>
+                  )}
+                  {machinesByBreakdowns.map((row) => {
+                    const width = (row.breakdowns / maxMachineBreakdowns) * 100;
+                    return (
+                      <div key={row.key} className="admin-chart-row">
+                        <div className="admin-chart-label">{row.label}</div>
+                        <div className="admin-chart-bar">
+                          <div
+                            className="admin-chart-bar-fill"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                        <div className="admin-chart-value">
+                          {t("admin.breakdownsCount", {
+                            count: row.breakdowns,
+                          })}
+                        </div>
+                        <div className="admin-chart-money">
+                          {formatCurrency(row.repairCost, locale)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="admin-panel">
+                  <div className="admin-chart-title">
+                    {t("admin.repairCostByMachine")}
+                  </div>
+                  {machinesByRepairCost.length === 0 && (
+                    <div className="admin-chart-empty">
+                      {t("admin.noRepairCostData")}
+                    </div>
+                  )}
+                  {machinesByRepairCost.map((row) => {
+                    const width = (row.repairCost / maxMachineRepairCost) * 100;
+                    return (
+                      <div key={row.key} className="admin-chart-row">
+                        <div className="admin-chart-label">{row.label}</div>
+                        <div className="admin-chart-bar">
+                          <div
+                            className="admin-chart-bar-fill"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                        <div className="admin-chart-value">
+                          {formatCurrency(row.repairCost, locale)}
+                        </div>
+                        <div className="admin-chart-money">
+                          {t("admin.breakdownsCount", {
+                            count: row.breakdowns,
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="admin-panel">
+                  <div className="admin-chart-title">{t("admin.ticketsByStatus")}</div>
+                  {ticketsByStatus.length === 0 && (
+                    <div className="admin-chart-empty">{t("admin.noStatusData")}</div>
+                  )}
+                  {ticketsByStatus.map((row) => {
+                    const width = (row.tickets / maxStatusTickets) * 100;
+                    return (
+                      <div
+                        key={row.name}
+                        className="admin-chart-row admin-chart-row--compact"
+                      >
+                        <div className="admin-chart-label">{row.name}</div>
+                        <div className="admin-chart-bar">
+                          <div
+                            className="admin-chart-bar-fill"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                        <div className="admin-chart-value">
+                          {getTicketCountLabel(t, row.tickets)}
+                        </div>
+                        <div className="admin-chart-money"> </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="admin-panel">
+                  <div className="admin-chart-title">{t("admin.topTicketsByLoggedTime")}</div>
+                  {topTicketsByTime.length === 0 && (
+                    <div className="admin-chart-empty">{t("admin.noTicketsFound")}</div>
+                  )}
+                  {topTicketsByTime.map((issue) => (
+                    <button
+                      key={issue.key}
+                      type="button"
+                      className="admin-ticket-open admin-chart-row admin-chart-row--tickets"
+                      onClick={() => setSelectedIssue(issue)}
+                    >
+                      <div className="admin-chart-label">{issue.key}</div>
+                      <div className="admin-ticket-summary">{issue.summary}</div>
+                      <div className="admin-chart-value">
+                        {formatSeconds(issue.timeSpentSeconds ?? 0, locale)}
+                      </div>
+                      <div className="admin-chart-money">
+                        {ticketCostsByIssue[issue.key]
+                          ? formatCurrency(ticketCostsByIssue[issue.key].amount, locale)
+                          : "-"}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {activeFunction === "users" && (
+              <UsersManager
+                currentUserId={currentUserId}
+                canManageUsers={currentUserCanManageUsers}
+              />
+            )}
           </div>
+
+          <AdminTicketModal
+            isOpen={!!selectedIssue}
+            onClose={() => setSelectedIssue(null)}
+            issue={selectedIssue}
+            onDataChanged={handleModalDataChanged}
+          />
         </section>
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useI18n } from "@/components/I18nProvider";
 import type { NormalizedIssue } from "@/lib/jira";
 import "./ticketCard.css";
 import { getStatusClassName } from "@/helpers/getStatusClassName";
@@ -16,6 +17,7 @@ export const TicketCard = React.memo(function TicketCard({
   issue: NormalizedIssue;
   onOpen: (issue: NormalizedIssue) => void;
 }) {
+  const { locale, t } = useI18n();
   const attachmentCount = Array.isArray(i.attachment) ? i.attachment.length : 0;
   const mechanics = Array.isArray(i.mechanicsRaw)
     ? i.mechanicsRaw.map((m: { value?: string }) => m.value).filter(Boolean)
@@ -28,7 +30,7 @@ export const TicketCard = React.memo(function TicketCard({
         <div className="ticket-card__header-right">
           {attachmentCount > 0 && (
             <span className="ticket-card__attachment-indicator">
-              Attachment
+              {t("home.attachment")}
             </span>
           )}
           <span className={getStatusClassName(i.statusCategory)}>{i.status}</span>
@@ -42,9 +44,8 @@ export const TicketCard = React.memo(function TicketCard({
       )}
 
       <div className="ticket-card__chips">
-        <Chip text={`Created: ${relativeDate(i.created)}`} />
-        <Chip text={`Time: ${fmtDuration(i.timeSpentSeconds)}`} />
-        {attachmentCount > 0 && <Chip text={`Attachments: ${attachmentCount}`} />}
+        <Chip text={t("home.createdLabel", { value: relativeDate(i.created, locale) })} />
+        <Chip text={t("home.timeLabel", { value: fmtDuration(i.timeSpentSeconds, locale) })} />
       </div>
 
       <div className="ticket-card__users">
@@ -57,7 +58,7 @@ export const TicketCard = React.memo(function TicketCard({
 
         <div className="ticket-card__user">
           <Avatar url={i.reporter?.avatar} />
-          <span>Reporter: {i.reporter?.name || "-"}</span>
+          <span>{t("home.reporterLabel", { value: i.reporter?.name || "-" })}</span>
         </div>
       </div>
     </div>

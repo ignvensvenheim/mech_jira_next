@@ -1,10 +1,11 @@
-export function relativeDate(iso: string) {
+import { Locale } from "@/lib/i18n";
+
+export function relativeDate(iso: string, locale: Locale = "en") {
   const d = new Date(iso);
-
-  const hh = d.getHours().toString().padStart(2, "0");
-  const mm = d.getMinutes().toString().padStart(2, "0");
-  const day = d.getDate().toString().padStart(2, "0");
-  const month = (d.getMonth() + 1).toString().padStart(2, "0");
-
-  return `${hh}:${mm} ${month}/${day}`;
+  return new Intl.DateTimeFormat(locale === "lt" ? "lt-LT" : "en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
 }
