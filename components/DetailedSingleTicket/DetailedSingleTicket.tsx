@@ -2,8 +2,10 @@
 
 import "./detailedSingleTicket.css";
 import React, { useEffect, useState } from "react";
+import { useI18n } from "@/components/I18nProvider";
 import type { NormalizedIssue } from "@/lib/jira";
 import { Oval } from "react-loader-spinner";
+import { fmtDuration } from "@/helpers/fmtDuration";
 import { relativeDate } from "@/helpers/relativeDate";
 import Avatar from "../Avatar";
 
@@ -21,6 +23,7 @@ export function DetailedSingleTicket({
   issue: NormalizedIssue;
   loadingDetail?: boolean;
 }) {
+  const { locale, t } = useI18n();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
 
@@ -85,19 +88,19 @@ export function DetailedSingleTicket({
       <section className="detailed-ticket__section detailed-ticket__section--compact">
         <div className="detailed-ticket__meta-grid">
           <div className="detailed-ticket__meta-item">
-            <span className="detailed-ticket__label">Created</span>
-            <span>{relativeDate(issue.created)}</span>
+            <span className="detailed-ticket__label">{t("common.created")}</span>
+            <span>{relativeDate(issue.created, locale)}</span>
           </div>
           <div className="detailed-ticket__meta-item">
-            <span className="detailed-ticket__label">Updated</span>
-            <span>{relativeDate(issue.updated || issue.created)}</span>
+            <span className="detailed-ticket__label">{t("common.updated")}</span>
+            <span>{relativeDate(issue.updated || issue.created, locale)}</span>
           </div>
           <div className="detailed-ticket__meta-item">
-            <span className="detailed-ticket__label">Time Spent</span>
-            <span>{issue.timeSpentSeconds ? `${Math.round(issue.timeSpentSeconds / 60)} min` : "0 min"}</span>
+            <span className="detailed-ticket__label">{t("common.timeSpent")}</span>
+            <span>{fmtDuration(issue.timeSpentSeconds, locale)}</span>
           </div>
           <div className="detailed-ticket__meta-item">
-            <span className="detailed-ticket__label">Priority</span>
+            <span className="detailed-ticket__label">{t("common.priority")}</span>
             <span>{issue.priority || "-"}</span>
           </div>
         </div>
@@ -107,17 +110,17 @@ export function DetailedSingleTicket({
         <div className="detailed-ticket__people-row">
           <div className="detailed-ticket__person-row">
             <Avatar url={issue.reporter?.avatar} />
-            <span>Reporter: {issue.reporter?.name || "-"}</span>
+            <span>{t("common.reporter")}: {issue.reporter?.name || "-"}</span>
           </div>
           <div className="detailed-ticket__person-row">
             <Avatar url="https://cdn-icons-png.flaticon.com/512/2494/2494496.png" />
-            <span>Mechanics: {mechanics || "-"}</span>
+            <span>{t("common.mechanics")}: {mechanics || "-"}</span>
           </div>
         </div>
       </section>
 
       <section className="detailed-ticket__section">
-        <h3 className="detailed-ticket__section-title">Attachments</h3>
+        <h3 className="detailed-ticket__section-title">{t("common.attachments")}</h3>
 
         {loadingAttachments && (
           <div className="page__loading">
@@ -126,7 +129,7 @@ export function DetailedSingleTicket({
         )}
 
         {!loadingAttachments && attachments.length === 0 && (
-          <p className="detailed-ticket__empty">No attachments.</p>
+          <p className="detailed-ticket__empty">{t("common.noAttachments")}</p>
         )}
 
         {!loadingAttachments && attachments.length > 0 && (
@@ -138,7 +141,7 @@ export function DetailedSingleTicket({
                   <img src={a.blobUrl} alt={a.filename} className="detailed-ticket__attachment-image" />
                 ) : (
                   <a href={a.blobUrl} download={a.filename} className="detailed-ticket__download-link">
-                    Download file
+                    {t("common.downloadFile")}
                   </a>
                 )}
               </div>
@@ -148,17 +151,17 @@ export function DetailedSingleTicket({
       </section>
 
       <section className="detailed-ticket__section">
-        <h3 className="detailed-ticket__section-title">Comments</h3>
+        <h3 className="detailed-ticket__section-title">{t("common.comments")}</h3>
         {Array.isArray(issue.comments) && issue.comments.length > 0 ? (
           <div className="detailed-ticket__comments-list">
             {issue.comments.map((c) => (
               <article key={c.id} className="detailed-ticket__comment-item">
                 <div className="detailed-ticket__comment-meta">
                   <span className="detailed-ticket__comment-author">
-                    {c.author?.name || "Unknown"}
+                    {c.author?.name || t("common.unknown")}
                   </span>
                   <span className="detailed-ticket__comment-date">
-                    {relativeDate(c.created)}
+                    {relativeDate(c.created, locale)}
                   </span>
                 </div>
                 <p className="detailed-ticket__comment">{c.body || "-"}</p>
@@ -167,11 +170,11 @@ export function DetailedSingleTicket({
           </div>
         ) : issue.descriptionText ? (
           <>
-            <p className="detailed-ticket__label">Initial note</p>
+            <p className="detailed-ticket__label">{t("common.initialNote")}</p>
             <p className="detailed-ticket__comment">{issue.descriptionText}</p>
           </>
         ) : (
-          <p className="detailed-ticket__empty">No comments yet.</p>
+          <p className="detailed-ticket__empty">{t("common.noCommentsYet")}</p>
         )}
       </section>
     </div>

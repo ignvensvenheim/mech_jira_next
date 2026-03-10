@@ -2,6 +2,7 @@
 import "./exportIssuesButton.css";
 import * as XLSX from "xlsx";
 import { ButtonHTMLAttributes } from "react";
+import { useI18n } from "@/components/I18nProvider";
 import type { Issue } from "@/lib/types";
 
 type Props = {
@@ -69,6 +70,7 @@ function extractBetweenPipes(summary: string = ""): string {
 }
 
 export default function ExportIssuesButton({ issues, ...props }: Props) {
+  const { t } = useI18n();
   const { disabled, className, ...buttonProps } = props;
 
   function exportToExcel() {
@@ -78,29 +80,29 @@ export default function ExportIssuesButton({ issues, ...props }: Props) {
       const secs = i.timeSpentSeconds ?? 0;
 
       return {
-        Key: i.key,
-        Summary: i.summary,
-        Status: i.status,
-        Priority: i.priority,
-        Category: i.requestType ?? "",
-        Sub_Category: extractBetweenPipes(i.summary),
-        Reporter: i.reporter?.name ?? "",
-        Mechanics: i.mechanics?.join(", ") ?? "",
-        Created: i.created ? new Date(i.created) : "",
-        Resolved: i.resolved ? new Date(i.resolved) : "",
-        "Time Spent (h:mm)": secondsToExcelDays(secs),
+        [t("home.exportKey")]: i.key,
+        [t("home.exportSummary")]: i.summary,
+        [t("home.exportStatus")]: i.status,
+        [t("home.exportPriority")]: i.priority,
+        [t("home.exportCategory")]: i.requestType ?? "",
+        [t("home.exportSubcategory")]: extractBetweenPipes(i.summary),
+        [t("home.exportReporter")]: i.reporter?.name ?? "",
+        [t("home.exportMechanics")]: i.mechanics?.join(", ") ?? "",
+        [t("home.exportCreated")]: i.created ? new Date(i.created) : "",
+        [t("home.exportResolved")]: i.resolved ? new Date(i.resolved) : "",
+        [t("home.exportTimeSpent")]: secondsToExcelDays(secs),
       };
     });
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
 
-    setColumnNumberFormat(worksheet, "Created", "yyyy-mm-dd hh:mm");
-    setColumnNumberFormat(worksheet, "Resolved", "yyyy-mm-dd hh:mm");
-    setColumnNumberFormat(worksheet, "Time Spent (h:mm)", "[h]:mm");
+    setColumnNumberFormat(worksheet, t("home.exportCreated"), "yyyy-mm-dd hh:mm");
+    setColumnNumberFormat(worksheet, t("home.exportResolved"), "yyyy-mm-dd hh:mm");
+    setColumnNumberFormat(worksheet, t("home.exportTimeSpent"), "[h]:mm");
 
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Issues");
-    XLSX.writeFile(workbook, "jira_issues.xlsx");
+    XLSX.utils.book_append_sheet(workbook, worksheet, t("home.exportSheet"));
+    XLSX.writeFile(workbook, t("home.exportFile"));
   }
 
   return (
@@ -111,7 +113,7 @@ export default function ExportIssuesButton({ issues, ...props }: Props) {
       onClick={exportToExcel}
       className={`export-button ${className ?? ""}`.trim()}
     >
-      {disabled ? "Fetching tickets..." : "Export to Excel"}
+      {disabled ? t("home.fetchingTickets") : t("home.exportToExcel")}
     </button>
   );
 }

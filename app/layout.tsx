@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
-import Link from "next/link";
+import AppHeader from "@/components/AppHeader";
+import { I18nProvider } from "@/components/I18nProvider";
 import { IssuesProvider } from "@/lib/IssuesContext";
 import "./globals.css";
 
@@ -23,15 +24,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${poppins.variable} antialiased`}>
-        <header className="header">
-          <div className="header__inner">
-            <Link href="/" className="header__logo-link" aria-label="Go to home page">
-              <img src="/logo.svg" alt="Svenheim" className="header__logo" />
-            </Link>
-            <div className="header__right">Mechanikai Jira</div>
-          </div>
-        </header>
-        <IssuesProvider>{children}</IssuesProvider>
+        <I18nProvider>
+          <AppHeader />
+          <IssuesProvider>{children}</IssuesProvider>
+        </I18nProvider>
       </body>
     </html>
   );

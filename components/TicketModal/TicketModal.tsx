@@ -2,6 +2,7 @@ import React from "react";
 import "./ticketModal.css";
 import Modal from "react-modal";
 import { DetailedSingleTicket } from "../DetailedSingleTicket/DetailedSingleTicket";
+import { useI18n } from "@/components/I18nProvider";
 import type { NormalizedIssue } from "@/lib/jira";
 import { normalizeIssue } from "@/lib/normalizeIssue";
 import type { Issue } from "@/lib/types";
@@ -16,6 +17,7 @@ type Props = {
 };
 
 export default function TicketModal({ isOpen, onClose, issue }: Props) {
+  const { t } = useI18n();
   const [detailIssue, setDetailIssue] = React.useState<NormalizedIssue | null>(
     issue
   );
@@ -87,10 +89,10 @@ export default function TicketModal({ isOpen, onClose, issue }: Props) {
                   rel="noreferrer"
                   className="ticket-modal__jira-link"
                 >
-                  Open in Jira
+                  {t("admin.openInJira")}
                 </a>
               )}
-              <button className="modal-close-btn" onClick={onClose}>
+              <button className="modal-close-btn" onClick={onClose} aria-label={t("common.close")}>
                 x
               </button>
             </div>
