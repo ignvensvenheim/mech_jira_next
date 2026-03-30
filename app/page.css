@@ -344,10 +344,24 @@
   gap: 8px;
 }
 
+.admin-sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .admin-sidebar__title {
   font-size: 12px;
   font-weight: 600;
   color: var(--color-text-light);
+}
+
+.admin-sidebar__session {
+  font-size: 12px;
+  color: var(--color-text-light);
+  line-height: 1.4;
+  text-align: right;
 }
 
 .admin-sidebar__actions {
@@ -387,6 +401,7 @@
   color: var(--color-primary);
 }
 
+
 .admin-function-grid {
   margin-top: 10px;
   display: grid;
@@ -406,6 +421,24 @@
   text-align: left;
   text-decoration: none;
   cursor: pointer;
+}
+
+.admin-function-button__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.admin-function-badge {
+  min-width: 24px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #4fa94d;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
 }
 
 .admin-function-button--active {
@@ -599,6 +632,8 @@
 
 .admin-chart-row--tickets:hover {
   background: var(--color-card-bg-hover);
+  border-radius: var(--border-radius);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
 .admin-chart-label {
@@ -641,8 +676,9 @@
 .admin-chart-money {
   font-size: 12px;
   color: var(--color-primary);
-  text-align: right;
+  text-align: left;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .admin-manual-costs {
@@ -722,6 +758,84 @@
   border-radius: var(--border-radius);
   background: #fff;
   margin-bottom: 8px;
+}
+
+.admin-maintenance-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) 140px;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.admin-maintenance-form__button {
+  width: 100%;
+  min-height: 42px;
+}
+
+.admin-maintenance-group {
+  margin-top: 12px;
+}
+
+.admin-maintenance-header-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin: 0 0 14px;
+}
+
+.admin-maintenance-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-maintenance-timeline {
+  margin-bottom: 14px;
+}
+
+.admin-maintenance-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.8fr) 160px auto;
+  gap: 10px;
+  align-items: stretch;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: #fff;
+  margin-bottom: 8px;
+}
+
+.admin-maintenance-row--completed {
+  background: rgba(128, 128, 128, 0.08);
+  border-color: rgba(128, 128, 128, 0.18);
+  opacity: 0.75;
+}
+
+.admin-maintenance-due {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--color-primary);
+  text-align: right;
+}
+
+.admin-maintenance-note {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-maintenance-actions {
+  align-items: stretch;
+  justify-content: flex-end;
+}
+
+.admin-maintenance-actions__button {
+  min-width: 112px;
 }
 
 .admin-inventory-field {
@@ -905,6 +1019,14 @@
   }
 
   .admin-inventory-row {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-maintenance-form {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-maintenance-row {
     grid-template-columns: 1fr;
   }
 

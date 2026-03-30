@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { ensureAssetExists, isConcreteMachineKey } from "@/lib/assets";
 
 export async function POST(req: Request) {
   const session = await requireAdmin();
@@ -20,9 +21,17 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+  if (!isConcreteMachineKey(machineKey)) {
+    return NextResponse.json(
+      { error: "machineKey must reference a concrete asset" },
+      { status: 400 }
+    );
+  }
   if (!Number.isFinite(amount) || amount <= 0) {
     return NextResponse.json({ error: "amount must be > 0" }, { status: 400 });
   }
+
+  await ensureAssetExists(prisma, machineKey, session.user.id);
 
   const entry = await prisma.manualEntry.create({
     data: {

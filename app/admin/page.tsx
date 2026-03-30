@@ -8,6 +8,7 @@ import { signOut } from "next-auth/react";
 import { useI18n } from "@/components/I18nProvider";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { useIssues } from "@/lib/IssuesContext";
+import { getIssueAssetParts, parseMachineKey } from "@/lib/assets";
 import { DEPARTMENT_LINES } from "@/data/listData";
 import AdminTicketModal from "@/components/AdminTicketModal/AdminTicketModal";
 import UsersManager from "./users/users-manager";
@@ -42,6 +43,8 @@ type TicketFixDraft = {
 
 type EquipmentDetailsResponse = {
   machineKey: string;
+  category?: string;
+  subcategory?: string;
   model: string;
   serialNumber: string;
   manufacturer: string;
@@ -54,8 +57,38 @@ type EquipmentDraft = {
   manufacturer: string;
 };
 
-type AdminFunction = "costs" | "inventory" | "users" | "statistics";
+type PlannedMaintenanceItem = {
+  id: string;
+  machineKey: string;
+  title: string;
+  dueDate: string;
+  note: string | null;
+  isCompleted: boolean;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type AssetStatisticsRow = {
+  key: string;
+  label: string;
+  category: string;
+  subcategory: string;
+  breakdowns: number;
+  loggedSeconds: number;
+  repairCost: number;
+  hasAssetRecord: boolean;
+  hasInventoryDetails: boolean;
+};
+
+type AdminFunction =
+  | "costs"
+  | "maintenance"
+  | "inventory"
+  | "users"
+  | "statistics";
 type DatePreset = "" | "all" | "last7" | "thisMonth" | "lastMonth" | "last6Months";
+type MaintenanceTimeline = "all" | "7days" | "month" | "3months";
 
 function formatCurrency(amount: number, locale: string = "en") {
   return new Intl.NumberFormat(locale === "lt" ? "lt-LT" : "en-US", {
@@ -352,6 +385,7 @@ function AdminPageContent() {
   const { loadingInitial, error } = useJiraSearch();
   const { issues } = useIssues();
   const [currentUserId, setCurrentUserId] = useState("");
+  const [currentUserLabel, setCurrentUserLabel] = useState("");
   const [currentUserCanManageUsers, setCurrentUserCanManageUsers] = useState(false);
   const defaultDateRange = useMemo(() => getLastSevenDaysRange(), []);
 
@@ -397,6 +431,23 @@ function AdminPageContent() {
   const [inventoryDrafts, setInventoryDrafts] = useState<
     Record<string, EquipmentDraft>
   >({});
+  const [assetDetailsByMachineKey, setAssetDetailsByMachineKey] = useState<
+    Record<string, EquipmentDetailsResponse>
+  >({});
+  const [plannedMaintenanceItems, setPlannedMaintenanceItems] = useState<
+    PlannedMaintenanceItem[]
+  >([]);
+  const [plannedMaintenanceLoading, setPlannedMaintenanceLoading] = useState(false);
+  const [plannedMaintenanceError, setPlannedMaintenanceError] = useState("");
+  const [plannedMaintenanceSaving, setPlannedMaintenanceSaving] = useState(false);
+  const [maintenanceTimeline, setMaintenanceTimeline] =
+    useState<MaintenanceTimeline>("all");
+  const [maintenanceMachineKey, setMaintenanceMachineKey] = useState("");
+  const [maintenanceTitle, setMaintenanceTitle] = useState("");
+  const [maintenanceDueDate, setMaintenanceDueDate] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
+  const [maintenanceNote, setMaintenanceNote] = useState("");
   const [selectedIssue, setSelectedIssue] = useState<NormalizedIssue | null>(null);
   const [ticketCostsRefreshKey, setTicketCostsRefreshKey] = useState(0);
   const [costsCurrentPage, setCostsCurrentPage] = useState(1);
@@ -433,6 +484,16 @@ function AdminPageContent() {
       return source.includes(needle);
     });
   }, [machineCatalog, inventoryQuery]);
+  const machineLabelByKey = useMemo(
+    () =>
+      Object.fromEntries(
+        machineCatalog.map((machine) => [
+          machine.machineKey,
+          `${machine.category} / ${machine.subcategory}`,
+        ])
+      ) as Record<string, string>,
+    [machineCatalog]
+  );
 
   const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
   const [editDate, setEditDate] = useState("");
@@ -534,12 +595,6 @@ function AdminPageContent() {
   const selectedMachineKey = hasMachineSelection
     ? `${costsCategory}::${costsSubCategory}`
     : "";
-  const selectedTicketScopeKey = costsCategory
-    ? costsSubCategory
-      ? `${costsCategory}::${costsSubCategory}`
-      : `${costsCategory}::ALL`
-    : "ALL::ALL";
-
   const selectedMachineManualMoney = manualEntries.reduce(
     (sum: number, entry) => sum + entry.amount,
     0
@@ -557,93 +612,202 @@ function AdminPageContent() {
     [filteredIssues]
   );
   const statisticsTrackedCost = selectedTicketFixMoney;
+  const statisticsIssueAssetSummary = useMemo(() => {
+    const byMachine = new Map<
+      string,
+      {
+        key: string;
+        category: string;
+        subcategory: string;
+        breakdowns: number;
+        loggedSeconds: number;
+      }
+    >();
+    let unmappedTickets = 0;
+
+    for (const issue of filteredIssues) {
+      const parts = getIssueAssetParts(issue);
+      if (!parts.machineKey) {
+        unmappedTickets += 1;
+        continue;
+      }
+
+      const existing = byMachine.get(parts.machineKey) || {
+        key: parts.machineKey,
+        category: parts.category,
+        subcategory: parts.subcategory,
+        breakdowns: 0,
+        loggedSeconds: 0,
+      };
+
+      existing.breakdowns += 1;
+      existing.loggedSeconds += issue.timeSpentSeconds ?? 0;
+      byMachine.set(parts.machineKey, existing);
+    }
+
+    return {
+      byMachine,
+      unmappedTickets,
+    };
+  }, [filteredIssues]);
+  const repairCostByMachineKey = useMemo(() => {
+    const totals = new Map<string, number>();
+
+    for (const issue of filteredIssues) {
+      const machineKey = getIssueAssetParts(issue).machineKey;
+      if (!machineKey) continue;
+      totals.set(
+        machineKey,
+        (totals.get(machineKey) ?? 0) + (ticketCostsByIssue[issue.key]?.amount ?? 0)
+      );
+    }
+
+    return totals;
+  }, [filteredIssues, ticketCostsByIssue]);
+  const assetStatistics = useMemo<AssetStatisticsRow[]>(() => {
+    return Array.from(statisticsIssueAssetSummary.byMachine.values()).map((row) => {
+      const asset = assetDetailsByMachineKey[row.key];
+      const parsed = parseMachineKey(row.key);
+      const category = asset?.category || row.category || parsed.category || t("common.unknown");
+      const subcategory =
+        asset?.subcategory || row.subcategory || parsed.subcategory || t("common.unknown");
+      const model = asset?.model?.trim() || "";
+      const serialNumber = asset?.serialNumber?.trim() || "";
+      const manufacturer = asset?.manufacturer?.trim() || "";
+
+      return {
+        key: row.key,
+        label: `${category} / ${subcategory}`,
+        category,
+        subcategory,
+        breakdowns: row.breakdowns,
+        loggedSeconds: row.loggedSeconds,
+        repairCost: repairCostByMachineKey.get(row.key) ?? 0,
+        hasAssetRecord: Boolean(asset),
+        hasInventoryDetails: Boolean(model && serialNumber && manufacturer),
+      };
+    });
+  }, [assetDetailsByMachineKey, repairCostByMachineKey, statisticsIssueAssetSummary.byMachine, t]);
+  const statisticsMappedAssetCount = useMemo(
+    () => assetStatistics.filter((item) => item.hasAssetRecord).length,
+    [assetStatistics]
+  );
+  const statisticsAssetsWithInventoryCount = useMemo(
+    () => assetStatistics.filter((item) => item.hasInventoryDetails).length,
+    [assetStatistics]
+  );
+  const statisticsAssetsMissingInventoryCount =
+    statisticsMappedAssetCount - statisticsAssetsWithInventoryCount;
+  const statisticsUnmappedTicketCount = statisticsIssueAssetSummary.unmappedTickets;
+  const totalCatalogAssetCount = machineCatalog.length;
+  const totalRegisteredAssetCount = Object.keys(assetDetailsByMachineKey).length;
+  const totalRegisteredAssetsWithInventoryCount = useMemo(
+    () =>
+      Object.values(assetDetailsByMachineKey).filter(
+        (item) =>
+          Boolean(item.model?.trim()) &&
+          Boolean(item.serialNumber?.trim()) &&
+          Boolean(item.manufacturer?.trim())
+      ).length,
+    [assetDetailsByMachineKey]
+  );
+  const filteredMaintenanceItems = useMemo(() => {
+    const visibleMachineKeys = new Set(filteredMachineCatalog.map((item) => item.machineKey));
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const horizon = new Date(now);
+
+    if (maintenanceTimeline === "all") {
+      horizon.setFullYear(horizon.getFullYear() + 100);
+    } else if (maintenanceTimeline === "7days") {
+      horizon.setDate(horizon.getDate() + 7);
+    } else if (maintenanceTimeline === "month") {
+      horizon.setMonth(horizon.getMonth() + 1);
+    } else {
+      horizon.setMonth(horizon.getMonth() + 3);
+    }
+
+    return plannedMaintenanceItems.filter((item) => {
+      if (!visibleMachineKeys.has(item.machineKey)) return false;
+      const dueDate = new Date(item.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      return dueDate.getTime() <= horizon.getTime();
+    });
+  }, [filteredMachineCatalog, maintenanceTimeline, plannedMaintenanceItems]);
+  const groupedMaintenanceItems = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const sevenDaysFromNow = new Date(now);
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
+    const overdue: PlannedMaintenanceItem[] = [];
+    const dueSoon: PlannedMaintenanceItem[] = [];
+    const upcoming: PlannedMaintenanceItem[] = [];
+    const completed: PlannedMaintenanceItem[] = [];
+
+    for (const item of filteredMaintenanceItems) {
+      if (item.isCompleted) {
+        completed.push(item);
+        continue;
+      }
+
+      const dueDate = new Date(item.dueDate);
+      dueDate.setHours(0, 0, 0, 0);
+      if (dueDate.getTime() < now.getTime()) {
+        overdue.push(item);
+      } else if (dueDate.getTime() <= sevenDaysFromNow.getTime()) {
+        dueSoon.push(item);
+      } else {
+        upcoming.push(item);
+      }
+    }
+
+    return { overdue, dueSoon, upcoming, completed };
+  }, [filteredMaintenanceItems]);
+  const maintenanceBadgeCount =
+    groupedMaintenanceItems.overdue.length + groupedMaintenanceItems.dueSoon.length;
   const ticketsByCategory = useMemo(() => {
-    const rows = Object.keys(DEPARTMENT_LINES).map((name) => ({
-      name,
+    const rows = Object.keys(DEPARTMENT_LINES).map((category) => ({
+      name: category,
       tickets: 0,
       seconds: 0,
     }));
     const byCategory = new Map(rows.map((row) => [row.name, row]));
 
-    for (const issue of filteredIssues) {
-      const { category: categoryName } = getIssueCategoryAndSubcategory(issue);
-      const row =
-        byCategory.get(categoryName) ||
-        { name: categoryName || "Unspecified", tickets: 0, seconds: 0 };
-      row.tickets += 1;
-      row.seconds += issue.timeSpentSeconds ?? 0;
-      if (!byCategory.has(row.name)) {
-        byCategory.set(row.name, row);
+    for (const assetRow of assetStatistics) {
+      const categoryRow =
+        byCategory.get(assetRow.category) ||
+        { name: assetRow.category || "Unspecified", tickets: 0, seconds: 0 };
+      categoryRow.tickets += assetRow.breakdowns;
+      categoryRow.seconds += assetRow.loggedSeconds;
+      if (!byCategory.has(categoryRow.name)) {
+        byCategory.set(categoryRow.name, categoryRow);
       }
+    }
+
+    if (statisticsUnmappedTicketCount > 0) {
+      byCategory.set(t("common.unknown"), {
+        name: t("common.unknown"),
+        tickets: statisticsUnmappedTicketCount,
+        seconds: 0,
+      });
     }
 
     return Array.from(byCategory.values())
       .filter((row) => row.tickets > 0)
       .sort((a, b) => b.tickets - a.tickets)
       .slice(0, 8);
-  }, [filteredIssues]);
+  }, [assetStatistics, statisticsUnmappedTicketCount, t]);
   const maxCategoryTickets = useMemo(
     () => Math.max(...ticketsByCategory.map((item) => item.tickets), 1),
     [ticketsByCategory]
   );
-  const ticketsByStatus = useMemo(() => {
-    const byStatus = new Map<string, number>();
-    for (const issue of filteredIssues) {
-      const key = issue.status || "Unknown";
-      byStatus.set(key, (byStatus.get(key) ?? 0) + 1);
-    }
-
-    return Array.from(byStatus.entries())
-      .map(([name, tickets]) => ({ name, tickets }))
-      .sort((a, b) => b.tickets - a.tickets)
-      .slice(0, 8);
-  }, [filteredIssues]);
-  const maxStatusTickets = useMemo(
-    () => Math.max(...ticketsByStatus.map((item) => item.tickets), 1),
-    [ticketsByStatus]
-  );
-  const machineStatistics = useMemo(() => {
-    const byMachine = new Map<
-      string,
-      {
-        key: string;
-        label: string;
-        breakdowns: number;
-        repairCost: number;
-      }
-    >();
-
-    for (const issue of filteredIssues) {
-      const { category: categoryName, subcategory: subcategoryName } =
-        getIssueCategoryAndSubcategory(issue);
-      const machineKey =
-        categoryName && subcategoryName
-          ? `${categoryName}::${subcategoryName}`
-          : issue.key;
-      const label =
-        categoryName && subcategoryName
-          ? `${categoryName} / ${subcategoryName}`
-          : issue.summary || issue.key;
-      const row = byMachine.get(machineKey) || {
-        key: machineKey,
-        label,
-        breakdowns: 0,
-        repairCost: 0,
-      };
-
-      row.breakdowns += 1;
-      row.repairCost += ticketCostsByIssue[issue.key]?.amount ?? 0;
-      byMachine.set(machineKey, row);
-    }
-
-    return Array.from(byMachine.values());
-  }, [filteredIssues, ticketCostsByIssue]);
   const machinesByBreakdowns = useMemo(
     () =>
-      [...machineStatistics]
+      [...assetStatistics]
         .sort((a, b) => b.breakdowns - a.breakdowns)
         .slice(0, 10),
-    [machineStatistics]
+    [assetStatistics]
   );
   const maxMachineBreakdowns = useMemo(
     () => Math.max(...machinesByBreakdowns.map((item) => item.breakdowns), 1),
@@ -651,11 +815,11 @@ function AdminPageContent() {
   );
   const machinesByRepairCost = useMemo(
     () =>
-      [...machineStatistics]
+      [...assetStatistics]
         .filter((item) => item.repairCost > 0)
         .sort((a, b) => b.repairCost - a.repairCost)
         .slice(0, 10),
-    [machineStatistics]
+    [assetStatistics]
   );
   const maxMachineRepairCost = useMemo(
     () => Math.max(...machinesByRepairCost.map((item) => item.repairCost), 1),
@@ -759,6 +923,7 @@ function AdminPageContent() {
       for (const item of data.items) {
         byMachineKey[item.machineKey] = item;
       }
+      setAssetDetailsByMachineKey(byMachineKey);
       const nextDrafts: Record<string, EquipmentDraft> = {};
       for (const machine of machineCatalog) {
         const existing = byMachineKey[machine.machineKey];
@@ -771,15 +936,34 @@ function AdminPageContent() {
       setInventoryDrafts(nextDrafts);
     } catch (e: unknown) {
       setInventoryError(String((e as Error).message || e));
+      setAssetDetailsByMachineKey({});
     } finally {
       setInventoryLoading(false);
     }
   }, [machineCatalog]);
 
+  const loadPlannedMaintenance = useCallback(async () => {
+    setPlannedMaintenanceLoading(true);
+    setPlannedMaintenanceError("");
+    try {
+      const res = await fetch("/api/admin/planned-maintenance", {
+        cache: "no-store",
+      });
+      const data = await parseJson<{ items: PlannedMaintenanceItem[] }>(res);
+      setPlannedMaintenanceItems(data.items ?? []);
+    } catch (e: unknown) {
+      setPlannedMaintenanceError(String((e as Error).message || e));
+      setPlannedMaintenanceItems([]);
+    } finally {
+      setPlannedMaintenanceLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const requestedView = searchParams.get("view");
     if (
       requestedView === "costs" ||
+      requestedView === "maintenance" ||
       requestedView === "inventory" ||
       requestedView === "users" ||
       requestedView === "statistics"
@@ -802,16 +986,20 @@ function AdminPageContent() {
         const userId = String(data.user?.id || "");
         const normalizedName = String(data.user?.name || "").trim().toLowerCase();
         const normalizedEmail = String(data.user?.email || "").trim().toLowerCase();
+        const displayName = String(data.user?.name || "").trim();
+        const displayEmail = String(data.user?.email || "").trim();
         const emailLocalPart = normalizedEmail.includes("@")
           ? normalizedEmail.split("@")[0]
           : normalizedEmail;
 
         setCurrentUserId(userId);
+        setCurrentUserLabel(displayName || displayEmail || userId);
         setCurrentUserCanManageUsers(
           normalizedName === "ignven" || emailLocalPart === "ignven"
         );
       } catch {
         setCurrentUserId("");
+        setCurrentUserLabel("");
         setCurrentUserCanManageUsers(false);
       }
     };
@@ -834,6 +1022,10 @@ function AdminPageContent() {
   useEffect(() => {
     loadInventoryData();
   }, [loadInventoryData]);
+
+  useEffect(() => {
+    void loadPlannedMaintenance();
+  }, [loadPlannedMaintenance]);
 
   const loadTicketCosts = useCallback(async () => {
     const issueKeys = filteredIssues.map((i: NormalizedIssue) => i.key);
@@ -1028,6 +1220,79 @@ function AdminPageContent() {
     }
   };
 
+  const createPlannedMaintenance = async () => {
+    if (!maintenanceMachineKey || !maintenanceTitle.trim() || !maintenanceDueDate) {
+      return;
+    }
+
+    setPlannedMaintenanceSaving(true);
+    setPlannedMaintenanceError("");
+    try {
+      const res = await fetch("/api/admin/planned-maintenance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          machineKey: maintenanceMachineKey,
+          title: maintenanceTitle.trim(),
+          dueDate: maintenanceDueDate,
+          note: maintenanceNote.trim(),
+        }),
+      });
+      const saved = await parseJson<PlannedMaintenanceItem>(res);
+      setPlannedMaintenanceItems((prev) =>
+        [...prev, saved].sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+      );
+      setMaintenanceTitle("");
+      setMaintenanceDueDate(new Date().toISOString().slice(0, 10));
+      setMaintenanceNote("");
+    } catch (e: unknown) {
+      setPlannedMaintenanceError(String((e as Error).message || e));
+    } finally {
+      setPlannedMaintenanceSaving(false);
+    }
+  };
+
+  const updatePlannedMaintenanceState = async (id: string, isCompleted: boolean) => {
+    try {
+      const res = await fetch(`/api/admin/planned-maintenance/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isCompleted }),
+      });
+      const saved = await parseJson<PlannedMaintenanceItem>(res);
+      setPlannedMaintenanceItems((prev) =>
+        prev.map((item) => (item.id === id ? saved : item))
+      );
+    } catch (e: unknown) {
+      setPlannedMaintenanceError(String((e as Error).message || e));
+    }
+  };
+
+  const deletePlannedMaintenance = async (id: string) => {
+    try {
+      const res = await fetch(`/api/admin/planned-maintenance/${id}`, {
+        method: "DELETE",
+      });
+      await parseJson<{ ok: boolean }>(res);
+      setPlannedMaintenanceItems((prev) => prev.filter((item) => item.id !== id));
+    } catch (e: unknown) {
+      setPlannedMaintenanceError(String((e as Error).message || e));
+    }
+  };
+
+  function getMaintenanceDueLabel(dueDateRaw: string) {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const dueDate = new Date(dueDateRaw);
+    dueDate.setHours(0, 0, 0, 0);
+    const diffMs = dueDate.getTime() - now.getTime();
+    const diffDays = Math.round(diffMs / 86400000);
+
+    if (diffDays < 0) return t("admin.daysOverdue", { count: Math.abs(diffDays) });
+    if (diffDays === 0) return t("admin.dueToday");
+    return t("admin.dueInDays", { count: diffDays });
+  }
+
   const addManualCostEntry = async () => {
     if (!hasMachineSelection) return;
     const amount = Number(entryAmount);
@@ -1151,11 +1416,17 @@ function AdminPageContent() {
   const saveTicketFixCost = async (issueKey: string) => {
     const draft = ticketDrafts[issueKey];
     if (!draft) return;
+    const issue = filteredIssues.find((item) => item.key === issueKey);
+    const machineKey = getIssueAssetParts(issue ?? null).machineKey;
     const amountRaw = draft.amount.trim();
     const amount = amountRaw === "" ? 0 : Number(amountRaw);
     const comment = draft.comment.trim();
     const shouldDelete = amountRaw === "" && !comment;
     if (!shouldDelete && (!draft.date || !Number.isFinite(amount) || amount < 0)) {
+      return;
+    }
+    if (!shouldDelete && !machineKey) {
+      setMachineDataError(t("admin.noMachineMapping"));
       return;
     }
 
@@ -1188,7 +1459,7 @@ function AdminPageContent() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             issueKey,
-            machineKey: selectedTicketScopeKey,
+            machineKey,
             date: draft.date,
             amount,
             comment,
@@ -1218,7 +1489,12 @@ function AdminPageContent() {
         <aside className="page__sidebar">
           <div className="admin-sidebar">
             <div className="admin-sidebar__section">
-              <div className="admin-sidebar__title">{t("admin.tools")}</div>
+              <div className="admin-sidebar__header">
+                <div className="admin-sidebar__title">{t("admin.tools")}</div>
+                {currentUserLabel && (
+                  <div className="admin-sidebar__session">{currentUserLabel}</div>
+                )}
+              </div>
               <div className="admin-sidebar__actions">
                 <button
                   type="button"
@@ -1228,6 +1504,22 @@ function AdminPageContent() {
                   onClick={() => setActiveFunction("costs")}
                 >
                   {t("admin.timeAndCost")}
+                </button>
+                <button
+                  type="button"
+                  className={`admin-function-button ${
+                    activeFunction === "maintenance"
+                      ? "admin-function-button--active"
+                      : ""
+                  }`}
+                  onClick={() => setActiveFunction("maintenance")}
+                >
+                  <span className="admin-function-button__content">
+                    <span>{t("admin.plannedMaintenance")}</span>
+                    {maintenanceBadgeCount > 0 && (
+                      <span className="admin-function-badge">{maintenanceBadgeCount}</span>
+                    )}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -1531,12 +1823,13 @@ function AdminPageContent() {
                         {t("admin.noTicketsForFilters")}
                       </div>
                     )}
-                        {paginatedCostsIssues.map((issue) => {
+                    {paginatedCostsIssues.map((issue) => {
                       const draft = ticketDrafts[issue.key] || {
                         date: new Date().toISOString().slice(0, 10),
                         amount: "",
                         comment: "",
                       };
+                      const issueMachineKey = getIssueAssetParts(issue).machineKey;
                       return (
                         <div key={issue.key} className="admin-ticket-row">
                           <button
@@ -1587,6 +1880,7 @@ function AdminPageContent() {
                             }}
                             disabled={
                               savingTicketKey === issue.key ||
+                              !issueMachineKey ||
                               !draft.date ||
                               (draft.amount.trim() !== "" &&
                                 Number(draft.amount) < 0)
@@ -1692,6 +1986,157 @@ function AdminPageContent() {
                 </div>
 
                 <div className="admin-panel">
+                  <div className="admin-stats">
+                    <div className="admin-stat">
+                      <div className="admin-stat-label">
+                        {t("admin.assetsInFilteredTickets")}
+                      </div>
+                      <div className="admin-stat-value">{statisticsMappedAssetCount}</div>
+                    </div>
+                    {statisticsAssetsMissingInventoryCount > 0 && (
+                      <div className="admin-stat">
+                        <div className="admin-stat-label">
+                          {t("admin.assetsInFilteredTicketsMissingInventory")}
+                        </div>
+                        <div className="admin-stat-value">
+                          {statisticsAssetsMissingInventoryCount}
+                        </div>
+                      </div>
+                    )}
+                    {statisticsUnmappedTicketCount > 0 && (
+                      <div className="admin-stat">
+                        <div className="admin-stat-label">{t("admin.unmappedTickets")}</div>
+                        <div className="admin-stat-value">
+                          {statisticsUnmappedTicketCount}
+                        </div>
+                      </div>
+                    )}
+                    <div className="admin-stat">
+                      <div className="admin-stat-label">{t("admin.registeredAssets")}</div>
+                      <div className="admin-stat-value">{totalRegisteredAssetCount}</div>
+                    </div>
+                    <div className="admin-stat">
+                      <div className="admin-stat-label">{t("admin.catalogAssets")}</div>
+                      <div className="admin-stat-value">{totalCatalogAssetCount}</div>
+                    </div>
+                    <div className="admin-stat">
+                      <div className="admin-stat-label">{t("admin.assetsWithInventory")}</div>
+                      <div className="admin-stat-value">
+                        {totalRegisteredAssetsWithInventoryCount}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="admin-panel">
+                  <div className="admin-chart-title">{t("admin.assetCoverage")}</div>
+                  <p className="admin-subtitle">{t("admin.assetCoverageSubtitle")}</p>
+                  <div className="admin-chart-row admin-chart-row--compact">
+                    <div className="admin-chart-label">
+                      {t("admin.filteredTicketAssetCoverage")}
+                    </div>
+                    <div className="admin-chart-bar">
+                      <div
+                        className="admin-chart-bar-fill"
+                        style={{
+                          width: `${
+                            filteredIssues.length > 0
+                              ? (statisticsMappedAssetCount /
+                                  Math.max(
+                                    statisticsMappedAssetCount + statisticsUnmappedTicketCount,
+                                    1
+                                  )) *
+                                100
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+                    <div className="admin-chart-value">
+                      {statisticsMappedAssetCount}
+                    </div>
+                    <div className="admin-chart-money">
+                      {statisticsUnmappedTicketCount > 0
+                        ? `${t("admin.unmappedTickets")}: ${statisticsUnmappedTicketCount}`
+                        : ""}
+                    </div>
+                  </div>
+                  <div className="admin-chart-row admin-chart-row--compact">
+                    <div className="admin-chart-label">
+                      {t("admin.filteredTicketInventoryCoverage")}
+                    </div>
+                    <div className="admin-chart-bar">
+                      <div
+                        className="admin-chart-bar-fill"
+                        style={{
+                          width: `${
+                            statisticsMappedAssetCount > 0
+                              ? (statisticsAssetsWithInventoryCount /
+                                  Math.max(statisticsMappedAssetCount, 1)) *
+                                100
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+                    <div className="admin-chart-value">
+                      {statisticsAssetsWithInventoryCount}
+                    </div>
+                    <div className="admin-chart-money">
+                      {statisticsAssetsMissingInventoryCount > 0
+                        ? `${t("admin.assetsInFilteredTicketsMissingInventory")}: ${statisticsAssetsMissingInventoryCount}`
+                        : ""}
+                    </div>
+                  </div>
+                  <div className="admin-chart-row admin-chart-row--compact">
+                    <div className="admin-chart-label">
+                      {t("admin.registryInventoryCoverage")}
+                    </div>
+                    <div className="admin-chart-bar">
+                      <div
+                        className="admin-chart-bar-fill"
+                        style={{
+                          width: `${
+                            totalRegisteredAssetCount > 0
+                              ? (totalRegisteredAssetsWithInventoryCount /
+                                  Math.max(totalRegisteredAssetCount, 1)) *
+                                100
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+                    <div className="admin-chart-value">
+                      {totalRegisteredAssetsWithInventoryCount}
+                    </div>
+                    <div className="admin-chart-money">
+                      {t("admin.registeredAssets")}: {totalRegisteredAssetCount}
+                    </div>
+                  </div>
+                  <div className="admin-chart-row admin-chart-row--compact">
+                    <div className="admin-chart-label">{t("admin.catalogCoverage")}</div>
+                    <div className="admin-chart-bar">
+                      <div
+                        className="admin-chart-bar-fill"
+                        style={{
+                          width: `${
+                            totalCatalogAssetCount > 0
+                              ? (totalRegisteredAssetCount /
+                                  Math.max(totalCatalogAssetCount, 1)) *
+                                100
+                              : 0
+                          }%`,
+                        }}
+                      />
+                    </div>
+                    <div className="admin-chart-value">{totalRegisteredAssetCount}</div>
+                    <div className="admin-chart-money">
+                      {t("admin.catalogAssets")}: {totalCatalogAssetCount}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="admin-panel">
                   <div className="admin-chart-title">
                     {t("admin.machinesCount", {
                       count: filteredMachineCatalog.length,
@@ -1794,6 +2239,241 @@ function AdminPageContent() {
                         </div>
                       );
                     })}
+                </div>
+              </>
+            )}
+
+            {activeFunction === "maintenance" && (
+              <>
+                <div className="admin-card">
+                  <h1 className="admin-title">{t("admin.plannedMaintenance")}</h1>
+                  <p className="admin-subtitle">
+                    {t("admin.plannedMaintenanceSubtitle")}
+                  </p>
+                  <div className="admin-maintenance-header-actions">
+                    <a
+                      href="https://svenheim.atlassian.net/servicedesk/customer/portal/40"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="page__action-link admin-maintenance-link"
+                    >
+                      {t("admin.registerMaintenanceTicket")}
+                    </a>
+                  </div>
+                  {plannedMaintenanceError && (
+                    <div className="page__error">{plannedMaintenanceError}</div>
+                  )}
+                </div>
+
+                <div className="admin-panel">
+                  <div className="admin-maintenance-form">
+                    <label className="admin-inventory-field">
+                      <div className="admin-inventory-field__label">
+                        {t("admin.maintenanceAsset")}
+                      </div>
+                      <select
+                        className="admin-input"
+                        value={maintenanceMachineKey}
+                        onChange={(e) => setMaintenanceMachineKey(e.target.value)}
+                      >
+                        <option value="">{t("common.all")}</option>
+                        {machineCatalog.map((machine) => (
+                          <option key={machine.machineKey} value={machine.machineKey}>
+                            {machine.category} / {machine.subcategory}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="admin-inventory-field">
+                      <div className="admin-inventory-field__label">
+                        {t("admin.maintenanceTitle")}
+                      </div>
+                      <input
+                        type="text"
+                        className="admin-input"
+                        value={maintenanceTitle}
+                        onChange={(e) => setMaintenanceTitle(e.target.value)}
+                        placeholder={t("admin.maintenanceTitlePlaceholder")}
+                      />
+                    </label>
+                    <label className="admin-inventory-field">
+                      <div className="admin-inventory-field__label">
+                        {t("admin.maintenanceDueDate")}
+                      </div>
+                      <input
+                        type="date"
+                        className="admin-input"
+                        value={maintenanceDueDate}
+                        onChange={(e) => setMaintenanceDueDate(e.target.value)}
+                      />
+                    </label>
+                    <label className="admin-inventory-field">
+                      <div className="admin-inventory-field__label">
+                        {t("admin.maintenanceNote")}
+                      </div>
+                      <input
+                        type="text"
+                        className="admin-input"
+                        value={maintenanceNote}
+                        onChange={(e) => setMaintenanceNote(e.target.value)}
+                        placeholder={t("admin.maintenanceNotePlaceholder")}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="admin-reset-button admin-maintenance-form__button"
+                      onClick={() => {
+                        void createPlannedMaintenance();
+                      }}
+                      disabled={
+                        plannedMaintenanceSaving ||
+                        !maintenanceMachineKey ||
+                        !maintenanceTitle.trim() ||
+                        !maintenanceDueDate
+                      }
+                    >
+                      {plannedMaintenanceSaving
+                        ? t("admin.saving")
+                        : t("admin.addMaintenancePlan")}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="admin-panel">
+                  <div className="admin-filters-actions admin-filters-actions--presets admin-maintenance-timeline">
+                    <div className="admin-date-presets">
+                      <span className="admin-label">{t("admin.maintenanceTimeline")}</span>
+                      <button
+                        type="button"
+                        className={`admin-reset-button${
+                          maintenanceTimeline === "all"
+                            ? " admin-reset-button--active"
+                            : ""
+                        }`}
+                        onClick={() => setMaintenanceTimeline("all")}
+                      >
+                        {t("admin.allMaintenance")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`admin-reset-button${
+                          maintenanceTimeline === "7days"
+                            ? " admin-reset-button--active"
+                            : ""
+                        }`}
+                        onClick={() => setMaintenanceTimeline("7days")}
+                      >
+                        {t("admin.next7Days")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`admin-reset-button${
+                          maintenanceTimeline === "month"
+                            ? " admin-reset-button--active"
+                            : ""
+                        }`}
+                        onClick={() => setMaintenanceTimeline("month")}
+                      >
+                        {t("admin.nextMonth")}
+                      </button>
+                      <button
+                        type="button"
+                        className={`admin-reset-button${
+                          maintenanceTimeline === "3months"
+                            ? " admin-reset-button--active"
+                            : ""
+                        }`}
+                        onClick={() => setMaintenanceTimeline("3months")}
+                      >
+                        {t("admin.next3Months")}
+                      </button>
+                    </div>
+                  </div>
+                  {plannedMaintenanceLoading && (
+                    <div className="admin-buffering">
+                      <div className="admin-buffering-spinner" />
+                      <div className="admin-chart-empty">{t("common.loading")}</div>
+                    </div>
+                  )}
+                  {!plannedMaintenanceLoading && (
+                    <>
+                      {groupedMaintenanceItems.overdue.length === 0 &&
+                        groupedMaintenanceItems.dueSoon.length === 0 &&
+                        groupedMaintenanceItems.upcoming.length === 0 &&
+                        groupedMaintenanceItems.completed.length === 0 && (
+                          <div className="admin-chart-empty">
+                            {t("admin.noMaintenancePlans")}
+                          </div>
+                        )}
+                      {(
+                        [
+                          ["overdue", groupedMaintenanceItems.overdue, t("admin.overdueMaintenance")],
+                          ["dueSoon", groupedMaintenanceItems.dueSoon, t("admin.dueSoonMaintenance")],
+                          ["upcoming", groupedMaintenanceItems.upcoming, t("admin.upcomingMaintenance")],
+                          ["completed", groupedMaintenanceItems.completed, t("admin.completedMaintenance")],
+                        ] as const
+                      )
+                        .filter(([, items]) => items.length > 0)
+                        .map(([key, items, title]) => (
+                          <div key={key} className="admin-maintenance-group">
+                            <div className="admin-chart-title">{title}</div>
+                            {items.map((item) => (
+                              <div
+                                key={item.id}
+                                className={`admin-maintenance-row${
+                                  item.isCompleted
+                                    ? " admin-maintenance-row--completed"
+                                    : ""
+                                }`}
+                              >
+                                <div className="admin-ticket-meta">
+                                  <div className="admin-ticket-key">
+                                    {machineLabelByKey[item.machineKey] || item.machineKey}
+                                  </div>
+                                  <div className="admin-ticket-summary">{item.title}</div>
+                                  {item.note && (
+                                    <div className="admin-maintenance-note">{item.note}</div>
+                                  )}
+                                </div>
+                                <div className="admin-maintenance-due">
+                                  <div>{new Date(item.dueDate).toISOString().slice(0, 10)}</div>
+                                  {!item.isCompleted && (
+                                    <div className="admin-chart-empty">
+                                      {getMaintenanceDueLabel(item.dueDate)}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="admin-manual-actions admin-maintenance-actions">
+                                  <button
+                                    type="button"
+                                    className="admin-reset-button admin-maintenance-actions__button"
+                                    onClick={() => {
+                                      void updatePlannedMaintenanceState(
+                                        item.id,
+                                        !item.isCompleted
+                                      );
+                                    }}
+                                  >
+                                    {item.isCompleted
+                                      ? t("admin.markActive")
+                                      : t("admin.markCompleted")}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="admin-reset-button admin-maintenance-actions__button"
+                                    onClick={() => {
+                                      void deletePlannedMaintenance(item.id);
+                                    }}
+                                  >
+                                    {t("common.delete")}
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                    </>
+                  )}
                 </div>
               </>
             )}
@@ -1948,34 +2628,6 @@ function AdminPageContent() {
                             count: row.breakdowns,
                           })}
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="admin-panel">
-                  <div className="admin-chart-title">{t("admin.ticketsByStatus")}</div>
-                  {ticketsByStatus.length === 0 && (
-                    <div className="admin-chart-empty">{t("admin.noStatusData")}</div>
-                  )}
-                  {ticketsByStatus.map((row) => {
-                    const width = (row.tickets / maxStatusTickets) * 100;
-                    return (
-                      <div
-                        key={row.name}
-                        className="admin-chart-row admin-chart-row--compact"
-                      >
-                        <div className="admin-chart-label">{row.name}</div>
-                        <div className="admin-chart-bar">
-                          <div
-                            className="admin-chart-bar-fill"
-                            style={{ width: `${width}%` }}
-                          />
-                        </div>
-                        <div className="admin-chart-value">
-                          {getTicketCountLabel(t, row.tickets)}
-                        </div>
-                        <div className="admin-chart-money"> </div>
                       </div>
                     );
                   })}

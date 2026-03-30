@@ -6,6 +6,7 @@ import { Oval } from "react-loader-spinner";
 import { useI18n } from "@/components/I18nProvider";
 import type { NormalizedIssue } from "@/lib/jira";
 import type { Issue } from "@/lib/types";
+import { getIssueAssetParts } from "@/lib/assets";
 import { normalizeIssue } from "@/lib/normalizeIssue";
 import { getStatusClassName } from "@/helpers/getStatusClassName";
 import { relativeDate } from "@/helpers/relativeDate";
@@ -27,6 +28,8 @@ type MachineDataResponse = {
 
 type EquipmentDetailsResponse = {
   machineKey: string;
+  category?: string;
+  subcategory?: string;
   model: string;
   serialNumber: string;
   manufacturer: string;
@@ -68,20 +71,6 @@ function formatCurrency(amount: number, locale: string = "en") {
 function formatMinutes(seconds: number, locale: string = "en") {
   const value = Math.round((seconds || 0) / 60);
   return locale === "lt" ? `${value} min` : `${value} min`;
-}
-
-function getMachineParts(issue: NormalizedIssue | null) {
-  const [categoryPart = "", subcategoryPart = ""] = (issue?.summary ?? "")
-    .split("|")
-    .map((s) => s.trim());
-  const machineKey =
-    categoryPart && subcategoryPart ? `${categoryPart}::${subcategoryPart}` : "";
-
-  return {
-    category: categoryPart,
-    subcategory: subcategoryPart,
-    machineKey,
-  };
 }
 
 async function parseJson<T>(response: Response): Promise<T> {
@@ -133,7 +122,7 @@ export default function AdminTicketModal({
 
     let isCancelled = false;
     const initialDate = new Date().toISOString().slice(0, 10);
-    const { machineKey } = getMachineParts(issue);
+    const { machineKey } = getIssueAssetParts(issue);
 
     const load = async () => {
       setLoadingDetail(true);
@@ -293,7 +282,7 @@ export default function AdminTicketModal({
 
   if (!detailIssue) return null;
 
-  const { category, subcategory, machineKey } = getMachineParts(detailIssue);
+  const { category, subcategory, machineKey } = getIssueAssetParts(detailIssue);
   const manualEntries = machineData?.entries ?? [];
   const manualTotal = manualEntries.reduce((sum, entry) => sum + entry.amount, 0);
 

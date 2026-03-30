@@ -20,10 +20,28 @@ model User {
   role         UserRole      @default(USER)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  machineRates      MachineRate[]
-  manualEntries     ManualEntry[]
-  ticketFixCosts    TicketFixCost[]
-  equipmentDetails  EquipmentDetail[]
+  machineRates  MachineRate[]
+  manualEntries ManualEntry[]
+  ticketFixCosts TicketFixCost[]
+  assetsUpdated Asset[]      @relation("AssetUpdatedBy")
+}
+
+model Asset {
+  id             String        @id @default(cuid())
+  machineKey      String        @unique
+  category        String
+  subcategory     String
+  model           String?
+  serialNumber    String?
+  manufacturer    String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  updatedById     String?
+  updatedBy       User?         @relation("AssetUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  machineRate     MachineRate?
+  manualEntries   ManualEntry[]
+  ticketFixCosts  TicketFixCost[]
+  plannedMaintenances PlannedMaintenance[]
 }
 
 model MachineRate {
@@ -33,6 +51,7 @@ model MachineRate {
   updatedAt   DateTime @updatedAt
   updatedById String?
   updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  asset       Asset    @relation(fields: [machineKey], references: [machineKey], onDelete: Restrict)
 }
 
 model ManualEntry {
@@ -45,6 +64,7 @@ model ManualEntry {
   updatedAt   DateTime @updatedAt
   createdById String?
   createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  asset       Asset    @relation(fields: [machineKey], references: [machineKey], onDelete: Restrict)
 
   @@index([machineKey])
   @@index([date])
@@ -60,18 +80,25 @@ model TicketFixCost {
   updatedAt   DateTime @updatedAt
   updatedById String?
   updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+  asset       Asset    @relation(fields: [machineKey], references: [machineKey], onDelete: Restrict)
 
   @@index([machineKey])
   @@index([date])
 }
 
-model EquipmentDetail {
-  id            String   @id @default(cuid())
-  machineKey     String   @unique
-  model          String
-  serialNumber   String
-  manufacturer   String
-  updatedAt      DateTime @updatedAt
-  updatedById    String?
-  updatedBy      User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+model PlannedMaintenance {
+  id          String   @id @default(cuid())
+  machineKey  String
+  title       String
+  dueDate     DateTime
+  note        String?
+  isCompleted Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  asset       Asset    @relation(fields: [machineKey], references: [machineKey], onDelete: Restrict)
+
+  @@index([machineKey])
+  @@index([dueDate])
+  @@index([isCompleted])
 }
