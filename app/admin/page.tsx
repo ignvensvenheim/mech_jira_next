@@ -860,6 +860,17 @@ function AdminPageContent() {
 
     return totals;
   }, [plannedMaintenanceItems]);
+  const maintenanceCountByMachineKey = useMemo(() => {
+    const totals = new Map<string, number>();
+
+    for (const item of plannedMaintenanceItems) {
+      const cost = item.cost ?? 0;
+      if (cost <= 0) continue;
+      totals.set(item.machineKey, (totals.get(item.machineKey) ?? 0) + 1);
+    }
+
+    return totals;
+  }, [plannedMaintenanceItems]);
   const statisticsMaintenanceCost = useMemo(
     () =>
       Array.from(maintenanceCostsByMachineKey.values()).reduce((sum, cost) => {
@@ -3321,6 +3332,11 @@ function AdminPageContent() {
                         </div>
                         <div className="admin-chart-value">
                           {formatCurrency(row.maintenanceCost, locale)}
+                        </div>
+                        <div className="admin-chart-money">
+                          {t("admin.maintenanceCount", {
+                            count: maintenanceCountByMachineKey.get(row.key) ?? 0,
+                          })}
                         </div>
                       </div>
                     );

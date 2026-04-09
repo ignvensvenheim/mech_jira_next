@@ -102,9 +102,21 @@
   justify-content: center;
 }
 
+.page__view-button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
 .page__view-button:hover {
   background: var(--color-card-bg-hover);
   color: var(--color-primary);
+}
+
+.page__view-button:disabled:hover {
+  background: transparent;
+  color: var(--color-muted);
+  box-shadow: none;
+  transform: none;
 }
 
 .page__view-button:active {
@@ -119,6 +131,12 @@
 .page__view-button--active:hover {
   background: var(--color-header-bg);
   color: #fff;
+}
+
+.page__view-button--active:disabled,
+.page__view-button--active:disabled:hover {
+  background: rgba(44, 62, 80, 0.18);
+  color: rgba(44, 62, 80, 0.7);
 }
 
 .page__view-icon {

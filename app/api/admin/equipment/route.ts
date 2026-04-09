@@ -3,16 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { ensureAssetExists, isConcreteMachineKey } from "@/lib/assets";
 
-type AssetRow = {
-  machineKey: string;
-  category: string;
-  subcategory: string;
-  model: string;
-  serialNumber: string;
-  manufacturer: string;
-  updatedAt: Date;
-};
-
 export async function GET(req: Request) {
   const session = await requireAdmin();
   if (!session) {
@@ -60,13 +50,15 @@ export async function POST(req: Request) {
         .map((v: unknown) => String(v || "").trim())
         .filter((v: string) => Boolean(v))
     : [];
+  const includeAll = body?.includeAll === true;
 
-  if (machineKeys.length === 0) {
+  if (!includeAll && machineKeys.length === 0) {
     return NextResponse.json({ items: [] });
   }
 
   const items = await prisma.asset.findMany({
-    where: { machineKey: { in: machineKeys } },
+    where: includeAll ? undefined : { machineKey: { in: machineKeys } },
+    orderBy: [{ category: "asc" }, { subcategory: "asc" }, { machineKey: "asc" }],
     select: {
       machineKey: true,
       category: true,
