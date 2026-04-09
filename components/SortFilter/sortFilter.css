@@ -85,7 +85,7 @@
 }
 
 .sort-filter__pill {
-  border-radius: 999px;
+  border-radius: var(--border-radius);
   border: 1px solid var(--border-color);
   background: var(--color-card-bg);
   color: var(--color-primary);

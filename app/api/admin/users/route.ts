@@ -3,11 +3,23 @@ import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { isSuperAdminIdentity } from "@/lib/superAdmin";
 
 export async function GET() {
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const actor = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, name: true, email: true },
+  });
+  if (!actor || !isSuperAdminIdentity(actor)) {
+    return NextResponse.json(
+      { error: "Only super admin can view users" },
+      { status: 403 }
+    );
   }
 
   const users = await prisma.user.findMany({
@@ -29,6 +41,17 @@ export async function POST(req: Request) {
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const actor = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { id: true, name: true, email: true },
+  });
+  if (!actor || !isSuperAdminIdentity(actor)) {
+    return NextResponse.json(
+      { error: "Only super admin can create users" },
+      { status: 403 }
+    );
   }
 
   const body = await req.json().catch(() => null);

@@ -7,6 +7,7 @@ import { useI18n } from "@/components/I18nProvider";
 import type { NormalizedIssue } from "@/lib/jira";
 import type { Issue } from "@/lib/types";
 import { getIssueAssetParts } from "@/lib/assets";
+import { getCurrentLocalDateOnly } from "@/lib/dateOnly";
 import { normalizeIssue } from "@/lib/normalizeIssue";
 import { getStatusClassName } from "@/helpers/getStatusClassName";
 import { relativeDate } from "@/helpers/relativeDate";
@@ -104,7 +105,7 @@ export default function AdminTicketModal({
   const [ticketAmount, setTicketAmount] = React.useState("");
   const [ticketComment, setTicketComment] = React.useState("");
   const [savingTicketCost, setSavingTicketCost] = React.useState(false);
-  const [entryDate, setEntryDate] = React.useState(new Date().toISOString().slice(0, 10));
+  const [entryDate, setEntryDate] = React.useState(getCurrentLocalDateOnly());
   const [entryAmount, setEntryAmount] = React.useState("");
   const [entryComment, setEntryComment] = React.useState("");
   const [savingEntryId, setSavingEntryId] = React.useState<string | null>(null);
@@ -121,7 +122,7 @@ export default function AdminTicketModal({
     if (!isOpen || !issue?.key) return;
 
     let isCancelled = false;
-    const initialDate = new Date().toISOString().slice(0, 10);
+    const initialDate = getCurrentLocalDateOnly();
     const { machineKey } = getIssueAssetParts(issue);
 
     const load = async () => {
@@ -285,6 +286,8 @@ export default function AdminTicketModal({
   const { category, subcategory, machineKey } = getIssueAssetParts(detailIssue);
   const manualEntries = machineData?.entries ?? [];
   const manualTotal = manualEntries.reduce((sum, entry) => sum + entry.amount, 0);
+  const ticketFixCostTotal = ticketCost?.amount ?? 0;
+  const overallCostTotal = manualTotal + ticketFixCostTotal;
 
   const saveTicketCost = async () => {
     if (!issue?.key || !machineKey || !ticketDate) return;
@@ -370,7 +373,7 @@ export default function AdminTicketModal({
       );
       setEntryAmount("");
       setEntryComment("");
-      setEntryDate(new Date().toISOString().slice(0, 10));
+      setEntryDate(getCurrentLocalDateOnly());
       refreshParent();
     } catch (error) {
       setAdminDataError(String((error as Error).message || error));
@@ -501,9 +504,9 @@ export default function AdminTicketModal({
                     </strong>
                   </div>
                   <div className="admin-ticket-modal__summary-card">
-                    <span className="detailed-ticket__label">{t("admin.manualEntriesTotal")}</span>
+                    <span className="detailed-ticket__label">{t("admin.totalCost")}</span>
                     <strong className="admin-ticket-modal__summary-value">
-                      {formatCurrency(manualTotal, locale)}
+                      {formatCurrency(overallCostTotal, locale)}
                     </strong>
                   </div>
                 </div>
