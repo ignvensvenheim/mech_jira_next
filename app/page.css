@@ -65,7 +65,7 @@
   position: sticky;
   top: 12px;
   height: 0;
-  z-index: 3;
+  z-index: 1;
   pointer-events: none;
 }
 
@@ -84,7 +84,7 @@
   position: absolute;
   top: 0;
   right: -96px;
-  z-index: 2;
+  z-index: 1;
   pointer-events: auto;
 }
 

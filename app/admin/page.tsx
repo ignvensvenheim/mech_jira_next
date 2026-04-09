@@ -349,6 +349,13 @@ function getTicketCountLabel(
   });
 }
 
+function normalizePlannedMaintenanceItem(item: PlannedMaintenanceItem): PlannedMaintenanceItem {
+  return {
+    ...item,
+    dueDate: formatDateOnly(item.dueDate),
+  };
+}
+
 function getActiveDatePreset(from: string, to: string) {
   const matches = (range: { from: string; to: string }) =>
     from === range.from && to === range.to;
@@ -1350,7 +1357,9 @@ function AdminPageContent() {
         cache: "no-store",
       });
       const data = await parseJson<{ items: PlannedMaintenanceItem[] }>(res);
-      setPlannedMaintenanceItems(sortPlannedMaintenanceItems(data.items ?? []));
+      setPlannedMaintenanceItems(
+        sortPlannedMaintenanceItems((data.items ?? []).map(normalizePlannedMaintenanceItem))
+      );
     } catch (e: unknown) {
       setPlannedMaintenanceError(String((e as Error).message || e));
       setPlannedMaintenanceItems([]);
@@ -1737,7 +1746,9 @@ function AdminPageContent() {
           }),
         }
       );
-      const saved = await parseJson<PlannedMaintenanceItem>(res);
+      const saved = normalizePlannedMaintenanceItem(
+        await parseJson<PlannedMaintenanceItem>(res)
+      );
       upsertAssetDetailsCache(maintenanceMachineKey);
       setPlannedMaintenanceItems((prev) =>
         sortPlannedMaintenanceItems(
@@ -1773,7 +1784,9 @@ function AdminPageContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isCompleted }),
       });
-      const saved = await parseJson<PlannedMaintenanceItem>(res);
+      const saved = normalizePlannedMaintenanceItem(
+        await parseJson<PlannedMaintenanceItem>(res)
+      );
       setPlannedMaintenanceItems((prev) =>
         sortPlannedMaintenanceItems(
           prev.map((item) => (item.id === id ? saved : item))
