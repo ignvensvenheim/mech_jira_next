@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { ensureAssetExists, isConcreteMachineKey } from "@/lib/assets";
 
 type TicketFixCostRow = {
   issueKey: string;
@@ -75,12 +76,20 @@ export async function PUT(req: Request) {
         { status: 400 }
       );
     }
+    if (!isConcreteMachineKey(machineKey)) {
+      return NextResponse.json(
+        { error: "machineKey must reference a concrete asset" },
+        { status: 400 }
+      );
+    }
     if (!Number.isFinite(amount) || amount < 0) {
       return NextResponse.json(
         { error: "amount must be >= 0" },
         { status: 400 }
       );
     }
+
+    await ensureAssetExists(prisma, machineKey, session.user.id);
 
     const rows = await prisma.$queryRaw<TicketFixCostRow[]>(
       Prisma.sql`

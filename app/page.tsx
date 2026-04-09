@@ -6,18 +6,25 @@ import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { Oval } from "react-loader-spinner";
 import { SortFilter } from "@/components/SortFilter/SortFilter";
 import { TicketsGrid } from "@/components/TicketsGrid/TicketsGrid";
+import { useI18n } from "@/components/I18nProvider";
 import { useIssues } from "@/lib/IssuesContext";
 import { NormalizedIssue } from "@/lib/jira";
 import TicketModal from "@/components/TicketModal/TicketModal";
 import { fmtDuration } from "@/helpers/fmtDuration";
 import { relativeDate } from "@/helpers/relativeDate";
 
+const LAYOUT_STORAGE_KEY = "mechanikai-ticket-layout";
+
 export default function Page() {
+  const { t } = useI18n();
   const { loadingInitial, fetchingAllTickets, error } = useJiraSearch();
   const { issues } = useIssues();
 
-  const ITEMS_PER_PAGE = 20;
+  const GRID_ITEMS_PER_PAGE = 20;
+  const LIST_ITEMS_PER_PAGE = 40;
   const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [layoutReady, setLayoutReady] = useState(false);
   const [sort, setSort] = useState<"newest" | "oldest">("newest");
   const [searchText, setSearchText] = useState("");
   const [dateFrom, setDateFrom] = useState("");
@@ -96,12 +103,14 @@ export default function Page() {
     dateTo,
   ]);
 
-  const visibleIssues = useMemo(() => {
-    const start = (page - 1) * ITEMS_PER_PAGE;
-    return filteredIssues.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredIssues, page]);
+  const itemsPerPage = viewMode === "list" ? LIST_ITEMS_PER_PAGE : GRID_ITEMS_PER_PAGE;
 
-  const totalPages = Math.ceil(filteredIssues.length / ITEMS_PER_PAGE);
+  const visibleIssues = useMemo(() => {
+    const start = (page - 1) * itemsPerPage;
+    return filteredIssues.slice(start, start + itemsPerPage);
+  }, [filteredIssues, page, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredIssues.length / itemsPerPage);
   const paginationItems = useMemo<(number | string)[]>(() => {
     if (totalPages <= 6) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -109,6 +118,25 @@ export default function Page() {
 
     return [1, 2, 3, 4, 5, "ellipsis", totalPages];
   }, [totalPages]);
+
+  React.useEffect(() => {
+    const saved =
+      window.localStorage.getItem(LAYOUT_STORAGE_KEY) === "list"
+        ? "list"
+        : "grid";
+    setViewMode(saved);
+    setLayoutReady(true);
+  }, []);
+
+  React.useEffect(() => {
+    if (!layoutReady) return;
+    setPage(1);
+  }, [layoutReady, viewMode]);
+
+  React.useEffect(() => {
+    if (!layoutReady) return;
+    window.localStorage.setItem(LAYOUT_STORAGE_KEY, viewMode);
+  }, [layoutReady, viewMode]);
 
   return (
     <div className="page">
@@ -161,7 +189,51 @@ export default function Page() {
         </aside>
 
         <section className="page__content">
-          <TicketsGrid issues={visibleIssues} onOpen={setSelectedIssue} />
+          <div className="page__content-main">
+            <div className="page__view-toggle-anchor">
+              <div className="page__view-toggle page__view-toggle--floating" aria-label={t("home.view")}>
+                <button
+                  type="button"
+                  className={`page__view-button${
+                    viewMode === "grid" ? " page__view-button--active" : ""
+                  }`}
+                  onClick={() => setViewMode("grid")}
+                  aria-label={t("common.grid")}
+                  title={t("common.grid")}
+                >
+                  <span className="page__view-icon page__view-icon--grid" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className={`page__view-button${
+                    viewMode === "list" ? " page__view-button--active" : ""
+                  }`}
+                  onClick={() => setViewMode("list")}
+                  aria-label={t("common.list")}
+                  title={t("common.list")}
+                >
+                  <span className="page__view-icon page__view-icon--list" aria-hidden="true">
+                    <span />
+                    <span />
+                    <span />
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <TicketsGrid
+              issues={layoutReady ? visibleIssues : []}
+              onOpen={setSelectedIssue}
+              view={viewMode}
+            />
+          </div>
 
           <TicketModal
             isOpen={!!selectedIssue}

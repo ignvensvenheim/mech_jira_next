@@ -6,6 +6,8 @@ import { Oval } from "react-loader-spinner";
 import { useI18n } from "@/components/I18nProvider";
 import type { NormalizedIssue } from "@/lib/jira";
 import type { Issue } from "@/lib/types";
+import { getIssueAssetParts } from "@/lib/assets";
+import { getCurrentLocalDateOnly } from "@/lib/dateOnly";
 import { normalizeIssue } from "@/lib/normalizeIssue";
 import { getStatusClassName } from "@/helpers/getStatusClassName";
 import { relativeDate } from "@/helpers/relativeDate";
@@ -27,6 +29,8 @@ type MachineDataResponse = {
 
 type EquipmentDetailsResponse = {
   machineKey: string;
+  category?: string;
+  subcategory?: string;
   model: string;
   serialNumber: string;
   manufacturer: string;
@@ -70,20 +74,6 @@ function formatMinutes(seconds: number, locale: string = "en") {
   return locale === "lt" ? `${value} min` : `${value} min`;
 }
 
-function getMachineParts(issue: NormalizedIssue | null) {
-  const [categoryPart = "", subcategoryPart = ""] = (issue?.summary ?? "")
-    .split("|")
-    .map((s) => s.trim());
-  const machineKey =
-    categoryPart && subcategoryPart ? `${categoryPart}::${subcategoryPart}` : "";
-
-  return {
-    category: categoryPart,
-    subcategory: subcategoryPart,
-    machineKey,
-  };
-}
-
 async function parseJson<T>(response: Response): Promise<T> {
   const json = (await response.json().catch(() => ({}))) as T & {
     error?: string;
@@ -115,7 +105,7 @@ export default function AdminTicketModal({
   const [ticketAmount, setTicketAmount] = React.useState("");
   const [ticketComment, setTicketComment] = React.useState("");
   const [savingTicketCost, setSavingTicketCost] = React.useState(false);
-  const [entryDate, setEntryDate] = React.useState(new Date().toISOString().slice(0, 10));
+  const [entryDate, setEntryDate] = React.useState(getCurrentLocalDateOnly());
   const [entryAmount, setEntryAmount] = React.useState("");
   const [entryComment, setEntryComment] = React.useState("");
   const [savingEntryId, setSavingEntryId] = React.useState<string | null>(null);
@@ -132,8 +122,8 @@ export default function AdminTicketModal({
     if (!isOpen || !issue?.key) return;
 
     let isCancelled = false;
-    const initialDate = new Date().toISOString().slice(0, 10);
-    const { machineKey } = getMachineParts(issue);
+    const initialDate = getCurrentLocalDateOnly();
+    const { machineKey } = getIssueAssetParts(issue);
 
     const load = async () => {
       setLoadingDetail(true);
@@ -293,9 +283,11 @@ export default function AdminTicketModal({
 
   if (!detailIssue) return null;
 
-  const { category, subcategory, machineKey } = getMachineParts(detailIssue);
+  const { category, subcategory, machineKey } = getIssueAssetParts(detailIssue);
   const manualEntries = machineData?.entries ?? [];
   const manualTotal = manualEntries.reduce((sum, entry) => sum + entry.amount, 0);
+  const ticketFixCostTotal = ticketCost?.amount ?? 0;
+  const overallCostTotal = manualTotal + ticketFixCostTotal;
 
   const saveTicketCost = async () => {
     if (!issue?.key || !machineKey || !ticketDate) return;
@@ -381,7 +373,7 @@ export default function AdminTicketModal({
       );
       setEntryAmount("");
       setEntryComment("");
-      setEntryDate(new Date().toISOString().slice(0, 10));
+      setEntryDate(getCurrentLocalDateOnly());
       refreshParent();
     } catch (error) {
       setAdminDataError(String((error as Error).message || error));
@@ -512,9 +504,9 @@ export default function AdminTicketModal({
                     </strong>
                   </div>
                   <div className="admin-ticket-modal__summary-card">
-                    <span className="detailed-ticket__label">{t("admin.manualEntriesTotal")}</span>
+                    <span className="detailed-ticket__label">{t("admin.totalCost")}</span>
                     <strong className="admin-ticket-modal__summary-value">
-                      {formatCurrency(manualTotal, locale)}
+                      {formatCurrency(overallCostTotal, locale)}
                     </strong>
                   </div>
                 </div>
