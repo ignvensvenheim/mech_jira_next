@@ -19,12 +19,26 @@
 
 body {
   background-color: var(--background);
-  background-image: url("/bg2.jpg");
-  background-position: center;
-  background-repeat: repeat;
-  background-size: 500px;
   color: var(--foreground);
   font-family: var(--font-poppins), sans-serif;
+}
+
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--background);
+  background-image: url("/bg2.jpg");
+  background-position: center top;
+  background-repeat: repeat;
+  background-size: 500px;
 }
 
 :where(button, .page__action-link, .auth-button, .sort-filter__admin-login, .export-button) {

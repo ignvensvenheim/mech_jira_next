@@ -217,6 +217,7 @@ export const dictionaries = {
       ticketsCountOne: "{count} ticket",
       ticketsCountMany: "{count} tickets",
       breakdownsCount: "{count} breakdowns",
+      maintenanceCount: "{count} maintenance",
       userManagement: "User Management",
       userManagementSubtitle: "Create and manage application users and roles.",
       email: "Email",
@@ -472,6 +473,7 @@ export const dictionaries = {
       ticketsCountOne: "{count} užklausa",
       ticketsCountMany: "{count} užklausos",
       breakdownsCount: "{count} gedimai",
+      maintenanceCount: "{count} priežiūra",
       userManagement: "Vartotojų valdymas",
       userManagementSubtitle:
         "Kurkite ir valdykite programos vartotojus bei roles.",

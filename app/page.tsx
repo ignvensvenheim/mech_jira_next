@@ -200,6 +200,7 @@ export default function Page() {
                   onClick={() => setViewMode("grid")}
                   aria-label={t("common.grid")}
                   title={t("common.grid")}
+                  disabled={!!selectedIssue}
                 >
                   <span className="page__view-icon page__view-icon--grid" aria-hidden="true">
                     <span />
@@ -218,6 +219,7 @@ export default function Page() {
                   onClick={() => setViewMode("list")}
                   aria-label={t("common.list")}
                   title={t("common.list")}
+                  disabled={!!selectedIssue}
                 >
                   <span className="page__view-icon page__view-icon--list" aria-hidden="true">
                     <span />

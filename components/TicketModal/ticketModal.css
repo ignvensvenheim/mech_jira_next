@@ -54,6 +54,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .ticket-modal__jira-link {
@@ -65,6 +66,7 @@
   padding: 8px 10px;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .ticket-modal__jira-link:hover {
