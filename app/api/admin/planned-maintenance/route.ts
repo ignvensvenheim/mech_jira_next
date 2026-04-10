@@ -17,6 +17,7 @@ export async function GET() {
       title: true,
       dueDate: true,
       note: true,
+      cost: true,
       isCompleted: true,
       completedAt: true,
       createdAt: true,
@@ -38,6 +39,10 @@ export async function POST(req: Request) {
   const title = String(body?.title || "").trim();
   const dueDate = String(body?.dueDate || "").trim();
   const note = String(body?.note || "").trim();
+  const cost =
+    body && "cost" in (body as object) && body?.cost !== null && body?.cost !== ""
+      ? Number(body.cost)
+      : null;
 
   if (!machineKey || !title || !dueDate) {
     return NextResponse.json(
@@ -56,6 +61,9 @@ export async function POST(req: Request) {
   if (Number.isNaN(parsedDueDate.getTime())) {
     return NextResponse.json({ error: "dueDate is invalid" }, { status: 400 });
   }
+  if (cost !== null && (!Number.isFinite(cost) || cost < 0)) {
+    return NextResponse.json({ error: "cost is invalid" }, { status: 400 });
+  }
 
   await ensureAssetExists(prisma, machineKey, session.user.id);
 
@@ -64,6 +72,7 @@ export async function POST(req: Request) {
       machineKey,
       title,
       dueDate: parsedDueDate,
+      cost,
       note: note || null,
     },
     select: {
@@ -72,6 +81,7 @@ export async function POST(req: Request) {
       title: true,
       dueDate: true,
       note: true,
+      cost: true,
       isCompleted: true,
       completedAt: true,
       createdAt: true,

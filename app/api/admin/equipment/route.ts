@@ -55,18 +55,19 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => null);
+  const includeAll = Boolean(body?.includeAll);
   const machineKeys = Array.isArray(body?.machineKeys)
     ? body.machineKeys
         .map((v: unknown) => String(v || "").trim())
         .filter((v: string) => Boolean(v))
     : [];
 
-  if (machineKeys.length === 0) {
+  if (!includeAll && machineKeys.length === 0) {
     return NextResponse.json({ items: [] });
   }
 
   const items = await prisma.asset.findMany({
-    where: { machineKey: { in: machineKeys } },
+    where: includeAll ? undefined : { machineKey: { in: machineKeys } },
     select: {
       machineKey: true,
       category: true,

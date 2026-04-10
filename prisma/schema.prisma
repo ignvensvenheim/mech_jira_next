@@ -92,6 +92,7 @@ model PlannedMaintenance {
   title       String
   dueDate     DateTime
   note        String?
+  cost        Float?
   isCompleted Boolean  @default(false)
   completedAt DateTime?
   createdAt   DateTime @default(now())

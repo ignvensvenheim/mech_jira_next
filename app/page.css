@@ -6,6 +6,12 @@
   color: var(--color-primary);
 }
 
+.page--home {
+  width: 100%;
+  max-width: 100dvw;
+  padding-inline: 5rem;
+}
+
 .login-page {
   width: 100%;
   max-width: 100dvw;
@@ -41,6 +47,11 @@
   grid-template-columns: 320px minmax(0, 1fr);
   align-items: start;
   gap: 14px;
+  width: 100%;
+}
+
+.page--home .page__layout {
+  grid-template-columns: minmax(260px, 25%) minmax(0, 75%);
 }
 
 .page__layout--full {
@@ -61,14 +72,6 @@
   position: relative;
 }
 
-.page__view-toggle-anchor {
-  position: sticky;
-  top: 12px;
-  height: 0;
-  z-index: 1;
-  pointer-events: none;
-}
-
 .page__view-toggle {
   display: inline-flex;
   align-items: center;
@@ -76,16 +79,7 @@
   padding: 2px;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
-  background: var(--color-card-bg);
-  box-shadow: var(--shadow-soft);
-}
-
-.page__view-toggle--floating {
-  position: absolute;
-  top: 0;
-  right: -96px;
-  z-index: 1;
-  pointer-events: auto;
+  background: var(--color-card-bg-hover);
 }
 
 .page__view-button {
@@ -93,10 +87,10 @@
   height: 28px;
   border: 0;
   border-radius: var(--border-radius);
-  background: transparent;
+  background: var(--color-card-bg);
   color: var(--color-muted);
   cursor: pointer;
-  transition: background 0.12s, color 0.12s, transform 0.12s;
+  transition: background 0.12s, color 0.12s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -105,10 +99,6 @@
 .page__view-button:hover {
   background: var(--color-card-bg-hover);
   color: var(--color-primary);
-}
-
-.page__view-button:active {
-  transform: translateY(1px);
 }
 
 .page__view-button--active {
@@ -134,7 +124,7 @@
 .page__view-icon--grid span {
   width: 6px;
   height: 6px;
-  border-radius: 2px;
+  border-radius: var(--toggle-icon-radius);
   background: currentColor;
 }
 
@@ -220,15 +210,11 @@
   border-radius: var(--border-radius);
   text-decoration: none;
   font-size: 13px;
-  transition: background 0.12s, transform 0.12s;
+  transition: background 0.12s;
 }
 
 .page__action-link:hover {
   background: var(--color-card-bg-hover);
-}
-
-.page__action-link:active {
-  transform: translateY(1px);
 }
 
 .page__error {
@@ -268,15 +254,11 @@
   min-width: 28px;
   font-size: 11px;
   line-height: 1.1;
-  transition: background 0.12s, transform 0.12s;
+  transition: background 0.12s;
 }
 
 .page__pagination-button:hover:not(:disabled) {
   background: var(--color-card-bg-hover);
-}
-
-.page__pagination-button:active:not(:disabled) {
-  transform: translateY(1px);
 }
 
 .page__pagination-button:disabled {
@@ -365,15 +347,11 @@
   color: #fff;
   border-radius: var(--border-radius);
   cursor: pointer;
-  transition: transform 0.12s, filter 0.12s;
+  transition: filter 0.12s;
 }
 
 .auth-button:hover {
   filter: brightness(1.05);
-}
-
-.auth-button:active {
-  transform: translateY(1px);
 }
 
 .auth-button--secondary {
@@ -513,6 +491,7 @@
   text-align: left;
   text-decoration: none;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .admin-function-button__content {
@@ -614,7 +593,8 @@
   border-radius: var(--border-radius);
   font-size: 13px;
   cursor: pointer;
-  transition: background 0.12s, transform 0.12s;
+  transition: background 0.12s;
+  white-space: nowrap;
 }
 
 .admin-reset-button:hover:not(:disabled) {
@@ -630,10 +610,6 @@
 
 .admin-reset-button--active:hover:not(:disabled) {
   background: #e3f3e2;
-}
-
-.admin-reset-button:active:not(:disabled) {
-  transform: translateY(1px);
 }
 
 .admin-reset-button:disabled {
@@ -937,6 +913,7 @@
 .admin-maintenance-modal__header-actions {
   display: inline-flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 8px;
 }
 
@@ -949,6 +926,8 @@
   padding: 8px 10px;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .admin-maintenance-modal__link:hover {
@@ -1106,31 +1085,15 @@
 
 .admin-maintenance-plan__status {
   flex: 0 0 auto;
-  padding: 4px 9px;
-  border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  line-height: 1.2;
+  min-height: 26px;
 }
 
-.admin-maintenance-plan__status--overdue {
-  background: rgba(217, 75, 61, 0.12);
-  color: #a13428;
-}
-
-.admin-maintenance-plan__status--dueSoon {
-  background: rgba(210, 138, 19, 0.14);
-  color: #9a660f;
-}
-
-.admin-maintenance-plan__status--upcoming {
-  background: rgba(79, 169, 77, 0.12);
-  color: #1f5d1f;
-}
-
-.admin-maintenance-plan__status--completed {
-  background: rgba(123, 135, 148, 0.16);
-  color: #4f5c69;
+.admin-maintenance-modal .admin-maintenance-plan__status {
+  justify-content: center;
+  min-height: 34px;
+  padding: 8px 10px;
 }
 
 .admin-maintenance-plan__due {
@@ -1284,8 +1247,7 @@
   grid-template-rows: auto 1fr;
   gap: 10px;
   overflow: hidden;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease,
-    transform 0.18s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .admin-maintenance-calendar__day--placeholder {
@@ -1309,7 +1271,6 @@
 .admin-maintenance-calendar__day--selected {
   border-color: rgba(79, 169, 77, 0.46);
   box-shadow: 0 0 0 2px rgba(79, 169, 77, 0.16);
-  transform: translateY(-1px);
 }
 
 .admin-maintenance-calendar__day-header {
@@ -1362,11 +1323,7 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: box-shadow 0.18s ease, transform 0.18s ease;
-}
-
-.admin-maintenance-calendar__event:hover {
-  transform: translateY(-1px);
+  transition: box-shadow 0.18s ease;
 }
 
 .admin-maintenance-calendar__event:focus-visible {
@@ -1667,17 +1624,6 @@
 
   .page__session-label {
     text-align: left;
-  }
-
-  .page__view-toggle--floating {
-    position: static;
-    margin-bottom: 10px;
-  }
-
-  .page__view-toggle-anchor {
-    position: static;
-    height: auto;
-    pointer-events: auto;
   }
 
   .admin-filters-actions {

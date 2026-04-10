@@ -11,6 +11,13 @@
   box-shadow: var(--shadow-soft);
 }
 
+.sort-filter__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .sort-filter__count {
   color: var(--color-text-light);
   font-size: 12px;
@@ -92,15 +99,11 @@
   cursor: pointer;
   padding: 8px 10px;
   font-size: 12px;
-  transition: background 0.12s, transform 0.12s;
+  transition: background 0.12s;
 }
 
 .sort-filter__pill:hover {
   background: var(--color-card-bg-hover);
-}
-
-.sort-filter__pill:active {
-  transform: translateY(1px);
 }
 
 .sort-filter__pill--active {
@@ -142,15 +145,11 @@
   text-decoration: none;
   font-size: 12px;
   text-align: center;
-  transition: background 0.12s, transform 0.12s;
+  transition: background 0.12s;
 }
 
 .sort-filter__admin-login:hover {
   text-decoration: none;
-}
-
-.sort-filter__admin-login:active {
-  transform: translateY(1px);
 }
 
 .sort-filter__reset {
@@ -161,15 +160,11 @@
   cursor: pointer;
   padding: 10px 12px;
   font-size: 12px;
-  transition: background 0.12s, transform 0.12s;
+  transition: background 0.12s;
 }
 
 .sort-filter__reset:hover {
   background: var(--color-card-bg-hover);
-}
-
-.sort-filter__reset:active {
-  transform: translateY(1px);
 }
 
 .sort-filter__department-line select:disabled {
@@ -178,6 +173,11 @@
 }
 
 @media (max-width: 420px) {
+  .sort-filter__topbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .sort-filter__date-grid {
     grid-template-columns: 1fr;
   }

@@ -18,6 +18,10 @@ export async function PATCH(
   const title = String(body?.title || "").trim();
   const dueDate = String(body?.dueDate || "").trim();
   const note = String(body?.note || "").trim();
+  const cost =
+    body && "cost" in (body as object) && body?.cost !== null && body?.cost !== ""
+      ? Number(body.cost)
+      : undefined;
   const isCompleted =
     typeof body?.isCompleted === "boolean" ? body.isCompleted : undefined;
 
@@ -30,6 +34,7 @@ export async function PATCH(
     title?: string;
     dueDate?: Date;
     note?: string | null;
+    cost?: number | null;
     isCompleted?: boolean;
     completedAt?: Date | null;
   } = {};
@@ -53,6 +58,12 @@ export async function PATCH(
     data.dueDate = parsedDueDate;
   }
   if (body && "note" in (body as object)) data.note = note || null;
+  if (body && "cost" in (body as object)) {
+    if (typeof cost === "number" && (!Number.isFinite(cost) || cost < 0)) {
+      return NextResponse.json({ error: "cost is invalid" }, { status: 400 });
+    }
+    data.cost = typeof cost === "number" ? cost : null;
+  }
   if (typeof isCompleted === "boolean") {
     data.isCompleted = isCompleted;
     data.completedAt = isCompleted ? new Date() : null;
@@ -67,6 +78,7 @@ export async function PATCH(
       title: true,
       dueDate: true,
       note: true,
+      cost: true,
       isCompleted: true,
       completedAt: true,
       createdAt: true,

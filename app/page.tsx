@@ -6,7 +6,6 @@ import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { Oval } from "react-loader-spinner";
 import { SortFilter } from "@/components/SortFilter/SortFilter";
 import { TicketsGrid } from "@/components/TicketsGrid/TicketsGrid";
-import { useI18n } from "@/components/I18nProvider";
 import { useIssues } from "@/lib/IssuesContext";
 import { NormalizedIssue } from "@/lib/jira";
 import TicketModal from "@/components/TicketModal/TicketModal";
@@ -16,7 +15,6 @@ import { relativeDate } from "@/helpers/relativeDate";
 const LAYOUT_STORAGE_KEY = "mechanikai-ticket-layout";
 
 export default function Page() {
-  const { t } = useI18n();
   const { loadingInitial, fetchingAllTickets, error } = useJiraSearch();
   const { issues } = useIssues();
 
@@ -139,12 +137,14 @@ export default function Page() {
   }, [layoutReady, viewMode]);
 
   return (
-    <div className="page">
+    <div className="page page--home">
       <div className="page__layout">
         <aside className="page__sidebar">
           <SortFilter
             sort={sort}
             onSortChange={setSort}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
             searchText={searchText}
             onSearchChange={(value) => {
               setSearchText(value);
@@ -190,44 +190,6 @@ export default function Page() {
 
         <section className="page__content">
           <div className="page__content-main">
-            <div className="page__view-toggle-anchor">
-              <div className="page__view-toggle page__view-toggle--floating" aria-label={t("home.view")}>
-                <button
-                  type="button"
-                  className={`page__view-button${
-                    viewMode === "grid" ? " page__view-button--active" : ""
-                  }`}
-                  onClick={() => setViewMode("grid")}
-                  aria-label={t("common.grid")}
-                  title={t("common.grid")}
-                >
-                  <span className="page__view-icon page__view-icon--grid" aria-hidden="true">
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                    <span />
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className={`page__view-button${
-                    viewMode === "list" ? " page__view-button--active" : ""
-                  }`}
-                  onClick={() => setViewMode("list")}
-                  aria-label={t("common.list")}
-                  title={t("common.list")}
-                >
-                  <span className="page__view-icon page__view-icon--list" aria-hidden="true">
-                    <span />
-                    <span />
-                    <span />
-                  </span>
-                </button>
-              </div>
-            </div>
-
             <TicketsGrid
               issues={layoutReady ? visibleIssues : []}
               onOpen={setSelectedIssue}

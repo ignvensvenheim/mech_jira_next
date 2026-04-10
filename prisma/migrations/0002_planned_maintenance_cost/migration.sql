@@ -1,0 +1,2 @@
+ALTER TABLE "PlannedMaintenance"
+ADD COLUMN "cost" DOUBLE PRECISION;
