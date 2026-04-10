@@ -68,6 +68,7 @@ export async function POST(req: Request) {
 
   const items = await prisma.asset.findMany({
     where: includeAll ? undefined : { machineKey: { in: machineKeys } },
+    orderBy: [{ category: "asc" }, { subcategory: "asc" }, { machineKey: "asc" }],
     select: {
       machineKey: true,
       category: true,

@@ -219,6 +219,7 @@ export const dictionaries = {
       maintenanceCountOne: "{count} maintenance",
       maintenanceCountMany: "{count} maintenances",
       breakdownsCount: "{count} breakdowns",
+      maintenanceCount: "{count} maintenance",
       userManagement: "User Management",
       userManagementSubtitle: "Create and manage application users and roles.",
       email: "Email",
@@ -476,6 +477,7 @@ export const dictionaries = {
       maintenanceCountOne: "{count} priežiūra",
       maintenanceCountMany: "{count} priežiūros",
       breakdownsCount: "{count} gedimai",
+      maintenanceCount: "{count} priežiūra",
       userManagement: "Vartotojų valdymas",
       userManagementSubtitle:
         "Kurkite ir valdykite programos vartotojus bei roles.",
