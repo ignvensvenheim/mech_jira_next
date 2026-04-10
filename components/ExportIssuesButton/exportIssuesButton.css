@@ -6,15 +6,11 @@
   color: var(--color-primary);
   padding: 10px 12px;
   font-size: 12px;
-  transition: background 0.12s, transform 0.12s, opacity 0.12s, color 0.12s;
+  transition: background 0.12s, opacity 0.12s, color 0.12s;
 }
 
 .export-button:hover:not(:disabled) {
   background: var(--color-card-bg-hover);
-}
-
-.export-button:active:not(:disabled) {
-  transform: translateY(1px);
 }
 
 .export-button:disabled {

@@ -96,6 +96,7 @@ type AssetStatisticsRow = {
   category: string;
   subcategory: string;
   breakdowns: number;
+  maintenanceCount: number;
   loggedSeconds: number;
   repairCost: number;
   maintenanceCost: number;
@@ -349,6 +350,16 @@ function getTicketCountLabel(
   });
 }
 
+function getMaintenanceCountLabel(
+  t: (key: string, params?: Record<string, string | number>) => string,
+  count: number
+) {
+  return t(
+    count === 1 ? "admin.maintenanceCountOne" : "admin.maintenanceCountMany",
+    { count }
+  );
+}
+
 function normalizePlannedMaintenanceItem(item: PlannedMaintenanceItem): PlannedMaintenanceItem {
   return {
     ...item,
@@ -537,7 +548,7 @@ function AdminPageContent() {
   const { locale, t } = useI18n();
   const ticketsPerPage = 20;
   const searchParams = useSearchParams();
-  const { loadingInitial, error } = useJiraSearch();
+  const { loadingInitial, fetchingAllTickets, error } = useJiraSearch();
   const { issues } = useIssues();
   const [currentUserId, setCurrentUserId] = useState("");
   const [currentUserLabel, setCurrentUserLabel] = useState("");
@@ -618,6 +629,7 @@ function AdminPageContent() {
   const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
   const [selectedIssue, setSelectedIssue] = useState<NormalizedIssue | null>(null);
   const [ticketCostsRefreshKey, setTicketCostsRefreshKey] = useState(0);
+  const ticketsLoading = loadingInitial || fetchingAllTickets;
   const [costsCurrentPage, setCostsCurrentPage] = useState(1);
 
   const handleLogout = useCallback(() => {
@@ -867,6 +879,15 @@ function AdminPageContent() {
 
     return totals;
   }, [plannedMaintenanceItems]);
+  const maintenanceCountByMachineKey = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const item of plannedMaintenanceItems) {
+      counts.set(item.machineKey, (counts.get(item.machineKey) ?? 0) + 1);
+    }
+
+    return counts;
+  }, [plannedMaintenanceItems]);
   const statisticsMaintenanceCost = useMemo(
     () =>
       Array.from(maintenanceCostsByMachineKey.values()).reduce((sum, cost) => {
@@ -884,6 +905,7 @@ function AdminPageContent() {
     const machineKeys = new Set<string>([
       ...statisticsIssueAssetSummary.byMachine.keys(),
       ...repairCostByMachineKey.keys(),
+      ...maintenanceCountByMachineKey.keys(),
       ...maintenanceCostsByMachineKey.keys(),
     ]);
 
@@ -902,6 +924,7 @@ function AdminPageContent() {
         category,
         subcategory,
         breakdowns: row?.breakdowns ?? 0,
+        maintenanceCount: maintenanceCountByMachineKey.get(machineKey) ?? 0,
         loggedSeconds: row?.loggedSeconds ?? 0,
         repairCost: repairCostByMachineKey.get(machineKey) ?? 0,
         maintenanceCost: maintenanceCostsByMachineKey.get(machineKey) ?? 0,
@@ -909,6 +932,7 @@ function AdminPageContent() {
     });
   }, [
     assetDetailsByMachineKey,
+    maintenanceCountByMachineKey,
     maintenanceCostsByMachineKey,
     repairCostByMachineKey,
     statisticsIssueAssetSummary.byMachine,
@@ -1439,6 +1463,11 @@ function AdminPageContent() {
   }, [loadPlannedMaintenance]);
 
   const loadTicketCosts = useCallback(async () => {
+    if (ticketsLoading) {
+      setTicketCostsLoading(false);
+      return;
+    }
+
     if (!sessionResolved || !currentUserIsAdmin) {
       setTicketCostsLoading(false);
       setTicketCostsByIssue({});
@@ -1494,7 +1523,7 @@ function AdminPageContent() {
     } finally {
       setTicketCostsLoading(false);
     }
-  }, [currentUserIsAdmin, filteredIssues, sessionResolved]);
+  }, [currentUserIsAdmin, filteredIssues, sessionResolved, ticketsLoading]);
 
   useEffect(() => {
     void loadTicketCosts();
@@ -2013,7 +2042,7 @@ function AdminPageContent() {
   };
 
   return (
-    <div className="page">
+    <div className="page page--home">
       <div className="page__layout">
         <aside className="page__sidebar">
           <div className="admin-sidebar">
@@ -2165,11 +2194,11 @@ function AdminPageContent() {
                 onResetFilters={resetCostsFilters}
               />
 
-              {error && !loadingInitial && (
+              {error && !ticketsLoading && (
                 <div className="page__error">{String(error)}</div>
               )}
 
-              {loadingInitial && <div className="page__loading">{t("common.loading")}</div>}
+              {ticketsLoading && <div className="page__loading">{t("common.loading")}</div>}
             </div>
 
             <div className="admin-panel">
@@ -2362,13 +2391,13 @@ function AdminPageContent() {
 
                 {!machineDataLoading && (
                   <div className="admin-manual-costs">
-                    {ticketCostsLoading && (
+                    {(ticketsLoading || ticketCostsLoading) && (
                       <div className="admin-buffering">
                         <div className="admin-buffering-spinner" />
                         <div className="admin-chart-empty">{t("admin.loadingTickets")}</div>
                       </div>
                     )}
-                    {!ticketCostsLoading && (
+                    {!ticketsLoading && !ticketCostsLoading && (
                       <>
                         <div className="admin-chart-title">
                           {t("admin.ticketsInPeriod", {
@@ -2958,7 +2987,7 @@ function AdminPageContent() {
                           )}
                         </div>
                         <div
-                          className={`admin-maintenance-plan__status admin-maintenance-plan__status--${activeMaintenanceStatus}`}
+                          className={`status-pill admin-maintenance-plan__status status-pill--${activeMaintenanceStatus}`}
                         >
                           {activeMaintenanceStatus === "overdue" &&
                             t("admin.overdueMaintenance")}
@@ -3334,6 +3363,9 @@ function AdminPageContent() {
                         </div>
                         <div className="admin-chart-value">
                           {formatCurrency(row.maintenanceCost, locale)}
+                        </div>
+                        <div className="admin-chart-money">
+                          {getMaintenanceCountLabel(t, row.maintenanceCount)}
                         </div>
                       </div>
                     );

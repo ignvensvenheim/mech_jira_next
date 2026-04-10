@@ -12,9 +12,11 @@
   --color-card-bg-hover: white;
   --border-color: #5c5c5c25;
   --border-radius: 8px;
+  --toggle-icon-radius: 2px;
 
   --shadow-soft: 0 6px 18px rgba(20, 37, 56, 0.08);
-  --button-hover-shadow: 0 4px 10px rgba(20, 37, 56, 0.08);
+  --button-hover-shadow: 0 2px 8px rgba(20, 37, 56, 0.06);
+  --card-hover-shadow: 0 4px 14px rgba(20, 37, 56, 0.06);
 }
 
 body {
@@ -27,24 +29,68 @@ body {
   font-family: var(--font-poppins), sans-serif;
 }
 
-:where(button, .page__action-link, .auth-button, .sort-filter__admin-login, .export-button) {
+:where(button, .page__action-link, .auth-button, .sort-filter__admin-login, .export-button, .admin-maintenance-modal__link) {
   transition:
     background 0.12s,
     color 0.12s,
     border-color 0.12s,
     box-shadow 0.12s,
-    transform 0.12s,
     filter 0.12s;
 }
 
-:where(button, .page__action-link, .auth-button, .sort-filter__admin-login, .export-button):hover:not(:disabled) {
+:where(button, .page__action-link, .auth-button, .sort-filter__admin-login, .export-button, .admin-maintenance-modal__link):hover:not(:disabled) {
   box-shadow: var(--button-hover-shadow);
-  transform: translateY(-0.5px);
 }
 
-:where(button, .page__action-link, .auth-button, .sort-filter__admin-login, .export-button):active:not(:disabled) {
-  transform: translateY(1px);
+:where(button, .page__action-link, .auth-button, .sort-filter__admin-login, .export-button, .admin-maintenance-modal__link):active:not(:disabled) {
   box-shadow: none;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--border-radius);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.status-pill--done {
+  background: #e3fcef;
+  color: #006644;
+}
+
+.status-pill--indeterminate {
+  background: #deebff;
+  color: #0747a6;
+}
+
+.status-pill--default {
+  background: #f4f5f7;
+  color: #42526e;
+}
+
+.status-pill--overdue {
+  background: rgba(217, 75, 61, 0.12);
+  color: #a13428;
+}
+
+.status-pill--dueSoon {
+  background: rgba(210, 138, 19, 0.14);
+  color: #9a660f;
+}
+
+.status-pill--upcoming {
+  background: rgba(79, 169, 77, 0.12);
+  color: #1f5d1f;
+}
+
+.status-pill--completed {
+  background: rgba(123, 135, 148, 0.16);
+  color: #4f5c69;
 }
 
 .header {
@@ -54,9 +100,10 @@ body {
 }
 
 .header__inner {
-  max-width: 1320px;
+  width: 100%;
+  max-width: 100dvw;
   margin: 0 auto;
-  padding: 0 12px;
+  padding: 0 5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;

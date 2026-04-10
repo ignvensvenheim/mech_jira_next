@@ -53,7 +53,14 @@
 .ticket-modal__header-actions {
   display: inline-flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 8px;
+}
+
+.ticket-modal__header-actions .status-pill {
+  justify-content: center;
+  min-height: 34px;
+  padding: 8px 10px;
 }
 
 .ticket-modal__jira-link {
@@ -65,6 +72,8 @@
   padding: 8px 10px;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .ticket-modal__jira-link:hover {
@@ -80,6 +89,7 @@
   width: 34px;
   height: 34px;
   font-size: 14px;
+  flex-shrink: 0;
 }
 
 .modal-close-btn:hover {

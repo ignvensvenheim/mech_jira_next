@@ -5,7 +5,7 @@
   background: var(--color-card-bg);
   display: grid;
   gap: 10px;
-  transition: background 0.12s, transform 0.12s;
+  transition: background 0.12s, box-shadow 0.12s;
   backdrop-filter: blur(6px);
 }
 
@@ -16,7 +16,7 @@
 .ticket-card:hover {
   cursor: pointer;
   background: var(--color-card-bg-hover);
-  transform: translateY(-1px);
+  box-shadow: var(--card-hover-shadow);
 }
 
 .ticket-card__header {
@@ -50,28 +50,6 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   margin: 0;
-}
-
-.ticket-card__status {
-  padding: 2px 8px;
-  border-radius: var(--border-radius);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.ticket-card__status--done {
-  background: #e3fcef;
-  color: #006644;
-}
-
-.ticket-card__status--indeterminate {
-  background: #deebff;
-  color: #0747a6;
-}
-
-.ticket-card__status--default {
-  background: #f4f5f7;
-  color: #42526e;
 }
 
 .ticket-card__summary {
@@ -157,8 +135,8 @@
   grid-template-columns:
     max-content
     fit-content(88px)
-    fit-content(320px)
-    max-content
+    fit-content(520px)
+    fit-content(120px)
     max-content
     max-content
     max-content
@@ -219,7 +197,7 @@
   font-weight: 600;
   width: auto;
   min-width: 0;
-  max-width: min(36vw, 320px);
+  max-width: min(48vw, 520px);
 }
 
 .ticket-card__list-field--status {
@@ -228,6 +206,9 @@
 
 .ticket-card__list-field .status-pill,
 .ticket-card__list-field [class*="status-pill"] {
+  padding: 1px 6px;
+  min-height: auto;
+  font-size: 11px;
   max-width: 100%;
 }
 

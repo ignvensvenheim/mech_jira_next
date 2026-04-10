@@ -11,6 +11,8 @@ import { DEPARTMENT_LINES } from "@/data/listData";
 type Props = {
   sort: "newest" | "oldest";
   onSortChange: (sort: "newest" | "oldest") => void;
+  viewMode: "grid" | "list";
+  onViewModeChange: (view: "grid" | "list") => void;
   searchText: string;
   onSearchChange: (value: string) => void;
   dateFrom: string;
@@ -31,6 +33,8 @@ type Props = {
 export function SortFilter({
   sort,
   onSortChange,
+  viewMode,
+  onViewModeChange,
   searchText,
   onSearchChange,
   dateFrom,
@@ -102,8 +106,45 @@ export function SortFilter({
 
   return (
     <div className="sort-filter">
-      <div className="sort-filter__count">
-        {t("home.showingTickets", { count: resultCount })}
+      <div className="sort-filter__topbar">
+        <div className="sort-filter__count">
+          {t("home.showingTickets", { count: resultCount })}
+        </div>
+        <div className="page__view-toggle" aria-label={t("home.view")}>
+          <button
+            type="button"
+            className={`page__view-button${
+              viewMode === "grid" ? " page__view-button--active" : ""
+            }`}
+            onClick={() => onViewModeChange("grid")}
+            aria-label={t("common.grid")}
+            title={t("common.grid")}
+          >
+            <span className="page__view-icon page__view-icon--grid" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <span />
+              <span />
+              <span />
+            </span>
+          </button>
+          <button
+            type="button"
+            className={`page__view-button${
+              viewMode === "list" ? " page__view-button--active" : ""
+            }`}
+            onClick={() => onViewModeChange("list")}
+            aria-label={t("common.list")}
+            title={t("common.list")}
+          >
+            <span className="page__view-icon page__view-icon--list" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+          </button>
+        </div>
       </div>
 
       <div className="sort-filter__controls">
