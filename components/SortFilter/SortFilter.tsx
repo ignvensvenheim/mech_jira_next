@@ -19,6 +19,7 @@ type Props = {
   dateTo: string;
   onDateChange: (from: string, to: string) => void;
   onReset: () => void;
+  onFullRefreshTickets?: () => void;
   selectedStatuses: string[];
   onStatusChange: (statuses: string[]) => void;
   selectedDepartment: string;
@@ -26,6 +27,7 @@ type Props = {
   selectedLine: string;
   onLineChange: (line: string) => void;
   isLoadingTickets?: boolean;
+  isFullRefreshDisabled?: boolean;
   resultCount: number;
   issues: any[];
 };
@@ -41,6 +43,7 @@ export function SortFilter({
   dateTo,
   onDateChange,
   onReset,
+  onFullRefreshTickets,
   selectedStatuses,
   onStatusChange,
   selectedDepartment,
@@ -48,6 +51,7 @@ export function SortFilter({
   selectedLine,
   onLineChange,
   isLoadingTickets = false,
+  isFullRefreshDisabled = false,
   resultCount,
   issues = [],
 }: Props) {
@@ -243,6 +247,16 @@ export function SortFilter({
           <button className="sort-filter__reset" onClick={onReset}>
             {t("common.resetFilters")}
           </button>
+          {onFullRefreshTickets && (
+            <button
+              type="button"
+              className="sort-filter__reset"
+              onClick={onFullRefreshTickets}
+              disabled={isFullRefreshDisabled}
+            >
+              {t("home.fullRefreshTickets")}
+            </button>
+          )}
           <ExportIssuesButton
             issues={(issues ?? []).map((i) => ({
               ...i,
