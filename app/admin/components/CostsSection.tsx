@@ -1,14 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { getCurrentLocalDateOnly, getIssueAssetParts } from "../adminShared";
 import {
   formatCurrency,
+  getAdminAssetHref,
   type AdminTranslate,
   type DatePreset,
-  type EquipmentDetailsResponse,
   type ManualCostEntry,
   type TicketFixDraft,
-  type TicketFixCost,
 } from "../adminShared";
 import type { NormalizedIssue } from "@/lib/jira";
 import AdminFilters from "./AdminFilters";
@@ -27,6 +27,7 @@ type CostsSectionProps = {
   machineDataError: string;
   equipmentError: string;
   hasMachineSelection: boolean;
+  selectedMachineKey: string;
   equipmentLoading: boolean;
   equipmentModel: string;
   equipmentSerialNumber: string;
@@ -99,6 +100,7 @@ export default function CostsSection({
   machineDataError,
   equipmentError,
   hasMachineSelection,
+  selectedMachineKey,
   equipmentLoading,
   equipmentModel,
   equipmentSerialNumber,
@@ -184,6 +186,13 @@ export default function CostsSection({
 
         {error && !ticketsLoading && <div className="page__error">{String(error)}</div>}
         {ticketsLoading && <div className="page__loading">{t("common.loading")}</div>}
+        {hasMachineSelection && (
+          <div className="page__content-actions">
+            <Link href={getAdminAssetHref(selectedMachineKey)} className="page__action-link">
+              {t("admin.openAssetDetails")}
+            </Link>
+          </div>
+        )}
       </div>
 
       <div className="admin-panel">

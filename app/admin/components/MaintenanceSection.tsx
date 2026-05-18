@@ -258,10 +258,12 @@ export default function MaintenanceSection({
 
               <div className="admin-maintenance-log" aria-label="Maintenance activity">
                 <div className="admin-maintenance-log__header">
-                  <div className="admin-chart-title">Activity</div>
+                  <div className="admin-chart-title">{t("admin.activity")}</div>
                 </div>
                 {maintenanceLogEntries.length === 0 ? (
-                  <div className="admin-maintenance-log__empty">No maintenance activity yet.</div>
+                  <div className="admin-maintenance-log__empty">
+                    {t("admin.noMaintenanceActivityYet")}
+                  </div>
                 ) : (
                   <div className="admin-maintenance-log__list">
                     {maintenanceLogEntries.map((entry) => (

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { getAdminAssetHref } from "../adminShared";
 import type { AdminTranslate, EquipmentDraft, MachineDirectoryItem } from "../adminShared";
 
 type InventorySectionProps = {
@@ -92,6 +94,12 @@ export default function InventorySection({
                 <div className="admin-ticket-meta">
                   <div className="admin-ticket-key">{machine.category}</div>
                   <div className="admin-ticket-summary">{machine.subcategory}</div>
+                  <Link
+                    href={getAdminAssetHref(machine.machineKey)}
+                    className="admin-inline-link"
+                  >
+                    {t("admin.openAssetDetails")}
+                  </Link>
                 </div>
                 <label className="admin-inventory-field">
                   <div className="admin-inventory-field__label">{t("admin.model")}</div>

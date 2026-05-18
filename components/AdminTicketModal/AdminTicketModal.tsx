@@ -27,16 +27,6 @@ type MachineDataResponse = {
   entries: ManualEntry[];
 };
 
-type EquipmentDetailsResponse = {
-  machineKey: string;
-  category?: string;
-  subcategory?: string;
-  model: string;
-  serialNumber: string;
-  manufacturer: string;
-  updatedAt: string | null;
-};
-
 type TicketCostItem = {
   issueKey: string;
   machineKey: string;
@@ -98,8 +88,6 @@ export default function AdminTicketModal({
   const [attachments, setAttachments] = React.useState<Attachment[]>([]);
   const [adminDataError, setAdminDataError] = React.useState("");
   const [machineData, setMachineData] = React.useState<MachineDataResponse | null>(null);
-  const [equipmentData, setEquipmentData] =
-    React.useState<EquipmentDetailsResponse | null>(null);
   const [ticketCost, setTicketCost] = React.useState<TicketCostItem | null>(null);
   const [ticketDate, setTicketDate] = React.useState("");
   const [ticketAmount, setTicketAmount] = React.useState("");
@@ -132,7 +120,6 @@ export default function AdminTicketModal({
       setAdminDataError("");
       setDetailIssue(issue);
       setMachineData(null);
-      setEquipmentData(null);
       setTicketCost(null);
       setTicketDate(initialDate);
       setTicketAmount("");
@@ -185,17 +172,6 @@ export default function AdminTicketModal({
               const json = await parseJson<MachineDataResponse>(res);
               if (!isCancelled) {
                 setMachineData(json);
-              }
-            }),
-          );
-
-          extraPromises.push(
-            fetch(`/api/admin/equipment?machineKey=${encodeURIComponent(machineKey)}`, {
-              cache: "no-store",
-            }).then(async (res) => {
-              const json = await parseJson<EquipmentDetailsResponse>(res);
-              if (!isCancelled) {
-                setEquipmentData(json);
               }
             }),
           );
@@ -283,7 +259,7 @@ export default function AdminTicketModal({
 
   if (!detailIssue) return null;
 
-  const { category, subcategory, machineKey } = getIssueAssetParts(detailIssue);
+  const { machineKey } = getIssueAssetParts(detailIssue);
   const manualEntries = machineData?.entries ?? [];
   const manualTotal = manualEntries.reduce((sum, entry) => sum + entry.amount, 0);
   const ticketFixCostTotal = ticketCost?.amount ?? 0;
@@ -734,36 +710,6 @@ export default function AdminTicketModal({
                 </div>
               </section>
 
-              <section className="detailed-ticket__section">
-                <h3 className="detailed-ticket__section-title">{t("admin.inventoryDetails")}</h3>
-                {machineKey ? (
-                  <div className="admin-ticket-modal__grid">
-                    <div className="admin-ticket-modal__item">
-                      <span className="detailed-ticket__label">{t("home.category")}</span>
-                      <span>{category || "-"}</span>
-                    </div>
-                    <div className="admin-ticket-modal__item">
-                      <span className="detailed-ticket__label">{t("admin.subcategory")}</span>
-                      <span>{subcategory || "-"}</span>
-                    </div>
-                    <div className="admin-ticket-modal__item">
-                      <span className="detailed-ticket__label">{t("admin.model")}</span>
-                      <span>{equipmentData?.model || "-"}</span>
-                    </div>
-                    <div className="admin-ticket-modal__item">
-                      <span className="detailed-ticket__label">{t("admin.serialNumber")}</span>
-                      <span>{equipmentData?.serialNumber || "-"}</span>
-                    </div>
-                    <div className="admin-ticket-modal__item">
-                      <span className="detailed-ticket__label">{t("admin.manufacturer")}</span>
-                      <span>{equipmentData?.manufacturer || "-"}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="detailed-ticket__empty">{t("admin.noMachineMapping")}</p>
-                )}
-              </section>
-
               <section className="detailed-ticket__section detailed-ticket__section--compact">
                 <div className="detailed-ticket__meta-grid">
                   <div className="detailed-ticket__meta-item">
@@ -806,7 +752,9 @@ export default function AdminTicketModal({
                   </div>
                 ) : detailIssue.descriptionText ? (
                   <>
-                    <p className="detailed-ticket__label">{t("common.initialNote")}</p>
+                    <p className="detailed-ticket__label">
+                      {detailIssue.reporter?.name || t("common.unknown")}
+                    </p>
                     <p className="detailed-ticket__comment">{detailIssue.descriptionText}</p>
                   </>
                 ) : (

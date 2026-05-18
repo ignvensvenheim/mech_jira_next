@@ -1,6 +1,4 @@
 "use client";
-
-import "../page.css";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Modal from "react-modal";
@@ -8,7 +6,6 @@ import { useI18n } from "@/components/I18nProvider";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { useIssues } from "@/lib/IssuesContext";
 import AdminTicketModal from "@/components/AdminTicketModal/AdminTicketModal";
-import AdminSidebar from "./components/AdminSidebar";
 import CostsSection from "./components/CostsSection";
 import InventorySection from "./components/InventorySection";
 import MaintenanceSection from "./components/MaintenanceSection";
@@ -46,13 +43,11 @@ function AdminPageContent() {
 
   const {
     currentUserId,
-    currentUserLabel,
     currentUserIsAdmin,
     currentUserCanManageUsers,
     sessionResolved,
     activeFunction,
     setActiveFunction,
-    handleLogout,
   } = useAdminSession(searchParams);
 
   const {
@@ -155,6 +150,7 @@ function AdminPageContent() {
     filteredMachineDirectory,
     machineLabelByKey,
     hasMachineSelection,
+    selectedMachineKey,
     selectedMachineManualMoney,
     upsertAssetDetailsCache,
     editingEntryId,
@@ -463,42 +459,27 @@ function AdminPageContent() {
   };
 
   return (
-    <div className="page page--home">
-      <div className="page__layout">
-        <AdminSidebar
-          activeFunction={activeFunction}
-          currentUserLabel={currentUserLabel}
-          currentUserCanManageUsers={currentUserCanManageUsers}
-          maintenanceBadgeCount={maintenanceBadgeCount}
-          onSelectFunction={setActiveFunction}
-          onLogout={handleLogout}
-          t={t}
-        />
+    <>
+      {!sessionResolved && (
+        <div className="admin-card">
+          <div className="page__loading">{t("common.loading")}</div>
+        </div>
+      )}
 
-        <section className="page__content">
-          {!sessionResolved && (
-            <div className="admin-card">
-              <div className="page__loading">{t("common.loading")}</div>
-            </div>
-          )}
+      {sessionResolved && !currentUserIsAdmin && (
+        <div className="admin-card">
+          <h1 className="admin-title">{t("admin.accessDeniedTitle")}</h1>
+          <p className="admin-subtitle">{t("admin.accessDeniedSubtitle")}</p>
+          <div className="page__content-actions">
+            <a href="/" className="page__action-link">
+              {t("common.backToHome")}
+            </a>
+          </div>
+        </div>
+      )}
 
-          {sessionResolved && !currentUserIsAdmin && (
-            <div className="admin-card">
-              <h1 className="admin-title">{t("admin.accessDeniedTitle")}</h1>
-              <p className="admin-subtitle">{t("admin.accessDeniedSubtitle")}</p>
-              <div className="page__content-actions">
-                <a href="/" className="page__action-link">
-                  {t("common.backToHome")}
-                </a>
-                <button type="button" className="admin-reset-button" onClick={handleLogout}>
-                  {t("common.logout")}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {sessionResolved && currentUserIsAdmin && (
-            <div className="admin-dashboard">
+      {sessionResolved && currentUserIsAdmin && (
+        <div className="admin-dashboard">
               {activeFunction === "costs" && (
                 <CostsSection
                   locale={locale}
@@ -514,6 +495,7 @@ function AdminPageContent() {
                   machineDataError={machineDataError}
                   equipmentError={equipmentError}
                   hasMachineSelection={hasMachineSelection}
+                  selectedMachineKey={selectedMachineKey}
                   equipmentLoading={equipmentLoading}
                   equipmentModel={equipmentModel}
                   equipmentSerialNumber={equipmentSerialNumber}
@@ -693,18 +675,16 @@ function AdminPageContent() {
                   canManageUsers={currentUserCanManageUsers}
                 />
               )}
-            </div>
-          )}
+        </div>
+      )}
 
-          <AdminTicketModal
-            isOpen={!!selectedIssue}
-            onClose={() => setSelectedIssue(null)}
-            issue={selectedIssue}
-            onDataChanged={handleModalDataChanged}
-          />
-        </section>
-      </div>
-    </div>
+      <AdminTicketModal
+        isOpen={!!selectedIssue}
+        onClose={() => setSelectedIssue(null)}
+        issue={selectedIssue}
+        onDataChanged={handleModalDataChanged}
+      />
+    </>
   );
 }
 

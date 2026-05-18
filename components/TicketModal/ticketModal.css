@@ -26,8 +26,8 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px;
+  gap: 14px;
+  padding: 14px;
   border-bottom: 1px solid var(--border-color);
   background: var(--color-card-bg-hover);
 }
@@ -97,7 +97,7 @@
 }
 
 .ticket-modal__body {
-  padding: 12px;
+  padding: 14px;
 }
 
 @media (max-width: 900px) {

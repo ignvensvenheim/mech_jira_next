@@ -9,6 +9,7 @@ Purpose
 
 Current Admin Structure
 - Main page: app/admin/page.tsx
+- Asset detail page: app/admin/assets/[machineKey]/page.tsx
 - Shared admin utilities/types: app/admin/adminShared.ts
 - Presentational sections:
   app/admin/components/CostsSection.tsx
@@ -21,6 +22,7 @@ Current Admin Structure
   app/admin/hooks/useAdminSession.ts
   app/admin/hooks/useAdminFilters.ts
   app/admin/hooks/useAdminAssetData.ts
+  app/admin/hooks/useAdminAssetDetail.ts
   app/admin/hooks/useAdminMaintenance.ts
 
 Current Admin Responsibilities
@@ -28,6 +30,8 @@ Current Admin Responsibilities
   filter Jira tickets, attach repair costs to tickets, and manage manual machine costs
 - Inventory:
   manage equipment metadata per machine key
+- Asset detail:
+  show one-machine rollup across tickets, repair/manual costs, maintenance, and metadata
 - Maintenance:
   plan, edit, complete, and delete maintenance items in a calendar UI
 - Statistics:
@@ -48,20 +52,30 @@ Priority Order
 - If choosing between analytics and workflow depth, prefer workflow depth first.
 
 1. Asset detail page
-Why
-- This would make each machine understandable in one place, which is one of the most
-  valuable patterns in mature CMMS tools.
-What it should show
-- Jira breakdown tickets
-- repair costs tied to tickets
-- manual costs
-- planned maintenance
-- completed maintenance
-- asset metadata
-- activity/change history
-Likely implementation direction
-- Add a dedicated admin asset route, probably based on machineKey.
-- Reuse data from useAdminAssetData and useAdminMaintenance where possible.
+Status
+- Implemented in first-pass form.
+What now exists
+- dedicated route: app/admin/assets/[machineKey]/page.tsx
+- shared loader hook: app/admin/hooks/useAdminAssetDetail.ts
+- asset-level view of:
+  Jira breakdown tickets
+  repair costs tied to tickets
+  manual costs
+  planned maintenance
+  completed maintenance
+  asset metadata
+- entry points from existing admin views:
+  costs
+  inventory
+  statistics
+Follow-up improvements for this page
+- localize the newly added asset-detail strings properly in Lithuanian
+- consider adding direct edit actions from the asset page instead of only read-first views
+- consider linking from maintenance lists/calendar directly into the same asset detail page
+- if users still need audit-style chronology, consider a dedicated asset activity log
+  instead of reintroducing a duplicate "recent activity" panel beside the ticket list
+- decide whether the asset page should eventually own reusable asset-level actions
+  like edit metadata, add manual cost, or create maintenance directly in place
 
 2. Maintenance workflow states
 Why
@@ -163,6 +177,6 @@ What to add
 
 How Future Sessions Should Use This File
 - Read this file first when asked what to improve next in the admin panel.
-- Treat items 1 through 6 as more valuable than adding extra statistics or visuals.
+- Treat items 2 through 6 as more valuable than adding extra statistics or visuals.
 - Before implementing a larger item, inspect the related admin hook/component files
   listed above instead of rebuilding logic from scratch.

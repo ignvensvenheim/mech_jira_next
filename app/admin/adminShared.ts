@@ -126,6 +126,11 @@ export function formatMachineDirectoryLabel(machine: {
   return category || subcategory;
 }
 
+export function formatMachineKeyDisplay(machineKey: string) {
+  const parsed = parseMachineKey(machineKey);
+  return formatMachineDirectoryLabel(parsed) || machineKey.trim();
+}
+
 export function formatCurrency(amount: number, locale: string = "en") {
   return new Intl.NumberFormat(getLocaleTag(locale), {
     style: "currency",
@@ -339,11 +344,16 @@ export function formatDateTimeForLocale(value: string, locale: string) {
 }
 
 export function getTicketCountLabel(t: AdminTranslate, count: number) {
-  return t("admin.ticketCountValue", { count });
+  return t(count === 1 ? "admin.ticketsCountOne" : "admin.ticketsCountMany", {
+    count,
+  });
 }
 
 export function getMaintenanceCountLabel(t: AdminTranslate, count: number) {
-  return t("admin.maintenanceCountValue", { count });
+  return t(
+    count === 1 ? "admin.maintenanceCountOne" : "admin.maintenanceCountMany",
+    { count }
+  );
 }
 
 export function normalizePlannedMaintenanceItem(
@@ -433,6 +443,10 @@ export function getMaintenanceDueLabel(
   if (diffDays < 0) return t("admin.daysOverdue", { count: Math.abs(diffDays) });
   if (diffDays === 0) return t("admin.dueToday");
   return t("admin.dueInDays", { count: diffDays });
+}
+
+export function getAdminAssetHref(machineKey: string) {
+  return `/admin/assets/${encodeURIComponent(machineKey)}`;
 }
 
 export {

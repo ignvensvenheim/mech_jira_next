@@ -385,7 +385,7 @@ export function useAdminMaintenance({
           return {
             id: `${item.id}:completed`,
             category: machineLabel,
-            change: "Completed",
+            change: t("admin.changeCompleted"),
             title: item.title,
             timestamp: item.completedAt,
             kind: "completed" as const,
@@ -400,7 +400,7 @@ export function useAdminMaintenance({
           return {
             id: `${item.id}:updated`,
             category: machineLabel,
-            change: "Updated",
+            change: t("admin.changeUpdated"),
             title: item.title,
             timestamp: item.updatedAt,
             kind: "updated" as const,
@@ -410,7 +410,7 @@ export function useAdminMaintenance({
         return {
           id: `${item.id}:created`,
           category: machineLabel,
-          change: "Created",
+          change: t("admin.changeCreated"),
           title: item.title,
           timestamp: item.createdAt,
           kind: "created" as const,
@@ -418,7 +418,7 @@ export function useAdminMaintenance({
       })
       .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
       .slice(0, 8);
-  }, [machineLabelByKey, plannedMaintenanceItems]);
+  }, [machineLabelByKey, plannedMaintenanceItems, t]);
 
   return {
     plannedMaintenanceItems,

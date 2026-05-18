@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { formatCurrency, formatSeconds, getMaintenanceCountLabel, getTicketCountLabel } from "../adminShared";
 import {
   type AdminTranslate,
   type AssetStatisticsRow,
   type DatePreset,
+  getAdminAssetHref,
   type TicketFixCost,
 } from "../adminShared";
 import type { NormalizedIssue } from "@/lib/jira";
@@ -180,10 +182,13 @@ export default function StatisticsSection({
         )}
         {ticketsByCategory.map((row) => {
           const width = (row.tickets / maxCategoryTickets) * 100;
+          const barTitle = `${row.name}: ${getTicketCountLabel(t, row.tickets)} (${Math.round(
+            width
+          )}% of the busiest category)`;
           return (
             <div key={row.name} className="admin-chart-row">
               <div className="admin-chart-label">{row.name}</div>
-              <div className="admin-chart-bar">
+              <div className="admin-chart-bar" title={barTitle}>
                 <div className="admin-chart-bar-fill" style={{ width: `${width}%` }} />
               </div>
               <div className="admin-chart-value">{getTicketCountLabel(t, row.tickets)}</div>
@@ -200,10 +205,15 @@ export default function StatisticsSection({
         )}
         {machinesByBreakdowns.map((row) => {
           const width = (row.breakdowns / maxMachineBreakdowns) * 100;
+          const barTitle = `${row.label}: ${t("admin.breakdownsCount", {
+            count: row.breakdowns,
+          })} (${Math.round(width)}% of the highest breakdown count)`;
           return (
             <div key={row.key} className="admin-chart-row">
-              <div className="admin-chart-label">{row.label}</div>
-              <div className="admin-chart-bar">
+              <Link href={getAdminAssetHref(row.key)} className="admin-chart-label admin-inline-link">
+                {row.label}
+              </Link>
+              <div className="admin-chart-bar" title={barTitle}>
                 <div className="admin-chart-bar-fill" style={{ width: `${width}%` }} />
               </div>
               <div className="admin-chart-value">
@@ -222,10 +232,16 @@ export default function StatisticsSection({
         )}
         {machinesByRepairCost.map((row) => {
           const width = (row.repairCost / maxMachineRepairCost) * 100;
+          const barTitle = `${row.label}: ${formatCurrency(
+            row.repairCost,
+            locale
+          )} (${Math.round(width)}% of the highest repair cost)`;
           return (
             <div key={row.key} className="admin-chart-row">
-              <div className="admin-chart-label">{row.label}</div>
-              <div className="admin-chart-bar">
+              <Link href={getAdminAssetHref(row.key)} className="admin-chart-label admin-inline-link">
+                {row.label}
+              </Link>
+              <div className="admin-chart-bar" title={barTitle}>
                 <div className="admin-chart-bar-fill" style={{ width: `${width}%` }} />
               </div>
               <div className="admin-chart-value">{formatCurrency(row.repairCost, locale)}</div>
@@ -244,10 +260,16 @@ export default function StatisticsSection({
         )}
         {machinesByMaintenanceCost.map((row) => {
           const width = (row.maintenanceCost / maxMachineMaintenanceCost) * 100;
+          const barTitle = `${row.label}: ${formatCurrency(
+            row.maintenanceCost,
+            locale
+          )} (${Math.round(width)}% of the highest maintenance cost)`;
           return (
             <div key={row.key} className="admin-chart-row">
-              <div className="admin-chart-label">{row.label}</div>
-              <div className="admin-chart-bar">
+              <Link href={getAdminAssetHref(row.key)} className="admin-chart-label admin-inline-link">
+                {row.label}
+              </Link>
+              <div className="admin-chart-bar" title={barTitle}>
                 <div className="admin-chart-bar-fill" style={{ width: `${width}%` }} />
               </div>
               <div className="admin-chart-value">{formatCurrency(row.maintenanceCost, locale)}</div>
