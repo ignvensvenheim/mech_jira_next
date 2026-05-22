@@ -14,10 +14,10 @@ const LAST_SYNC_KEY = "jiraIssuesLastSyncAt";
 const LAST_FULL_SYNC_KEY = "jiraIssuesLastFullSyncAt";
 const MAX_FUTURE_DRIFT_MS = 5 * 60 * 1000;
 const WATERMARK_OVERLAP_MS = 60 * 1000;
-const ACTIVE_POLL_MS = 10 * 1000;
-const HIDDEN_POLL_MS = 60 * 1000;
+const ACTIVE_POLL_MS = 30 * 1000;
+const HIDDEN_POLL_MS = 5 * 60 * 1000;
 const MIN_TRIGGER_GAP_MS = 2 * 1000;
-const FULL_SYNC_EVERY_MS = 5 * 60 * 1000;
+const FULL_SYNC_EVERY_MS = 12 * 60 * 60 * 1000;
 
 function byUpdatedDesc(a: NormalizedIssue, b: NormalizedIssue) {
   return (
@@ -58,6 +58,7 @@ export function useJiraSearch(dateFrom?: string, dateTo?: string) {
   const [progress, setProgress] = React.useState<{ loaded: number }>({
     loaded: 0,
   });
+  const [fullRefreshNonce, setFullRefreshNonce] = React.useState(0);
 
   const { issues, setIssues } = useIssues();
   const issuesRef = React.useRef<NormalizedIssue[]>(issues);
@@ -89,25 +90,20 @@ export function useJiraSearch(dateFrom?: string, dateTo?: string) {
     let isRunning = false;
     let lastTriggerAt = 0;
 
-    const lastFullSyncAt = localStorage.getItem(LAST_FULL_SYNC_KEY);
-    const canHydrateCache = isRecentIso(lastFullSyncAt, FULL_SYNC_EVERY_MS);
-
-    if (canHydrateCache) {
-      try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw) as Issue[];
-          const cached = normalizeIssues(parsed);
-          if (cached.length) {
-            hasHydratedCache = true;
-            setIssues(cached);
-            setProgress({ loaded: cached.length });
-            setLoading(false);
-          }
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as Issue[];
+        const cached = normalizeIssues(parsed);
+        if (cached.length) {
+          hasHydratedCache = true;
+          setIssues(cached);
+          setProgress({ loaded: cached.length });
+          setLoading(false);
         }
-      } catch {
-        // Ignore invalid cache
       }
+    } catch {
+      // Ignore invalid cache
     }
 
     const run = async () => {
@@ -134,8 +130,12 @@ export function useJiraSearch(dateFrom?: string, dateTo?: string) {
         const safeLastSync = sanitizeWatermark(storedLastSync);
         const incrementalJql = buildJql(safeLastSync);
         const fullJql = buildJql(null);
+        const shouldForceFullSync = fullRefreshNonce > 0;
         const shouldFullSync =
-          !safeLastSync || !isRecentIso(storedLastFullSync, FULL_SYNC_EVERY_MS);
+          shouldForceFullSync ||
+          !hasHydratedCache ||
+          !safeLastSync ||
+          !isRecentIso(storedLastFullSync, FULL_SYNC_EVERY_MS);
         setFetchingAllTickets(shouldFullSync);
 
         let merged = shouldFullSync
@@ -198,9 +198,9 @@ export function useJiraSearch(dateFrom?: string, dateTo?: string) {
           localStorage.setItem(CACHE_KEY, JSON.stringify(merged));
           localStorage.setItem(
             LAST_SYNC_KEY,
-            lastSeenUpdated || new Date().toISOString()
+            merged.length > 0 ? lastSeenUpdated : new Date().toISOString()
           );
-          if (shouldFullSync) {
+          if (shouldFullSync || !storedLastFullSync) {
             localStorage.setItem(LAST_FULL_SYNC_KEY, new Date().toISOString());
           }
           hasHydratedCache = true;
@@ -246,7 +246,13 @@ export function useJiraSearch(dateFrom?: string, dateTo?: string) {
       document.removeEventListener("visibilitychange", triggerSoon);
       controller.abort();
     };
-  }, [dateFrom, dateTo, fetchPage, setIssues]);
+  }, [dateFrom, dateTo, fetchPage, fullRefreshNonce, setIssues]);
+
+  const refreshAllTickets = React.useCallback(() => {
+    localStorage.removeItem(LAST_SYNC_KEY);
+    localStorage.removeItem(LAST_FULL_SYNC_KEY);
+    setFullRefreshNonce((value) => value + 1);
+  }, []);
 
   return {
     issues,
@@ -254,5 +260,6 @@ export function useJiraSearch(dateFrom?: string, dateTo?: string) {
     fetchingAllTickets,
     error,
     progress,
+    refreshAllTickets,
   };
 }

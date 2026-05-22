@@ -1,0 +1,234 @@
+Future Improvements
+
+Purpose
+- This file is meant to help future work sessions quickly understand what the admin
+  panel is already doing and what should be improved next.
+- The project is currently a custom mini-CMMS built on top of Jira tickets.
+- Jira tickets are the operational source, while the admin panel adds machine-level
+  metadata, repair/manual cost tracking, maintenance planning, and statistics.
+
+Current Admin Structure
+- Main page: app/admin/page.tsx
+- Asset detail page: app/admin/assets/[machineKey]/page.tsx
+- Shared admin utilities/types: app/admin/adminShared.ts
+- Presentational sections:
+  app/admin/components/CostsSection.tsx
+  app/admin/components/InventorySection.tsx
+  app/admin/components/MaintenanceSection.tsx
+  app/admin/components/StatisticsSection.tsx
+  app/admin/components/AdminSidebar.tsx
+  app/admin/components/AdminFilters.tsx
+- Admin-only modal/components that are not shared outside admin:
+  app/admin/components/AdminTicketModal/AdminTicketModal.tsx
+- Admin hooks:
+  app/admin/hooks/useAdminSession.ts
+  app/admin/hooks/useAdminFilters.ts
+  app/admin/hooks/useAdminAssetData.ts
+  app/admin/hooks/useAdminAssetDetail.ts
+  app/admin/hooks/useAdminMaintenance.ts
+
+Current Admin Responsibilities
+- Costs:
+  filter Jira tickets, attach repair costs to tickets, and manage manual machine costs
+- Inventory:
+  manage equipment metadata per machine key
+- Asset detail:
+  show one-machine rollup across tickets, repair/manual costs, maintenance, and metadata
+- Maintenance:
+  plan, edit, complete, delete, and repair maintenance items in a calendar UI
+  while syncing linked maintenance items with Jira
+- Statistics:
+  derive rollups from Jira tickets plus stored admin data
+- Users:
+  manage app users, limited to super-admin access
+
+Important Data Model Notes
+- Machine identity is centered around machineKey, usually in category::subcategory form.
+- Jira issues are mapped to machines through parsed issue asset metadata.
+- Asset/equipment details are stored separately from Jira and are merged in admin views.
+- Planned maintenance currently uses item-based scheduling, not reusable PM templates.
+- Planned maintenance rows can now store Jira linkage:
+  jiraIssueId, jiraIssueKey, jiraIssueUrl
+- Planned maintenance create/edit/delete is no longer local-only.
+  New items are created in Jira first and then stored locally.
+- Current Jira maintenance sync defaults:
+  project key: MECH
+  issue type: Submit a request or incident
+  target status after create: To Do List
+  labels: planned-maintenance, admin-calendar
+- Ticket sync is stale-while-revalidate and supports manual full refresh.
+- If a linked Jira maintenance issue is deleted outside the app, the next maintenance
+  load repairs local state by removing the stale local row.
+- Linked maintenance delete from the admin panel now deletes the Jira issue first and
+  then removes the local row.
+- Mutating admin APIs now enforce admin auth plus same-origin checks.
+- Bootstrap admin login should be treated as setup-only and is now gated by
+  ALLOW_ADMIN_BOOTSTRAP=true and zero existing users.
+
+Maintenance Sync Status
+- Implemented:
+  create in Jira + local DB
+  edit in local UI + Jira
+  complete/reopen in local UI + Jira field update/comment
+  delete in local UI + Jira delete
+  repair local stale rows when Jira issue no longer exists
+- Not implemented:
+  Jira-side edits changing local maintenance rows automatically
+  Jira-side status transitions mapping back into richer local workflow states
+  orphan-state UI; current repair path removes stale linked rows instead
+
+Maintenance Testing Notes
+- Minimal component test coverage now exists for MaintenanceSection modal Jira-link
+  behavior using Vitest + Testing Library:
+  app/admin/components/MaintenanceSection.test.tsx
+
+Priority Order
+- Highest priority improvements should deepen maintenance operations, not just add
+  more charts or visual polish.
+- If choosing between analytics and workflow depth, prefer workflow depth first.
+
+1. Asset detail page
+Status
+- Implemented in first-pass form.
+What now exists
+- dedicated route: app/admin/assets/[machineKey]/page.tsx
+- shared loader hook: app/admin/hooks/useAdminAssetDetail.ts
+- asset-level view of:
+  Jira breakdown tickets
+  repair costs tied to tickets
+  manual costs
+  planned maintenance
+  completed maintenance
+  asset metadata
+- entry points from existing admin views:
+  costs
+  inventory
+  statistics
+Follow-up improvements for this page
+- localize the newly added asset-detail strings properly in Lithuanian
+- consider adding direct edit actions from the asset page instead of only read-first views
+- consider linking from maintenance lists/calendar directly into the same asset detail page
+- if users still need audit-style chronology, consider a dedicated asset activity log
+  instead of reintroducing a duplicate "recent activity" panel beside the ticket list
+- decide whether the asset page should eventually own reusable asset-level actions
+  like edit metadata, add manual cost, or create maintenance directly in place
+
+2. Maintenance workflow states
+Why
+- Current maintenance handling is too binary and does not reflect real maintenance flow.
+What to add
+- planned
+- in progress
+- waiting for parts
+- completed
+- cancelled
+Likely implementation direction
+- Extend planned maintenance storage/API to persist a richer status field.
+- Update the calendar, modal, Jira sync, and statistics logic to use statuses instead
+  of only active/completed state.
+- Decide how each local status should map to Jira issue status, comment, label, or
+  custom field behavior.
+
+3. Preventive maintenance templates
+Why
+- Current planning is item-based. Reusable templates are needed for real PM programs.
+What to add
+- reusable PM templates
+- recurrence rules: weekly, monthly, custom
+- checklist steps
+- estimated labor
+- expected cost
+Likely implementation direction
+- Add new DB model(s) for templates and generated maintenance items.
+- Keep generated items separate from templates.
+- Avoid baking recurrence logic directly into page components.
+
+4. Asset master data expansion
+Why
+- Current inventory data is useful but too thin for long-term asset management.
+What to add
+- internal asset ID
+- location
+- install date
+- warranty end date
+- vendor/service provider
+- criticality
+- notes/documents
+Likely implementation direction
+- Extend asset/equipment schema and admin equipment APIs.
+- Keep machineKey as the main join key unless a new stronger asset ID is introduced.
+
+5. Parts and spare inventory
+Why
+- This is one of the largest functional gaps compared with common CMMS products.
+What to add
+- part number
+- stock count
+- minimum stock
+- supplier
+- asset compatibility
+- parts used on maintenance/repair jobs
+Suggested scope
+- Start simple. First track parts and usage history before trying to build full
+  procurement or purchasing flows.
+
+6. Notifications and reminders
+Why
+- Users need operational prompts, not only dashboards.
+What to add
+- due soon / overdue maintenance alerts
+- reminders for incomplete asset details
+- reminders for missing inventory information
+Suggested scope
+- Start in-app first before email or external notification channels.
+
+7. Statistics improvements
+Why
+- Statistics are useful, but not the highest-priority gap compared with workflow depth.
+What to do
+- Move remaining statistics derivations into a dedicated hook, likely useAdminStatistics.
+- Consider richer asset-level cost and downtime reporting only after workflow depth
+  improves.
+
+8. Activity log localization
+Why
+- Some activity labels are still hardcoded in English.
+What to do
+- Replace strings like Activity, Created, Updated, and Completed with translated keys.
+- Review the admin panel for any remaining fallback-key or hardcoded-text leaks.
+
+9. Admin page cleanup
+Why
+- app/admin/page.tsx is much smaller than before, but still owns some cross-section
+  derived state.
+What to do
+- Keep page.tsx mainly as a composition layer.
+- Move further section-specific derivations into hooks if they start growing again.
+
+10. Manual full refresh UX
+Why
+- Users can force a full Jira resync now, but the UI does not explain sync behavior.
+What to add
+- last sync timestamp
+- indication of cached vs refreshed state
+- visible sync progress/status when a full refresh runs
+
+11. Jira maintenance sync polish
+Why
+- Maintenance now writes through to Jira, but the integration is still intentionally
+  simple and should be hardened as a product feature.
+What to do
+- Store or expose clearer sync-state UI when Jira create/update/delete fails
+- Consider showing the Jira issue key directly in maintenance cards/modals
+- Decide whether repair should hard-delete stale local rows forever or move them into
+  a softer orphaned/archived state
+- Review whether more admin write routes should share a single centralized same-origin
+  helper/middleware pattern instead of route-by-route checks
+- Decide whether raw maintenance delete in Jira should remain allowed or whether the
+  app should prefer closing/cancelling work instead
+
+How Future Sessions Should Use This File
+- Read this file first when asked what to improve next in the admin panel.
+- Treat items 2 through 6 as more valuable than adding extra statistics or visuals.
+- Before implementing a larger item, inspect the related admin hook/component files
+  listed above instead of rebuilding logic from scratch.

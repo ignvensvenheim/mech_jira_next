@@ -27,16 +27,6 @@ type MachineDataResponse = {
   entries: ManualEntry[];
 };
 
-type EquipmentDetailsResponse = {
-  machineKey: string;
-  category?: string;
-  subcategory?: string;
-  model: string;
-  serialNumber: string;
-  manufacturer: string;
-  updatedAt: string | null;
-};
-
 type TicketCostItem = {
   issueKey: string;
   machineKey: string;
@@ -98,8 +88,6 @@ export default function AdminTicketModal({
   const [attachments, setAttachments] = React.useState<Attachment[]>([]);
   const [adminDataError, setAdminDataError] = React.useState("");
   const [machineData, setMachineData] = React.useState<MachineDataResponse | null>(null);
-  const [equipmentData, setEquipmentData] =
-    React.useState<EquipmentDetailsResponse | null>(null);
   const [ticketCost, setTicketCost] = React.useState<TicketCostItem | null>(null);
   const [ticketDate, setTicketDate] = React.useState("");
   const [ticketAmount, setTicketAmount] = React.useState("");
@@ -132,7 +120,6 @@ export default function AdminTicketModal({
       setAdminDataError("");
       setDetailIssue(issue);
       setMachineData(null);
-      setEquipmentData(null);
       setTicketCost(null);
       setTicketDate(initialDate);
       setTicketAmount("");
@@ -186,18 +173,7 @@ export default function AdminTicketModal({
               if (!isCancelled) {
                 setMachineData(json);
               }
-            }),
-          );
-
-          extraPromises.push(
-            fetch(`/api/admin/equipment?machineKey=${encodeURIComponent(machineKey)}`, {
-              cache: "no-store",
-            }).then(async (res) => {
-              const json = await parseJson<EquipmentDetailsResponse>(res);
-              if (!isCancelled) {
-                setEquipmentData(json);
-              }
-            }),
+            })
           );
         }
 
@@ -256,7 +232,7 @@ export default function AdminTicketModal({
               mimeType: blob.type,
               blobUrl,
             };
-          }),
+          })
         );
 
         if (!isCancelled) {
@@ -283,7 +259,7 @@ export default function AdminTicketModal({
 
   if (!detailIssue) return null;
 
-  const { category, subcategory, machineKey } = getIssueAssetParts(detailIssue);
+  const { machineKey } = getIssueAssetParts(detailIssue);
   const manualEntries = machineData?.entries ?? [];
   const manualTotal = manualEntries.reduce((sum, entry) => sum + entry.amount, 0);
   const ticketFixCostTotal = ticketCost?.amount ?? 0;
@@ -305,7 +281,7 @@ export default function AdminTicketModal({
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ issueKey: issue.key }),
-          }),
+          })
         );
         setTicketCost(null);
         setTicketAmount("");
@@ -322,7 +298,7 @@ export default function AdminTicketModal({
               amount,
               comment,
             }),
-          }),
+          })
         );
         setTicketCost(saved);
         setTicketDate(saved.date);
@@ -357,7 +333,7 @@ export default function AdminTicketModal({
             amount,
             comment: entryComment.trim(),
           }),
-        }),
+        })
       );
       setMachineData((prev) =>
         prev
@@ -369,7 +345,7 @@ export default function AdminTicketModal({
                 return b.createdAt.localeCompare(a.createdAt);
               }),
             }
-          : { entries: [saved] },
+          : { entries: [saved] }
       );
       setEntryAmount("");
       setEntryComment("");
@@ -414,7 +390,7 @@ export default function AdminTicketModal({
             amount,
             comment: editComment.trim(),
           }),
-        }),
+        })
       );
       setMachineData((prev) =>
         prev
@@ -422,7 +398,7 @@ export default function AdminTicketModal({
               ...prev,
               entries: prev.entries.map((entry) => (entry.id === id ? saved : entry)),
             }
-          : prev,
+          : prev
       );
       cancelEditEntry();
       refreshParent();
@@ -440,12 +416,12 @@ export default function AdminTicketModal({
       await parseJson<{ ok: boolean }>(
         await fetch(`/api/admin/manual-entries/${id}`, {
           method: "DELETE",
-        }),
+        })
       );
       setMachineData((prev) =>
         prev
           ? { ...prev, entries: prev.entries.filter((entry) => entry.id !== id) }
-          : prev,
+          : prev
       );
       refreshParent();
     } catch (error) {
@@ -471,13 +447,13 @@ export default function AdminTicketModal({
           <span className={getStatusClassName(detailIssue.statusCategory)}>
             {detailIssue.status}
           </span>
-              <button
-                className="modal-close-btn"
-                onClick={onClose}
-                aria-label={t("common.close")}
-              >
-                x
-              </button>
+          <button
+            className="modal-close-btn"
+            onClick={onClose}
+            aria-label={t("common.close")}
+          >
+            x
+          </button>
         </div>
       </div>
 
@@ -724,7 +700,7 @@ export default function AdminTicketModal({
                                 </button>
                               </div>
                             </div>
-                          ),
+                          )
                         )}
                       </div>
                     ) : (
@@ -732,36 +708,6 @@ export default function AdminTicketModal({
                     )}
                   </div>
                 </div>
-              </section>
-
-              <section className="detailed-ticket__section">
-                <h3 className="detailed-ticket__section-title">{t("admin.inventoryDetails")}</h3>
-                {machineKey ? (
-                  <div className="admin-ticket-modal__grid">
-                    <div className="admin-ticket-modal__item">
-                      <span className="detailed-ticket__label">{t("home.category")}</span>
-                      <span>{category || "-"}</span>
-                    </div>
-                    <div className="admin-ticket-modal__item">
-                      <span className="detailed-ticket__label">{t("admin.subcategory")}</span>
-                      <span>{subcategory || "-"}</span>
-                    </div>
-                    <div className="admin-ticket-modal__item">
-                      <span className="detailed-ticket__label">{t("admin.model")}</span>
-                      <span>{equipmentData?.model || "-"}</span>
-                    </div>
-                    <div className="admin-ticket-modal__item">
-                      <span className="detailed-ticket__label">{t("admin.serialNumber")}</span>
-                      <span>{equipmentData?.serialNumber || "-"}</span>
-                    </div>
-                    <div className="admin-ticket-modal__item">
-                      <span className="detailed-ticket__label">{t("admin.manufacturer")}</span>
-                      <span>{equipmentData?.manufacturer || "-"}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="detailed-ticket__empty">{t("admin.noMachineMapping")}</p>
-                )}
               </section>
 
               <section className="detailed-ticket__section detailed-ticket__section--compact">
@@ -785,7 +731,6 @@ export default function AdminTicketModal({
                 </div>
               </section>
 
-
               <section className="detailed-ticket__section">
                 <h3 className="detailed-ticket__section-title">{t("common.comments")}</h3>
                 {Array.isArray(detailIssue.comments) && detailIssue.comments.length > 0 ? (
@@ -806,7 +751,9 @@ export default function AdminTicketModal({
                   </div>
                 ) : detailIssue.descriptionText ? (
                   <>
-                    <p className="detailed-ticket__label">{t("common.initialNote")}</p>
+                    <p className="detailed-ticket__label">
+                      {detailIssue.reporter?.name || t("common.unknown")}
+                    </p>
                     <p className="detailed-ticket__comment">{detailIssue.descriptionText}</p>
                   </>
                 ) : (

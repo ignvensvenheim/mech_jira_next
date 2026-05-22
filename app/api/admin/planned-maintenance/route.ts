@@ -2,8 +2,15 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { requireTrustedOrigin } from "@/lib/requireTrustedOrigin";
 import { ensureAssetExists, isConcreteMachineKey } from "@/lib/assets";
 import { formatDateOnly, parseDateOnly } from "@/lib/dateOnly";
+import {
+  createJiraMaintenanceIssue,
+  getExistingJiraIssueKeys,
+} from "@/lib/jiraServer";
+
+export const runtime = "nodejs";
 
 type PlannedMaintenanceRow = {
   id: string;
@@ -12,6 +19,9 @@ type PlannedMaintenanceRow = {
   dueDate: Date;
   note: string | null;
   cost: number | null;
+  jiraIssueId: string | null;
+  jiraIssueKey: string | null;
+  jiraIssueUrl: string | null;
   isCompleted: boolean;
   completedAt: Date | null;
   createdAt: Date;
@@ -38,7 +48,43 @@ async function hasCostColumn() {
   return rows[0]?.exists ?? false;
 }
 
-function selectSql(withCost: boolean) {
+async function hasJiraLinkColumns() {
+  const rows = await prisma.$queryRaw<
+    Array<{
+      jiraIssueId: boolean;
+      jiraIssueKey: boolean;
+      jiraIssueUrl: boolean;
+    }>
+  >`
+    SELECT
+      EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'PlannedMaintenance'
+          AND column_name = 'jiraIssueId'
+      ) AS "jiraIssueId",
+      EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'PlannedMaintenance'
+          AND column_name = 'jiraIssueKey'
+      ) AS "jiraIssueKey",
+      EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'PlannedMaintenance'
+          AND column_name = 'jiraIssueUrl'
+      ) AS "jiraIssueUrl"
+  `;
+
+  return rows[0] ?? {
+    jiraIssueId: false,
+    jiraIssueKey: false,
+    jiraIssueUrl: false,
+  };
+}
+
+function selectSql(withCost: boolean, withJiraLink: boolean) {
   return withCost
     ? Prisma.sql`
         SELECT
@@ -48,6 +94,7 @@ function selectSql(withCost: boolean) {
           "dueDate",
           "note",
           "cost",
+          ${withJiraLink ? Prisma.sql`"jiraIssueId", "jiraIssueKey", "jiraIssueUrl",` : Prisma.sql`NULL::TEXT AS "jiraIssueId", NULL::TEXT AS "jiraIssueKey", NULL::TEXT AS "jiraIssueUrl",`}
           "isCompleted",
           "completedAt",
           "createdAt",
@@ -62,6 +109,7 @@ function selectSql(withCost: boolean) {
           "dueDate",
           "note",
           NULL::DOUBLE PRECISION AS "cost",
+          ${withJiraLink ? Prisma.sql`"jiraIssueId", "jiraIssueKey", "jiraIssueUrl",` : Prisma.sql`NULL::TEXT AS "jiraIssueId", NULL::TEXT AS "jiraIssueKey", NULL::TEXT AS "jiraIssueUrl",`}
           "isCompleted",
           "completedAt",
           "createdAt",
@@ -70,21 +118,72 @@ function selectSql(withCost: boolean) {
       `;
 }
 
+async function repairDeletedLinkedMaintenanceItems(items: PlannedMaintenanceRow[]) {
+  const linkedItems = items.filter((item) => item.jiraIssueKey);
+  if (linkedItems.length === 0) {
+    return new Set<string>();
+  }
+
+  const existingKeys = await getExistingJiraIssueKeys(
+    linkedItems.map((item) => item.jiraIssueKey as string)
+  );
+  const missingIds = linkedItems
+    .filter((item) => item.jiraIssueKey && !existingKeys.has(item.jiraIssueKey))
+    .map((item) => item.id);
+
+  if (missingIds.length > 0) {
+    await prisma.plannedMaintenance.deleteMany({
+      where: {
+        id: {
+          in: missingIds,
+        },
+      },
+    });
+  }
+
+  return new Set(missingIds);
+}
+
 export async function GET() {
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const withCost = await hasCostColumn();
+  const [withCost, jiraLinkColumns] = await Promise.all([
+    hasCostColumn(),
+    hasJiraLinkColumns(),
+  ]);
+  const withJiraLink =
+    jiraLinkColumns.jiraIssueId &&
+    jiraLinkColumns.jiraIssueKey &&
+    jiraLinkColumns.jiraIssueUrl;
   const items = await prisma.$queryRaw<PlannedMaintenanceRow[]>(
-    Prisma.sql`${selectSql(withCost)} ORDER BY "isCompleted" ASC, "dueDate" ASC`
+    Prisma.sql`${selectSql(withCost, withJiraLink)} ORDER BY "isCompleted" ASC, "dueDate" ASC`
   );
+  let deletedIds = new Set<string>();
 
-  return NextResponse.json({ items: items.map(serializePlannedMaintenance) });
+  if (withJiraLink) {
+    try {
+      deletedIds = await repairDeletedLinkedMaintenanceItems(items);
+    } catch (error) {
+      console.error("Failed to repair deleted Jira-linked maintenance items", error);
+    }
+  }
+
+  return NextResponse.json({
+    items: items
+      .filter((item) => !deletedIds.has(item.id))
+      .map(serializePlannedMaintenance),
+  });
 }
 
 export async function POST(req: Request) {
+  const originError = requireTrustedOrigin(req);
+  if (originError) {
+    return originError;
+  }
+
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -122,80 +221,196 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "cost must be >= 0" }, { status: 400 });
   }
 
-  await ensureAssetExists(prisma, machineKey, session.user.id);
+  try {
+    await ensureAssetExists(prisma, machineKey, session.user.id);
+    const jiraIssue = await createJiraMaintenanceIssue({
+      machineKey,
+      title,
+      dueDate,
+      note: note || null,
+      cost,
+    });
+    const jiraLinkColumns = await hasJiraLinkColumns();
+    const withJiraLink =
+      jiraLinkColumns.jiraIssueId &&
+      jiraLinkColumns.jiraIssueKey &&
+      jiraLinkColumns.jiraIssueUrl;
+    const withCost = await hasCostColumn();
 
-  const withCost = await hasCostColumn();
-  const rows = await prisma.$queryRaw<PlannedMaintenanceRow[]>(
-    withCost
-      ? Prisma.sql`
-          INSERT INTO "PlannedMaintenance" (
-            "id",
-            "machineKey",
-            "title",
-            "dueDate",
-            "note",
-            "cost",
-            "isCompleted",
-            "createdAt",
-            "updatedAt"
-          )
-          VALUES (
-            ${crypto.randomUUID()},
-            ${machineKey},
-            ${title},
-            ${parsedDueDate},
-            ${note || null},
-            ${cost},
-            false,
-            NOW(),
-            NOW()
-          )
-          RETURNING
-            "id",
-            "machineKey",
-            "title",
-            "dueDate",
-            "note",
-            "cost",
-            "isCompleted",
-            "completedAt",
-            "createdAt",
-            "updatedAt"
-        `
-      : Prisma.sql`
-          INSERT INTO "PlannedMaintenance" (
-            "id",
-            "machineKey",
-            "title",
-            "dueDate",
-            "note",
-            "isCompleted",
-            "createdAt",
-            "updatedAt"
-          )
-          VALUES (
-            ${crypto.randomUUID()},
-            ${machineKey},
-            ${title},
-            ${parsedDueDate},
-            ${note || null},
-            false,
-            NOW(),
-            NOW()
-          )
-          RETURNING
-            "id",
-            "machineKey",
-            "title",
-            "dueDate",
-            "note",
-            NULL::DOUBLE PRECISION AS "cost",
-            "isCompleted",
-            "completedAt",
-            "createdAt",
-            "updatedAt"
-        `
-  );
+    const rows = await prisma.$queryRaw<PlannedMaintenanceRow[]>(
+      withCost && withJiraLink
+        ? Prisma.sql`
+            INSERT INTO "PlannedMaintenance" (
+              "id",
+              "machineKey",
+              "title",
+              "dueDate",
+              "note",
+              "cost",
+              "jiraIssueId",
+              "jiraIssueKey",
+              "jiraIssueUrl",
+              "isCompleted",
+              "createdAt",
+              "updatedAt"
+            )
+            VALUES (
+              ${crypto.randomUUID()},
+              ${machineKey},
+              ${title},
+              ${parsedDueDate},
+              ${note || null},
+              ${cost},
+              ${jiraIssue.id || null},
+              ${jiraIssue.key},
+              ${jiraIssue.browseUrl},
+              false,
+              NOW(),
+              NOW()
+            )
+            RETURNING
+              "id",
+              "machineKey",
+              "title",
+              "dueDate",
+              "note",
+              "cost",
+              "jiraIssueId",
+              "jiraIssueKey",
+              "jiraIssueUrl",
+              "isCompleted",
+              "completedAt",
+              "createdAt",
+              "updatedAt"
+          `
+        : withCost
+          ? Prisma.sql`
+              INSERT INTO "PlannedMaintenance" (
+                "id",
+                "machineKey",
+                "title",
+                "dueDate",
+                "note",
+                "cost",
+                "isCompleted",
+                "createdAt",
+                "updatedAt"
+              )
+              VALUES (
+                ${crypto.randomUUID()},
+                ${machineKey},
+                ${title},
+                ${parsedDueDate},
+                ${note || null},
+                ${cost},
+                false,
+                NOW(),
+                NOW()
+              )
+              RETURNING
+                "id",
+                "machineKey",
+                "title",
+                "dueDate",
+                "note",
+                "cost",
+                NULL::TEXT AS "jiraIssueId",
+                NULL::TEXT AS "jiraIssueKey",
+                NULL::TEXT AS "jiraIssueUrl",
+                "isCompleted",
+                "completedAt",
+                "createdAt",
+                "updatedAt"
+            `
+          : withJiraLink
+            ? Prisma.sql`
+                INSERT INTO "PlannedMaintenance" (
+                  "id",
+                  "machineKey",
+                  "title",
+                  "dueDate",
+                  "note",
+                  "jiraIssueId",
+                  "jiraIssueKey",
+                  "jiraIssueUrl",
+                  "isCompleted",
+                  "createdAt",
+                  "updatedAt"
+                )
+                VALUES (
+                  ${crypto.randomUUID()},
+                  ${machineKey},
+                  ${title},
+                  ${parsedDueDate},
+                  ${note || null},
+                  ${jiraIssue.id || null},
+                  ${jiraIssue.key},
+                  ${jiraIssue.browseUrl},
+                  false,
+                  NOW(),
+                  NOW()
+                )
+                RETURNING
+                  "id",
+                  "machineKey",
+                  "title",
+                  "dueDate",
+                  "note",
+                  NULL::DOUBLE PRECISION AS "cost",
+                  "jiraIssueId",
+                  "jiraIssueKey",
+                  "jiraIssueUrl",
+                  "isCompleted",
+                  "completedAt",
+                  "createdAt",
+                  "updatedAt"
+              `
+            : Prisma.sql`
+                INSERT INTO "PlannedMaintenance" (
+                  "id",
+                  "machineKey",
+                  "title",
+                  "dueDate",
+                  "note",
+                  "isCompleted",
+                  "createdAt",
+                  "updatedAt"
+                )
+                VALUES (
+                  ${crypto.randomUUID()},
+                  ${machineKey},
+                  ${title},
+                  ${parsedDueDate},
+                  ${note || null},
+                  false,
+                  NOW(),
+                  NOW()
+                )
+                RETURNING
+                  "id",
+                  "machineKey",
+                  "title",
+                  "dueDate",
+                  "note",
+                  NULL::DOUBLE PRECISION AS "cost",
+                  NULL::TEXT AS "jiraIssueId",
+                  NULL::TEXT AS "jiraIssueKey",
+                  NULL::TEXT AS "jiraIssueUrl",
+                  "isCompleted",
+                  "completedAt",
+                  "createdAt",
+                  "updatedAt"
+              `
+    );
 
-  return NextResponse.json(serializePlannedMaintenance(rows[0]));
+    return NextResponse.json(serializePlannedMaintenance(rows[0]));
+  } catch (error) {
+    console.error("Failed to create Jira maintenance issue", error);
+    return NextResponse.json(
+      {
+        error: "Failed to create maintenance issue",
+      },
+      { status: 502 }
+    );
+  }
 }

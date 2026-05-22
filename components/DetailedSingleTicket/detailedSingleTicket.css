@@ -1,17 +1,17 @@
 .detailed-ticket {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .detailed-ticket__section {
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
-  padding: 12px;
+  padding: 14px;
   background: var(--color-card-bg);
 }
 
 .detailed-ticket__section--compact {
-  padding: 8px 12px;
+  padding: 14px;
 }
 
 .detailed-ticket__section-title {
@@ -24,7 +24,7 @@
 .detailed-ticket__meta-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .detailed-ticket__meta-item {
@@ -52,21 +52,21 @@
 .detailed-ticket__people-row {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
 .detailed-ticket__attachments {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .detailed-ticket__attachment-item {
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
   background: var(--color-card-bg-hover);
-  padding: 10px;
+  padding: 12px;
 }
 
 .detailed-ticket__attachment-name {
@@ -100,20 +100,20 @@
 
 .detailed-ticket__comments-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .detailed-ticket__comment-item {
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
-  padding: 10px;
+  padding: 12px;
   background: var(--color-card-bg-hover);
 }
 
 .detailed-ticket__comment-meta {
   display: flex;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
   margin-bottom: 6px;
 }
 

@@ -1,6 +1,6 @@
-@import "../TicketModal/ticketModal.css";
-@import "../DetailedSingleTicket/detailedSingleTicket.css";
-@import "../TicketCard/ticketCard.css";
+@import "../../../../components/TicketModal/ticketModal.css";
+@import "../../../../components/DetailedSingleTicket/detailedSingleTicket.css";
+@import "../../../../components/TicketCard/ticketCard.css";
 
 .admin-ticket-modal {
   width: min(1120px, 100%);
@@ -8,11 +8,11 @@
 
 .admin-ticket-modal__content {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .admin-ticket-modal__section--compact {
-  padding: 12px;
+  padding: 14px;
 }
 
 .admin-ticket-modal__grid {
@@ -29,12 +29,12 @@
 .admin-ticket-modal__summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .admin-ticket-modal__summary-card {
   display: grid;
-  gap: 6px;
+  gap: 8px;
   padding: 12px;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
@@ -49,14 +49,14 @@
 
 .admin-ticket-modal__panels {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   margin-top: 12px;
 }
 
 .admin-ticket-modal__panel {
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
   background: #fff;
@@ -66,7 +66,7 @@
   display: flex;
   justify-content: space-between;
   align-items: start;
-  gap: 10px;
+  gap: 12px;
 }
 
 .admin-ticket-modal__panel-copy {
@@ -92,7 +92,7 @@
 .admin-ticket-modal__single-form {
   display: grid;
   grid-template-columns: minmax(0, 220px) auto;
-  gap: 10px;
+  gap: 12px;
   align-items: end;
 }
 
@@ -111,21 +111,22 @@
 .admin-ticket-modal__ticket-form {
   display: grid;
   grid-template-columns: 150px 160px minmax(0, 1fr) 120px;
-  gap: 10px;
+  column-gap: 14px;
+  row-gap: 10px;
   align-items: end;
 }
 
 .admin-ticket-modal__entries {
   display: grid;
-  gap: 8px;
+  gap: 12px;
 }
 
 .admin-ticket-modal__entry {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 120px auto;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
-  padding: 10px 12px;
+  padding: 12px;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
   background: var(--color-card-bg-hover);
@@ -177,6 +178,6 @@
   }
 
   .admin-ticket-modal__panel {
-    padding: 10px;
+    padding: 12px;
   }
 }

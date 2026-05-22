@@ -11,11 +11,12 @@ import { NormalizedIssue } from "@/lib/jira";
 import TicketModal from "@/components/TicketModal/TicketModal";
 import { fmtDuration } from "@/helpers/fmtDuration";
 import { relativeDate } from "@/helpers/relativeDate";
+import { getDateRangeBounds } from "./admin/adminShared";
 
 const LAYOUT_STORAGE_KEY = "mechanikai-ticket-layout";
 
 export default function Page() {
-  const { loadingInitial, fetchingAllTickets, error } = useJiraSearch();
+  const { loadingInitial, fetchingAllTickets, error, refreshAllTickets } = useJiraSearch();
   const { issues } = useIssues();
 
   const GRID_ITEMS_PER_PAGE = 20;
@@ -55,9 +56,8 @@ export default function Page() {
       const matchLine = !selectedLine || linePart === lin;
 
       const created = new Date(i.created).getTime();
-      const from = dateFrom ? new Date(dateFrom).getTime() : -Infinity;
-      const to = dateTo ? new Date(dateTo).getTime() : Infinity;
-      const matchDate = created >= from && created <= to;
+      const { fromTime, toTime } = getDateRangeBounds(dateFrom, dateTo);
+      const matchDate = created >= fromTime && created <= toTime;
 
       const matchStatus =
         selectedStatuses.length === 0 ||
@@ -184,7 +184,9 @@ export default function Page() {
               setSelectedLine("");
               setPage(1);
             }}
+            onFullRefreshTickets={refreshAllTickets}
             issues={filteredIssues}
+            isFullRefreshDisabled={loadingInitial || fetchingAllTickets}
           />
         </aside>
 
