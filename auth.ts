@@ -35,6 +35,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           // Bootstrap first admin user from env on first login attempt.
           if (!user) {
+            const allowBootstrap =
+              String(process.env.ALLOW_ADMIN_BOOTSTRAP || "").trim().toLowerCase() ===
+              "true";
             const adminEmail = (process.env.ADMIN_EMAIL || "")
               .trim()
               .toLowerCase();
@@ -47,7 +50,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 (identifier === adminName ||
                   identifierLower === adminName.toLowerCase()));
 
-            if (matchesBootstrapIdentity && password === adminPassword) {
+            if (allowBootstrap && matchesBootstrapIdentity && password === adminPassword) {
+              const userCount = await prisma.user.count();
+              if (userCount > 0) {
+                return null;
+              }
+
               // If ADMIN_EMAIL is not a valid email-like value, keep it deterministic.
               const bootstrapEmail =
                 adminEmail && adminEmail.includes("@")

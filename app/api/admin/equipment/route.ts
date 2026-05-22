@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { requireTrustedOrigin } from "@/lib/requireTrustedOrigin";
 import { ensureAssetExists, isConcreteMachineKey } from "@/lib/assets";
 
 type AssetRow = {
@@ -84,6 +85,11 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const originError = requireTrustedOrigin(req);
+  if (originError) {
+    return originError;
+  }
+
   const session = await requireAdmin();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

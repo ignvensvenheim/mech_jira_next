@@ -87,19 +87,23 @@ model TicketFixCost {
 }
 
 model PlannedMaintenance {
-  id          String   @id @default(cuid())
-  machineKey  String
-  title       String
-  dueDate     DateTime
-  note        String?
-  cost        Float?
-  isCompleted Boolean  @default(false)
-  completedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  asset       Asset    @relation(fields: [machineKey], references: [machineKey], onDelete: Restrict)
+  id           String   @id @default(cuid())
+  machineKey   String
+  title        String
+  dueDate      DateTime
+  note         String?
+  cost         Float?
+  jiraIssueId  String?
+  jiraIssueKey String?
+  jiraIssueUrl String?
+  isCompleted  Boolean  @default(false)
+  completedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  asset        Asset    @relation(fields: [machineKey], references: [machineKey], onDelete: Restrict)
 
   @@index([machineKey])
   @@index([dueDate])
   @@index([isCompleted])
+  @@index([jiraIssueKey])
 }

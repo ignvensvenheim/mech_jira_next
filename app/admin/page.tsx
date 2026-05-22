@@ -5,7 +5,7 @@ import Modal from "react-modal";
 import { useI18n } from "@/components/I18nProvider";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { useIssues } from "@/lib/IssuesContext";
-import AdminTicketModal from "@/components/AdminTicketModal/AdminTicketModal";
+import AdminTicketModal from "./components/AdminTicketModal/AdminTicketModal";
 import CostsSection from "./components/CostsSection";
 import InventorySection from "./components/InventorySection";
 import MaintenanceSection from "./components/MaintenanceSection";

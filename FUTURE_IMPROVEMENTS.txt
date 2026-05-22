@@ -18,6 +18,8 @@ Current Admin Structure
   app/admin/components/StatisticsSection.tsx
   app/admin/components/AdminSidebar.tsx
   app/admin/components/AdminFilters.tsx
+- Admin-only modal/components that are not shared outside admin:
+  app/admin/components/AdminTicketModal/AdminTicketModal.tsx
 - Admin hooks:
   app/admin/hooks/useAdminSession.ts
   app/admin/hooks/useAdminFilters.ts
@@ -33,7 +35,8 @@ Current Admin Responsibilities
 - Asset detail:
   show one-machine rollup across tickets, repair/manual costs, maintenance, and metadata
 - Maintenance:
-  plan, edit, complete, and delete maintenance items in a calendar UI
+  plan, edit, complete, delete, and repair maintenance items in a calendar UI
+  while syncing linked maintenance items with Jira
 - Statistics:
   derive rollups from Jira tickets plus stored admin data
 - Users:
@@ -44,7 +47,40 @@ Important Data Model Notes
 - Jira issues are mapped to machines through parsed issue asset metadata.
 - Asset/equipment details are stored separately from Jira and are merged in admin views.
 - Planned maintenance currently uses item-based scheduling, not reusable PM templates.
+- Planned maintenance rows can now store Jira linkage:
+  jiraIssueId, jiraIssueKey, jiraIssueUrl
+- Planned maintenance create/edit/delete is no longer local-only.
+  New items are created in Jira first and then stored locally.
+- Current Jira maintenance sync defaults:
+  project key: MECH
+  issue type: Submit a request or incident
+  target status after create: To Do List
+  labels: planned-maintenance, admin-calendar
 - Ticket sync is stale-while-revalidate and supports manual full refresh.
+- If a linked Jira maintenance issue is deleted outside the app, the next maintenance
+  load repairs local state by removing the stale local row.
+- Linked maintenance delete from the admin panel now deletes the Jira issue first and
+  then removes the local row.
+- Mutating admin APIs now enforce admin auth plus same-origin checks.
+- Bootstrap admin login should be treated as setup-only and is now gated by
+  ALLOW_ADMIN_BOOTSTRAP=true and zero existing users.
+
+Maintenance Sync Status
+- Implemented:
+  create in Jira + local DB
+  edit in local UI + Jira
+  complete/reopen in local UI + Jira field update/comment
+  delete in local UI + Jira delete
+  repair local stale rows when Jira issue no longer exists
+- Not implemented:
+  Jira-side edits changing local maintenance rows automatically
+  Jira-side status transitions mapping back into richer local workflow states
+  orphan-state UI; current repair path removes stale linked rows instead
+
+Maintenance Testing Notes
+- Minimal component test coverage now exists for MaintenanceSection modal Jira-link
+  behavior using Vitest + Testing Library:
+  app/admin/components/MaintenanceSection.test.tsx
 
 Priority Order
 - Highest priority improvements should deepen maintenance operations, not just add
@@ -88,8 +124,10 @@ What to add
 - cancelled
 Likely implementation direction
 - Extend planned maintenance storage/API to persist a richer status field.
-- Update the calendar, modal, and statistics logic to use statuses instead of only
-  active/completed state.
+- Update the calendar, modal, Jira sync, and statistics logic to use statuses instead
+  of only active/completed state.
+- Decide how each local status should map to Jira issue status, comment, label, or
+  custom field behavior.
 
 3. Preventive maintenance templates
 Why
@@ -174,6 +212,20 @@ What to add
 - last sync timestamp
 - indication of cached vs refreshed state
 - visible sync progress/status when a full refresh runs
+
+11. Jira maintenance sync polish
+Why
+- Maintenance now writes through to Jira, but the integration is still intentionally
+  simple and should be hardened as a product feature.
+What to do
+- Store or expose clearer sync-state UI when Jira create/update/delete fails
+- Consider showing the Jira issue key directly in maintenance cards/modals
+- Decide whether repair should hard-delete stale local rows forever or move them into
+  a softer orphaned/archived state
+- Review whether more admin write routes should share a single centralized same-origin
+  helper/middleware pattern instead of route-by-route checks
+- Decide whether raw maintenance delete in Jira should remain allowed or whether the
+  app should prefer closing/cancelling work instead
 
 How Future Sessions Should Use This File
 - Read this file first when asked what to improve next in the admin panel.

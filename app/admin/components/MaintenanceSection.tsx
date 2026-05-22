@@ -305,6 +305,16 @@ export default function MaintenanceSection({
             </h2>
           </div>
           <div className="admin-maintenance-modal__header-actions">
+            {activeMaintenanceItem?.jiraIssueUrl && (
+              <a
+                href={activeMaintenanceItem.jiraIssueUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="admin-maintenance-modal__link"
+              >
+                {t("admin.openInJira")}
+              </a>
+            )}
             <a
               href="https://svenheim.atlassian.net/servicedesk/customer/portal/40"
               target="_blank"

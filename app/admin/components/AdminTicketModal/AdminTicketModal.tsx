@@ -173,7 +173,7 @@ export default function AdminTicketModal({
               if (!isCancelled) {
                 setMachineData(json);
               }
-            }),
+            })
           );
         }
 
@@ -232,7 +232,7 @@ export default function AdminTicketModal({
               mimeType: blob.type,
               blobUrl,
             };
-          }),
+          })
         );
 
         if (!isCancelled) {
@@ -281,7 +281,7 @@ export default function AdminTicketModal({
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ issueKey: issue.key }),
-          }),
+          })
         );
         setTicketCost(null);
         setTicketAmount("");
@@ -298,7 +298,7 @@ export default function AdminTicketModal({
               amount,
               comment,
             }),
-          }),
+          })
         );
         setTicketCost(saved);
         setTicketDate(saved.date);
@@ -333,7 +333,7 @@ export default function AdminTicketModal({
             amount,
             comment: entryComment.trim(),
           }),
-        }),
+        })
       );
       setMachineData((prev) =>
         prev
@@ -345,7 +345,7 @@ export default function AdminTicketModal({
                 return b.createdAt.localeCompare(a.createdAt);
               }),
             }
-          : { entries: [saved] },
+          : { entries: [saved] }
       );
       setEntryAmount("");
       setEntryComment("");
@@ -390,7 +390,7 @@ export default function AdminTicketModal({
             amount,
             comment: editComment.trim(),
           }),
-        }),
+        })
       );
       setMachineData((prev) =>
         prev
@@ -398,7 +398,7 @@ export default function AdminTicketModal({
               ...prev,
               entries: prev.entries.map((entry) => (entry.id === id ? saved : entry)),
             }
-          : prev,
+          : prev
       );
       cancelEditEntry();
       refreshParent();
@@ -416,12 +416,12 @@ export default function AdminTicketModal({
       await parseJson<{ ok: boolean }>(
         await fetch(`/api/admin/manual-entries/${id}`, {
           method: "DELETE",
-        }),
+        })
       );
       setMachineData((prev) =>
         prev
           ? { ...prev, entries: prev.entries.filter((entry) => entry.id !== id) }
-          : prev,
+          : prev
       );
       refreshParent();
     } catch (error) {
@@ -447,13 +447,13 @@ export default function AdminTicketModal({
           <span className={getStatusClassName(detailIssue.statusCategory)}>
             {detailIssue.status}
           </span>
-              <button
-                className="modal-close-btn"
-                onClick={onClose}
-                aria-label={t("common.close")}
-              >
-                x
-              </button>
+          <button
+            className="modal-close-btn"
+            onClick={onClose}
+            aria-label={t("common.close")}
+          >
+            x
+          </button>
         </div>
       </div>
 
@@ -700,7 +700,7 @@ export default function AdminTicketModal({
                                 </button>
                               </div>
                             </div>
-                          ),
+                          )
                         )}
                       </div>
                     ) : (
@@ -730,7 +730,6 @@ export default function AdminTicketModal({
                   </div>
                 </div>
               </section>
-
 
               <section className="detailed-ticket__section">
                 <h3 className="detailed-ticket__section-title">{t("common.comments")}</h3>

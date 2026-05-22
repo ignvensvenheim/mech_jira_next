@@ -64,6 +64,9 @@ export type PlannedMaintenanceItem = {
   dueDate: string;
   note: string | null;
   cost: number | null;
+  jiraIssueId: string | null;
+  jiraIssueKey: string | null;
+  jiraIssueUrl: string | null;
   isCompleted: boolean;
   completedAt: string | null;
   createdAt: string;
@@ -363,6 +366,9 @@ export function normalizePlannedMaintenanceItem(
     ...item,
     note: item.note ?? null,
     cost: typeof item.cost === "number" ? item.cost : item.cost === null ? null : null,
+    jiraIssueId: item.jiraIssueId ?? null,
+    jiraIssueKey: item.jiraIssueKey ?? null,
+    jiraIssueUrl: item.jiraIssueUrl ?? null,
   };
 }
 

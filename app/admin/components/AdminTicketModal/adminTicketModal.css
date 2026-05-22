@@ -1,6 +1,6 @@
-@import "../TicketModal/ticketModal.css";
-@import "../DetailedSingleTicket/detailedSingleTicket.css";
-@import "../TicketCard/ticketCard.css";
+@import "../../../../components/TicketModal/ticketModal.css";
+@import "../../../../components/DetailedSingleTicket/detailedSingleTicket.css";
+@import "../../../../components/TicketCard/ticketCard.css";
 
 .admin-ticket-modal {
   width: min(1120px, 100%);

@@ -5,7 +5,7 @@ import { Suspense, useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useI18n } from "@/components/I18nProvider";
-import AdminTicketModal from "@/components/AdminTicketModal/AdminTicketModal";
+import AdminTicketModal from "../../components/AdminTicketModal/AdminTicketModal";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { useIssues } from "@/lib/IssuesContext";
 import type { NormalizedIssue } from "@/lib/jira";
