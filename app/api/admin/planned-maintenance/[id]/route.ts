@@ -3,13 +3,18 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { requireTrustedOrigin } from "@/lib/requireTrustedOrigin";
-import { ensureAssetExists, isConcreteMachineKey } from "@/lib/assets";
+import { ensureAssetExists, isConcreteMachineKey, parseMachineKey } from "@/lib/assets";
 import { formatDateOnly, parseDateOnly } from "@/lib/dateOnly";
 import {
   addJiraMaintenanceComment,
   deleteJiraIssue,
   updateJiraMaintenanceIssue,
 } from "@/lib/jiraServer";
+import { sendPlannedMaintenanceNotificationEmail } from "@/lib/plannedMaintenanceMailer";
+import {
+  normalizePlannedMaintenanceRecipients,
+  type PlannedMaintenanceRecipient,
+} from "@/lib/plannedMaintenanceRecipients";
 
 export const runtime = "nodejs";
 
@@ -19,6 +24,8 @@ function serializePlannedMaintenance(item: {
   title: string;
   dueDate: Date;
   note: string | null;
+  notificationRecipientsJson?: string | null;
+  status: string | null;
   isCompleted: boolean;
   completedAt: Date | null;
   createdAt: Date;
@@ -28,14 +35,54 @@ function serializePlannedMaintenance(item: {
   jiraIssueKey?: string | null;
   jiraIssueUrl?: string | null;
 }) {
+  const status =
+    item.status === "planned" ||
+    item.status === "inProgress" ||
+    item.status === "waitingForParts" ||
+    item.status === "completed" ||
+    item.status === "cancelled"
+      ? item.status
+      : item.isCompleted
+        ? "completed"
+        : "planned";
   return {
     ...item,
+    notificationRecipients: normalizePlannedMaintenanceRecipients(
+      JSON.parse(item.notificationRecipientsJson || "[]")
+    ),
+    status,
     cost: item.cost ?? null,
     jiraIssueId: item.jiraIssueId ?? null,
     jiraIssueKey: item.jiraIssueKey ?? null,
     jiraIssueUrl: item.jiraIssueUrl ?? null,
+    isCompleted: status === "completed",
+    completedAt: status === "completed" ? item.completedAt : null,
     dueDate: formatDateOnly(item.dueDate),
   };
+}
+
+function formatMachineLabel(machineKey: string) {
+  const parsed = parseMachineKey(machineKey);
+  if (parsed.category && parsed.subcategory) {
+    return `${parsed.category} / ${parsed.subcategory}`;
+  }
+
+  return machineKey;
+}
+
+function getMaintenanceStatusLabel(status: string) {
+  switch (status) {
+    case "inProgress":
+      return "In progress";
+    case "waitingForParts":
+      return "Waiting for parts";
+    case "completed":
+      return "Completed";
+    case "cancelled":
+      return "Cancelled";
+    default:
+      return "Planned";
+  }
 }
 
 async function hasCostColumn() {
@@ -87,6 +134,62 @@ async function hasJiraLinkColumns() {
   };
 }
 
+async function hasStatusColumn() {
+  const rows = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_name = 'PlannedMaintenance'
+        AND column_name = 'status'
+    ) AS "exists"
+  `;
+
+  return rows[0]?.exists ?? false;
+}
+
+async function hasNotificationRecipientsColumn() {
+  const rows = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_name = 'PlannedMaintenance'
+        AND column_name = 'notificationRecipientsJson'
+    ) AS "exists"
+  `;
+
+  return rows[0]?.exists ?? false;
+}
+
+function normalizeMaintenanceStatus(status: unknown, fallbackIsCompleted: boolean) {
+  switch (status) {
+    case "planned":
+    case "inProgress":
+    case "waitingForParts":
+    case "completed":
+    case "cancelled":
+      return status;
+    default:
+      return fallbackIsCompleted ? "completed" : "planned";
+  }
+}
+
+function getMaintenanceStatusComment(status: string) {
+  switch (status) {
+    case "planned":
+      return "Maintenance moved back to planned in the admin calendar.";
+    case "inProgress":
+      return "Maintenance marked in progress in the admin calendar.";
+    case "waitingForParts":
+      return "Maintenance marked waiting for parts in the admin calendar.";
+    case "completed":
+      return "Maintenance marked completed in the admin calendar.";
+    case "cancelled":
+      return "Maintenance cancelled in the admin calendar.";
+    default:
+      return "Maintenance status updated in the admin calendar.";
+  }
+}
+
 export async function PATCH(
   req: Request,
   context: { params: Promise<{ id: string }> }
@@ -107,21 +210,26 @@ export async function PATCH(
   const title = String(body?.title || "").trim();
   const dueDate = String(body?.dueDate || "").trim();
   const note = String(body?.note || "").trim();
+  const notificationRecipients = normalizePlannedMaintenanceRecipients(
+    body?.notificationRecipients
+  );
+  const action = String(body?.action || "").trim();
+  const statusRaw = body?.status;
   const costRaw = body?.cost;
   const cost =
     costRaw === "" || costRaw === null || typeof costRaw === "undefined"
       ? null
       : Number(costRaw);
-  const isCompleted =
-    typeof body?.isCompleted === "boolean" ? body.isCompleted : undefined;
 
   if (!id) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
-  const [withCost, jiraLinkColumns] = await Promise.all([
+  const [withCost, jiraLinkColumns, withStatus, withNotificationRecipients] = await Promise.all([
     hasCostColumn(),
     hasJiraLinkColumns(),
+    hasStatusColumn(),
+    hasNotificationRecipientsColumn(),
   ]);
   if (
     body &&
@@ -144,6 +252,8 @@ export async function PATCH(
       dueDate: Date;
       note: string | null;
       cost: number | null;
+      notificationRecipientsJson: string | null;
+      status: string | null;
       isCompleted: boolean;
       jiraIssueKey: string | null;
       jiraIssueUrl: string | null;
@@ -160,6 +270,16 @@ export async function PATCH(
           withCost
             ? Prisma.sql`"cost"`
             : Prisma.sql`NULL::DOUBLE PRECISION AS "cost"`
+        },
+        ${
+          withStatus
+            ? Prisma.sql`"status"`
+            : Prisma.sql`NULL::TEXT AS "status"`
+        },
+        ${
+          withNotificationRecipients
+            ? Prisma.sql`"notificationRecipientsJson"`
+            : Prisma.sql`'[]'::TEXT AS "notificationRecipientsJson"`
         },
         "isCompleted",
         ${
@@ -178,11 +298,53 @@ export async function PATCH(
     return NextResponse.json({ error: "Maintenance item not found" }, { status: 404 });
   }
 
+  if (action === "sendReminder") {
+    const currentStatus = normalizeMaintenanceStatus(
+      currentItem.status,
+      currentItem.isCompleted
+    );
+    const currentRecipients = normalizePlannedMaintenanceRecipients(
+      JSON.parse(currentItem.notificationRecipientsJson || "[]")
+    );
+    const serialized = serializePlannedMaintenance({
+      ...currentItem,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      completedAt: currentItem.isCompleted ? new Date() : null,
+      notificationRecipientsJson: currentItem.notificationRecipientsJson,
+    });
+    const { warning } = await sendPlannedMaintenanceNotificationEmail({
+      recipients: currentRecipients,
+      machineLabel: formatMachineLabel(currentItem.machineKey),
+      title: currentItem.title,
+      dueDate: formatDateOnly(currentItem.dueDate),
+      note: currentItem.note,
+      statusLabel: getMaintenanceStatusLabel(currentStatus),
+      action: "reminder",
+    });
+
+    return NextResponse.json({
+      ...serialized,
+      ...(warning ? { notificationWarning: warning } : {}),
+    });
+  }
+
+  const currentStatus = normalizeMaintenanceStatus(
+    currentItem.status,
+    currentItem.isCompleted
+  );
+  const requestedStatus =
+    typeof statusRaw === "string" || statusRaw == null
+      ? normalizeMaintenanceStatus(statusRaw, currentItem.isCompleted)
+      : currentStatus;
+  const statusWasProvided = body && "status" in (body as object);
+  const recipientsWereProvided = body && "notificationRecipients" in (body as object);
   const data: {
     machineKey?: string;
     title?: string;
     dueDate?: Date;
     note?: string | null;
+    status?: "planned" | "inProgress" | "waitingForParts" | "completed" | "cancelled";
     isCompleted?: boolean;
     completedAt?: Date | null;
   } = {};
@@ -206,9 +368,12 @@ export async function PATCH(
     data.dueDate = parsedDueDate;
   }
   if (body && "note" in (body as object)) data.note = note || null;
-  if (typeof isCompleted === "boolean") {
-    data.isCompleted = isCompleted;
-    data.completedAt = isCompleted ? new Date() : null;
+  if (statusWasProvided) {
+    if (withStatus) {
+      data.status = requestedStatus;
+    }
+    data.isCompleted = requestedStatus === "completed";
+    data.completedAt = requestedStatus === "completed" ? new Date() : null;
   }
 
   const nextMachineKey = machineKey || currentItem.machineKey;
@@ -216,8 +381,12 @@ export async function PATCH(
   const nextDueDate = dueDate || formatDateOnly(currentItem.dueDate);
   const nextNote =
     body && "note" in (body as object) ? note || null : currentItem.note;
-  const nextIsCompleted =
-    typeof isCompleted === "boolean" ? isCompleted : currentItem.isCompleted;
+  const nextRecipients = recipientsWereProvided
+    ? notificationRecipients
+    : normalizePlannedMaintenanceRecipients(
+        JSON.parse(currentItem.notificationRecipientsJson || "[]")
+      );
+  const nextStatus = statusWasProvided ? requestedStatus : currentStatus;
 
   if (currentItem.jiraIssueKey) {
     try {
@@ -228,15 +397,13 @@ export async function PATCH(
         dueDate: nextDueDate,
         note: nextNote,
         cost: body && "cost" in (body as object) ? cost : currentItem.cost,
-        isCompleted: nextIsCompleted,
+        status: nextStatus,
       });
 
-      if (typeof isCompleted === "boolean" && isCompleted !== currentItem.isCompleted) {
+      if (statusWasProvided && nextStatus !== currentStatus) {
         await addJiraMaintenanceComment({
           issueKey: currentItem.jiraIssueKey,
-          text: isCompleted
-            ? "Maintenance marked completed in the admin calendar."
-            : "Maintenance reopened in the admin calendar.",
+          text: getMaintenanceStatusComment(nextStatus),
         });
       }
     } catch (error) {
@@ -259,6 +426,7 @@ export async function PATCH(
       title: true,
       dueDate: true,
       note: true,
+      status: withStatus,
       isCompleted: true,
       completedAt: true,
       createdAt: true,
@@ -270,6 +438,8 @@ export async function PATCH(
   let jiraIssueId: string | null = null;
   let jiraIssueKey: string | null = null;
   let jiraIssueUrl: string | null = null;
+  let resolvedNotificationRecipientsJson: string | null = "[]";
+  let resolvedStatus: string | null = withStatus ? updated.status : null;
   if (body && "cost" in (body as object) && withCost) {
     const rows = await prisma.$queryRaw<Array<{ cost: number | null }>>`
       UPDATE "PlannedMaintenance"
@@ -285,6 +455,22 @@ export async function PATCH(
       WHERE "id" = ${id}
     `;
     resolvedCost = rows[0]?.cost ?? null;
+  }
+  if (recipientsWereProvided && withNotificationRecipients) {
+    const rows = await prisma.$queryRaw<Array<{ notificationRecipientsJson: string | null }>>`
+      UPDATE "PlannedMaintenance"
+      SET "notificationRecipientsJson" = ${JSON.stringify(notificationRecipients)}
+      WHERE "id" = ${id}
+      RETURNING "notificationRecipientsJson"
+    `;
+    resolvedNotificationRecipientsJson = rows[0]?.notificationRecipientsJson ?? "[]";
+  } else if (withNotificationRecipients) {
+    const rows = await prisma.$queryRaw<Array<{ notificationRecipientsJson: string | null }>>`
+      SELECT "notificationRecipientsJson"
+      FROM "PlannedMaintenance"
+      WHERE "id" = ${id}
+    `;
+    resolvedNotificationRecipientsJson = rows[0]?.notificationRecipientsJson ?? "[]";
   }
   if (withJiraLink) {
     const rows = await prisma.$queryRaw<
@@ -303,15 +489,29 @@ export async function PATCH(
     jiraIssueUrl = rows[0]?.jiraIssueUrl ?? null;
   }
 
-  return NextResponse.json(
-    serializePlannedMaintenance({
-      ...updated,
-      cost: resolvedCost,
-      jiraIssueId,
-      jiraIssueKey,
-      jiraIssueUrl,
-    })
-  );
+  const serialized = serializePlannedMaintenance({
+    ...updated,
+    notificationRecipientsJson: resolvedNotificationRecipientsJson,
+    status: resolvedStatus,
+    cost: resolvedCost,
+    jiraIssueId,
+    jiraIssueKey,
+    jiraIssueUrl,
+  });
+  const { warning } = await sendPlannedMaintenanceNotificationEmail({
+    recipients: nextRecipients as PlannedMaintenanceRecipient[],
+    machineLabel: formatMachineLabel(nextMachineKey),
+    title: nextTitle,
+    dueDate: nextDueDate,
+    note: nextNote,
+    statusLabel: getMaintenanceStatusLabel(nextStatus),
+    action: "updated",
+  });
+
+  return NextResponse.json({
+    ...serialized,
+    ...(warning ? { notificationWarning: warning } : {}),
+  });
 }
 
 export async function DELETE(

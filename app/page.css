@@ -1019,6 +1019,37 @@
   resize: none;
 }
 
+.admin-maintenance-recipient-summary {
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: #fff;
+}
+
+.admin-maintenance-recipient-summary__names {
+  font-size: 13px;
+  color: var(--color-primary);
+  line-height: 1.5;
+}
+
+.admin-maintenance-recipient-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: #fff;
+}
+
+.admin-maintenance-recipient-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-primary);
+}
+
 .admin-maintenance-modal__actions {
   display: flex;
   flex-wrap: wrap;
@@ -1238,8 +1269,20 @@
   background: #4fa94d;
 }
 
+.admin-maintenance-calendar__legend-dot--inProgress {
+  background: #3478f6;
+}
+
+.admin-maintenance-calendar__legend-dot--waitingForParts {
+  background: #8c5cf5;
+}
+
 .admin-maintenance-calendar__legend-dot--completed {
   background: #7b8794;
+}
+
+.admin-maintenance-calendar__legend-dot--cancelled {
+  background: #8a9ba8;
 }
 
 .admin-maintenance-calendar__weekday-row {
@@ -1377,9 +1420,24 @@
   border-color: rgba(79, 169, 77, 0.18);
 }
 
+.admin-maintenance-calendar__event--inProgress {
+  background: rgba(52, 120, 246, 0.12);
+  border-color: rgba(52, 120, 246, 0.18);
+}
+
+.admin-maintenance-calendar__event--waitingForParts {
+  background: rgba(140, 92, 245, 0.12);
+  border-color: rgba(140, 92, 245, 0.18);
+}
+
 .admin-maintenance-calendar__event--completed {
   background: rgba(123, 135, 148, 0.14);
   border-color: rgba(123, 135, 148, 0.2);
+}
+
+.admin-maintenance-calendar__event--cancelled {
+  background: rgba(138, 155, 168, 0.16);
+  border-color: rgba(138, 155, 168, 0.24);
 }
 
 .admin-maintenance-calendar__event-title {
@@ -1945,6 +2003,10 @@
   }
 
   .admin-maintenance-modal__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-maintenance-recipient-grid {
     grid-template-columns: 1fr;
   }
 

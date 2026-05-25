@@ -1,16 +1,20 @@
 "use client";
 
 import Modal from "react-modal";
+import { PLANNED_MAINTENANCE_RECIPIENTS } from "@/lib/plannedMaintenanceRecipients";
 import {
   formatCurrency,
   formatDateTimeForLocale,
   getCurrentLocalDateOnly,
   getMaintenanceDueLabel,
   getMaintenanceItemStatus,
+  getMaintenanceWorkflowStatusLabel,
   type AdminTranslate,
   type MaintenanceLogEntry,
   type MaintenanceStatus,
+  type MaintenanceWorkflowStatus,
   type MachineDirectoryItem,
+  type PlannedMaintenanceRecipient,
   type PlannedMaintenanceItem,
 } from "../adminShared";
 
@@ -47,6 +51,8 @@ type MaintenanceSectionProps = {
   maintenanceDueDate: string;
   maintenanceCost: string;
   maintenanceNote: string;
+  maintenanceNotificationRecipients: PlannedMaintenanceRecipient[];
+  maintenanceStatus: MaintenanceWorkflowStatus;
   selectedMaintenanceDateLabel: string;
   maintenanceActionKey: string | null;
   onPreviousMonth: () => void;
@@ -60,8 +66,11 @@ type MaintenanceSectionProps = {
   onMaintenanceDueDateChange: (value: string) => void;
   onMaintenanceCostChange: (value: string) => void;
   onMaintenanceNoteChange: (value: string) => void;
+  onMaintenanceNotificationRecipientsChange: (value: PlannedMaintenanceRecipient[]) => void;
+  onMaintenanceStatusChange: (value: MaintenanceWorkflowStatus) => void;
   onSavePlannedMaintenance: () => void;
-  onUpdatePlannedMaintenanceState: (id: string, isCompleted: boolean) => void;
+  onUpdatePlannedMaintenanceStatus: (id: string, status: MaintenanceWorkflowStatus) => void;
+  onSendPlannedMaintenanceReminder: (id: string) => void;
   onDeletePlannedMaintenance: (id: string) => void;
 };
 
@@ -89,6 +98,8 @@ export default function MaintenanceSection({
   maintenanceDueDate,
   maintenanceCost,
   maintenanceNote,
+  maintenanceNotificationRecipients,
+  maintenanceStatus,
   selectedMaintenanceDateLabel,
   maintenanceActionKey,
   onPreviousMonth,
@@ -102,10 +113,17 @@ export default function MaintenanceSection({
   onMaintenanceDueDateChange,
   onMaintenanceCostChange,
   onMaintenanceNoteChange,
+  onMaintenanceNotificationRecipientsChange,
+  onMaintenanceStatusChange,
   onSavePlannedMaintenance,
-  onUpdatePlannedMaintenanceState,
+  onUpdatePlannedMaintenanceStatus,
+  onSendPlannedMaintenanceReminder,
   onDeletePlannedMaintenance,
 }: MaintenanceSectionProps) {
+  const selectedRecipientEmails = new Set(
+    maintenanceNotificationRecipients.map((recipient) => recipient.email.toLowerCase())
+  );
+
   return (
     <>
       <div className="admin-panel">
@@ -164,7 +182,10 @@ export default function MaintenanceSection({
                     ["overdue", t("admin.overdueMaintenance")],
                     ["dueSoon", t("admin.dueSoonMaintenance")],
                     ["upcoming", t("admin.upcomingMaintenance")],
+                    ["inProgress", t("admin.maintenanceStatusInProgress")],
+                    ["waitingForParts", t("admin.maintenanceStatusWaitingForParts")],
                     ["completed", t("admin.completedMaintenance")],
+                    ["cancelled", t("admin.maintenanceStatusCancelled")],
                   ] as const
                 ).map(([status, label]) => (
                   <div key={status} className="admin-maintenance-calendar__legend-item">
@@ -358,10 +379,22 @@ export default function MaintenanceSection({
               <div
                 className={`status-pill admin-maintenance-plan__status status-pill--${activeMaintenanceStatus}`}
               >
-                {activeMaintenanceStatus === "overdue" && t("admin.overdueMaintenance")}
-                {activeMaintenanceStatus === "dueSoon" && t("admin.dueSoonMaintenance")}
-                {activeMaintenanceStatus === "upcoming" && t("admin.upcomingMaintenance")}
-                {activeMaintenanceStatus === "completed" && t("admin.completedMaintenance")}
+                {activeMaintenanceStatus
+                  ? getMaintenanceWorkflowStatusLabel(t, activeMaintenanceStatus)
+                  : ""}
+              </div>
+            </div>
+          )}
+
+          {activeMaintenanceItem && activeMaintenanceItem.notificationRecipients.length > 0 && (
+            <div className="admin-maintenance-recipient-summary">
+              <div className="admin-inventory-field__label">
+                {t("admin.maintenanceNotifyPeople")}
+              </div>
+              <div className="admin-maintenance-recipient-summary__names">
+                {activeMaintenanceItem.notificationRecipients
+                  .map((recipient) => recipient.name)
+                  .join(", ")}
               </div>
             </div>
           )}
@@ -413,6 +446,65 @@ export default function MaintenanceSection({
                 placeholder={t("admin.maintenanceCostPlaceholder")}
               />
             </label>
+            <label className="admin-inventory-field">
+              <div className="admin-inventory-field__label">{t("common.status")}</div>
+              <select
+                className="admin-input"
+                value={maintenanceStatus}
+                onChange={(event) =>
+                  onMaintenanceStatusChange(event.target.value as MaintenanceWorkflowStatus)
+                }
+              >
+                <option value="planned">{t("admin.maintenanceStatusPlanned")}</option>
+                <option value="inProgress">{t("admin.maintenanceStatusInProgress")}</option>
+                <option value="waitingForParts">
+                  {t("admin.maintenanceStatusWaitingForParts")}
+                </option>
+                <option value="completed">{t("admin.maintenanceStatusCompleted")}</option>
+                <option value="cancelled">{t("admin.maintenanceStatusCancelled")}</option>
+              </select>
+            </label>
+            <div className="admin-inventory-field admin-maintenance-modal__field--full">
+              <div className="admin-inventory-field__label">
+                {t("admin.maintenanceNotifyPeople")}
+              </div>
+              <div className="admin-maintenance-recipient-grid">
+                {PLANNED_MAINTENANCE_RECIPIENTS.map((recipient) => {
+                  const isChecked = selectedRecipientEmails.has(
+                    recipient.email.toLowerCase()
+                  );
+
+                  return (
+                    <label
+                      key={recipient.email}
+                      className="admin-maintenance-recipient-option"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(event) => {
+                          if (event.target.checked) {
+                            onMaintenanceNotificationRecipientsChange([
+                              ...maintenanceNotificationRecipients,
+                              recipient,
+                            ]);
+                            return;
+                          }
+
+                          onMaintenanceNotificationRecipientsChange(
+                            maintenanceNotificationRecipients.filter(
+                              (item) =>
+                                item.email.toLowerCase() !== recipient.email.toLowerCase()
+                            )
+                          );
+                        }}
+                      />
+                      <span>{recipient.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
             <label className="admin-inventory-field admin-maintenance-modal__field--full">
               <div className="admin-inventory-field__label">{t("admin.maintenanceNote")}</div>
               <textarea
@@ -449,23 +541,57 @@ export default function MaintenanceSection({
               <button
                 type="button"
                 className="admin-reset-button"
+                onClick={() => onSendPlannedMaintenanceReminder(activeMaintenanceItem.id)}
+                disabled={
+                  plannedMaintenanceSaving ||
+                  maintenanceActionKey === `${activeMaintenanceItem.id}:reminder` ||
+                  activeMaintenanceItem.notificationRecipients.length === 0
+                }
+              >
+                {t("admin.sendReminder")}
+              </button>
+            )}
+            {activeMaintenanceItem && (
+              <button
+                type="button"
+                className="admin-reset-button"
+                onClick={() => onUpdatePlannedMaintenanceStatus(activeMaintenanceItem.id, "planned")}
+                disabled={
+                  plannedMaintenanceSaving ||
+                  maintenanceActionKey === `${activeMaintenanceItem.id}:planned`
+                }
+              >
+                {t("admin.markPlanned")}
+              </button>
+            )}
+            {activeMaintenanceItem && (
+              <button
+                type="button"
+                className="admin-reset-button"
                 onClick={() =>
-                  onUpdatePlannedMaintenanceState(
-                    activeMaintenanceItem.id,
-                    !activeMaintenanceItem.isCompleted
-                  )
+                  onUpdatePlannedMaintenanceStatus(activeMaintenanceItem.id, "completed")
                 }
                 disabled={
                   plannedMaintenanceSaving ||
-                  maintenanceActionKey ===
-                    `${activeMaintenanceItem.id}:${
-                      activeMaintenanceItem.isCompleted ? "reopen" : "complete"
-                    }`
+                  maintenanceActionKey === `${activeMaintenanceItem.id}:completed`
                 }
               >
-                {activeMaintenanceItem.isCompleted
-                  ? t("admin.markActive")
-                  : t("admin.markCompleted")}
+                {t("admin.markCompleted")}
+              </button>
+            )}
+            {activeMaintenanceItem && (
+              <button
+                type="button"
+                className="admin-reset-button"
+                onClick={() =>
+                  onUpdatePlannedMaintenanceStatus(activeMaintenanceItem.id, "cancelled")
+                }
+                disabled={
+                  plannedMaintenanceSaving ||
+                  maintenanceActionKey === `${activeMaintenanceItem.id}:cancelled`
+                }
+              >
+                {t("admin.markCancelled")}
               </button>
             )}
             {activeMaintenanceItem && (
