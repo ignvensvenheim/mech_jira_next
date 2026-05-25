@@ -80,7 +80,7 @@ function getMailCopy(
         title: "Priežiūros pavadinimas",
         dueDate: "Atlikti iki",
         status: "Būsena",
-        note: "Pastaba",
+        note: "Aprašymas",
       },
       statusLabel: statusLabels[status],
       textClosing:
@@ -110,7 +110,7 @@ function getMailCopy(
       title: "Maintenance title",
       dueDate: "Due date",
       status: "Status",
-      note: "Note",
+      note: "Description",
     },
     statusLabel: statusLabels[status],
     textClosing: "This message was sent automatically from the maintenance admin panel.",

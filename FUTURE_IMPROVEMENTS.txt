@@ -42,6 +42,77 @@ Current Admin Responsibilities
 - Users:
   manage app users, limited to super-admin access
 
+Latest Planned Maintenance State
+- Email notifications now use Resend, not Nodemailer.
+- Shared mailer:
+  lib/plannedMaintenanceMailer.ts
+- React email template:
+  components/email-template.tsx
+- Test sender route kept intentionally for future verification:
+  app/api/send/route.ts
+- Required env for real sends:
+  RESEND_API_KEY
+  RESEND_FROM
+- Working sender during this session was moved to the verified subdomain setup,
+  and live test sends succeeded only after Resend verified the sender domain.
+- Current real behavior:
+  when a planned maintenance item is created or updated, emails are sent to the
+  selected recipients from the "Notify people" checklist, not to the hardcoded
+  test recipient.
+- The hardcoded recipient only exists in app/api/send/route.ts and is there on
+  purpose for manual testing later.
+- Email content is now localized for EN/LT based on the selected admin language
+  passed from the admin UI into the maintenance API routes.
+- Email template content currently includes:
+  asset
+  maintenance title
+  due date
+  status
+  description
+- If email rendering fails in future sessions, remember that the React-template
+  Resend flow depends on:
+  @react-email/render
+- Relevant package changes already made:
+  removed nodemailer / @types/nodemailer
+  added resend
+  added @react-email/render
+
+Latest Planned Maintenance Modal/UI State
+- Main modal component:
+  app/admin/components/MaintenanceSection.tsx
+- The planned maintenance modal was intentionally enlarged and now uses roughly
+  up to 70% of the viewport on desktop.
+- Modal title for existing items now shows:
+  Asset / Maintenance title
+- The old top summary row was removed because it became redundant after moving
+  title/status information into the header.
+- The status pill was moved into the modal header next to the Jira action area.
+- The pill no longer shows a fixed bucket like "due in the next 7 days" for
+  date-based items.
+  It now calculates:
+  due today
+  due in X days
+  X days overdue
+- Workflow-style pill labels are still used for:
+  in progress
+  waiting for parts
+  completed
+  cancelled
+- The field label "Note" was renamed to "Description" in the modal and emails.
+- The Description field now appears above the recipient checklist.
+- The duplicate recipient summary block at the top of the modal was removed.
+- The extra "Register maintenance ticket" links were removed from the maintenance
+  toolbar and modal header because Add now drives the flow.
+- Modal footer actions were intentionally reduced.
+  Current bottom buttons:
+  Save/Add
+  Mark done
+  Delete
+  Cancel
+- Delete now asks for confirmation before removing a maintenance item.
+- Success feedback after create/update/reminder was localized so Lithuanian
+  users no longer see English-only confirmation messages in the maintenance flow.
+
 Important Data Model Notes
 - Machine identity is centered around machineKey, usually in category::subcategory form.
 - Jira issues are mapped to machines through parsed issue asset metadata.
@@ -72,6 +143,8 @@ Maintenance Sync Status
   complete/reopen in local UI + Jira field update/comment
   delete in local UI + Jira delete
   repair local stale rows when Jira issue no longer exists
+  selected-recipient email notifications through Resend
+  localized EN/LT maintenance emails
 - Not implemented:
   Jira-side edits changing local maintenance rows automatically
   Jira-side status transitions mapping back into richer local workflow states
@@ -115,19 +188,19 @@ Follow-up improvements for this page
 
 2. Maintenance workflow states
 Why
-- Current maintenance handling is too binary and does not reflect real maintenance flow.
-What to add
+- This was partially completed already.
+What now exists
 - planned
 - in progress
 - waiting for parts
 - completed
 - cancelled
-Likely implementation direction
-- Extend planned maintenance storage/API to persist a richer status field.
-- Update the calendar, modal, Jira sync, and statistics logic to use statuses instead
-  of only active/completed state.
+What still needs attention
+- Review whether the current modal/footer should expose more status transitions again
+  in a better UX, or whether status changes should stay intentionally minimal.
 - Decide how each local status should map to Jira issue status, comment, label, or
-  custom field behavior.
+  custom field behavior long term.
+- Review whether statistics and asset views should expose richer status breakdowns.
 
 3. Preventive maintenance templates
 Why
@@ -179,8 +252,15 @@ What to add
 - due soon / overdue maintenance alerts
 - reminders for incomplete asset details
 - reminders for missing inventory information
-Suggested scope
-- Start in-app first before email or external notification channels.
+What now exists
+- planned maintenance create/update/reminder email notifications through Resend
+- due-soon reminder cron route:
+  app/api/cron/planned-maintenance-due-soon/route.ts
+What still needs attention
+- decide whether asset-detail / inventory reminder notifications should be in-app,
+  email, or both
+- improve admin-visible error reporting if external email delivery fails
+- consider adding delivery/audit information if operators need traceability
 
 7. Statistics improvements
 Why
@@ -226,6 +306,28 @@ What to do
   helper/middleware pattern instead of route-by-route checks
 - Decide whether raw maintenance delete in Jira should remain allowed or whether the
   app should prefer closing/cancelling work instead
+
+12. Next Session Quick Start
+If the next session is about planned maintenance, open these first:
+- app/admin/components/MaintenanceSection.tsx
+- app/admin/hooks/useAdminMaintenance.ts
+- app/api/admin/planned-maintenance/route.ts
+- app/api/admin/planned-maintenance/[id]/route.ts
+- lib/plannedMaintenanceMailer.ts
+- components/email-template.tsx
+- app/api/send/route.ts
+
+Useful reminders
+- app/api/send/route.ts is intentionally still present for manual Resend testing.
+- Real maintenance notifications do not use that route; they go through the shared
+  mailer and selected recipients.
+- If test sends suddenly fail again, check:
+  RESEND_API_KEY
+  RESEND_FROM
+  Resend domain verification state for the exact sender domain/subdomain
+- If future UI cleanup is needed, the maintenance modal has already been simplified
+  significantly this session, so inspect current behavior before re-adding buttons
+  or summary blocks that were intentionally removed.
 
 How Future Sessions Should Use This File
 - Read this file first when asked what to improve next in the admin panel.

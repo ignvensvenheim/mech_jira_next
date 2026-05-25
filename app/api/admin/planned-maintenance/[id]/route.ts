@@ -90,7 +90,23 @@ function getRequestLocale(value: unknown): Locale {
   return value === "lt" ? "lt" : "en";
 }
 
-function getNotificationSuccessMessage(recipientCount: number, action: "updated" | "reminder") {
+function getNotificationSuccessMessage(
+  recipientCount: number,
+  action: "updated" | "reminder",
+  locale: Locale
+) {
+  if (locale === "lt") {
+    if (action === "reminder") {
+      return recipientCount === 1
+        ? "Priminimo el. laiškas išsiųstas 1 žmogui."
+        : `Priminimo el. laiškas išsiųstas ${recipientCount} žmonėms.`;
+    }
+
+    return recipientCount === 1
+      ? "Pranešimo el. laiškas išsiųstas 1 žmogui."
+      : `Pranešimo el. laiškas išsiųstas ${recipientCount} žmonėms.`;
+  }
+
   if (action === "reminder") {
     return recipientCount === 1
       ? "Reminder email was sent to 1 person."
@@ -348,7 +364,8 @@ export async function PATCH(
         ? {
             notificationSuccess: getNotificationSuccessMessage(
               currentRecipients.length,
-              "reminder"
+              "reminder",
+              locale
             ),
           }
         : {}),
@@ -542,7 +559,8 @@ export async function PATCH(
       ? {
           notificationSuccess: getNotificationSuccessMessage(
             nextRecipients.length,
-            "updated"
+            "updated",
+            locale
           ),
         }
       : {}),

@@ -79,7 +79,13 @@ function getRequestLocale(value: unknown): Locale {
   return value === "lt" ? "lt" : "en";
 }
 
-function getNotificationSuccessMessage(recipientCount: number) {
+function getNotificationSuccessMessage(recipientCount: number, locale: Locale) {
+  if (locale === "lt") {
+    return recipientCount === 1
+      ? "Pranešimo el. laiškas išsiųstas 1 žmogui."
+      : `Pranešimo el. laiškas išsiųstas ${recipientCount} žmonėms.`;
+  }
+
   return recipientCount === 1
     ? "Notification email was sent to 1 person."
     : `Notification email was sent to ${recipientCount} people.`;
@@ -805,7 +811,8 @@ export async function POST(req: Request) {
       ...(sent
         ? {
             notificationSuccess: getNotificationSuccessMessage(
-              serialized.notificationRecipients.length
+              serialized.notificationRecipients.length,
+              locale
             ),
           }
         : {}),
