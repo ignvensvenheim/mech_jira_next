@@ -31,6 +31,7 @@ type MaintenanceSectionProps = {
   locale: string;
   t: AdminTranslate;
   plannedMaintenanceError: string;
+  plannedMaintenanceSuccess: string;
   plannedMaintenanceLoading: boolean;
   plannedMaintenanceSaving: boolean;
   maintenanceCalendarLabel: string;
@@ -78,6 +79,7 @@ export default function MaintenanceSection({
   locale,
   t,
   plannedMaintenanceError,
+  plannedMaintenanceSuccess,
   plannedMaintenanceLoading,
   plannedMaintenanceSaving,
   maintenanceCalendarLabel,
@@ -123,6 +125,16 @@ export default function MaintenanceSection({
   const selectedRecipientEmails = new Set(
     maintenanceNotificationRecipients.map((recipient) => recipient.email.toLowerCase())
   );
+  const isSendingNotificationEmails =
+    plannedMaintenanceSaving && maintenanceNotificationRecipients.length > 0;
+  const activeMaintenanceStatusLabel =
+    activeMaintenanceItem && activeMaintenanceStatus
+      ? activeMaintenanceStatus === "overdue" ||
+        activeMaintenanceStatus === "dueSoon" ||
+        activeMaintenanceStatus === "upcoming"
+        ? getMaintenanceDueLabel(activeMaintenanceItem.dueDate, t)
+        : getMaintenanceWorkflowStatusLabel(t, activeMaintenanceStatus)
+      : "";
 
   return (
     <>
@@ -155,19 +167,14 @@ export default function MaintenanceSection({
                 >
                   {t("admin.addMaintenancePlan")}
                 </button>
-                <a
-                  href="https://svenheim.atlassian.net/servicedesk/customer/portal/40"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="page__action-link admin-maintenance-link"
-                >
-                  {t("admin.registerMaintenanceTicket")}
-                </a>
               </div>
             </div>
           </div>
 
           {plannedMaintenanceError && <div className="page__error">{plannedMaintenanceError}</div>}
+          {plannedMaintenanceSuccess && (
+            <div className="page__success">{plannedMaintenanceSuccess}</div>
+          )}
 
           {plannedMaintenanceLoading ? (
             <div className="admin-buffering">
@@ -277,7 +284,7 @@ export default function MaintenanceSection({
                 })}
               </div>
 
-              <div className="admin-maintenance-log" aria-label="Maintenance activity">
+              <div className="admin-maintenance-log" aria-label={t("admin.activity")}>
                 <div className="admin-maintenance-log__header">
                   <div className="admin-chart-title">{t("admin.activity")}</div>
                 </div>
@@ -321,11 +328,18 @@ export default function MaintenanceSection({
           <div className="admin-maintenance-modal__title-wrap">
             <h2 className="admin-maintenance-modal__title">
               {isMaintenanceEditing && activeMaintenanceItem
-                ? activeMaintenanceItem.title
+                ? `${machineLabelByKey[activeMaintenanceItem.machineKey] || activeMaintenanceItem.machineKey} / ${activeMaintenanceItem.title}`
                 : t("admin.addMaintenancePlan")}
             </h2>
           </div>
           <div className="admin-maintenance-modal__header-actions">
+            {activeMaintenanceStatusLabel && (
+              <div
+                className={`status-pill admin-maintenance-plan__status status-pill--${activeMaintenanceStatus}`}
+              >
+                {activeMaintenanceStatusLabel}
+              </div>
+            )}
             {activeMaintenanceItem?.jiraIssueUrl && (
               <a
                 href={activeMaintenanceItem.jiraIssueUrl}
@@ -336,14 +350,6 @@ export default function MaintenanceSection({
                 {t("admin.openInJira")}
               </a>
             )}
-            <a
-              href="https://svenheim.atlassian.net/servicedesk/customer/portal/40"
-              target="_blank"
-              rel="noreferrer"
-              className="admin-maintenance-modal__link"
-            >
-              {t("admin.registerMaintenanceTicket")}
-            </a>
             <button
               type="button"
               className="modal-close-btn"
@@ -356,49 +362,6 @@ export default function MaintenanceSection({
         </div>
 
         <div className="admin-maintenance-modal__body">
-          {activeMaintenanceItem && (
-            <div className="admin-maintenance-modal__summary">
-              <div className="admin-maintenance-modal__summary-main">
-                <span className="admin-ticket-key">
-                  {machineLabelByKey[activeMaintenanceItem.machineKey] ||
-                    activeMaintenanceItem.machineKey}
-                </span>
-                <span className="admin-maintenance-modal__summary-separator">|</span>
-                <span className="admin-chart-empty admin-maintenance-modal__summary-due">
-                  {getMaintenanceDueLabel(activeMaintenanceItem.dueDate, t)}
-                </span>
-                {activeMaintenanceItem.cost != null && (
-                  <>
-                    <span className="admin-maintenance-modal__summary-separator">|</span>
-                    <span className="admin-chart-empty admin-maintenance-modal__summary-due">
-                      {formatCurrency(activeMaintenanceItem.cost, locale)}
-                    </span>
-                  </>
-                )}
-              </div>
-              <div
-                className={`status-pill admin-maintenance-plan__status status-pill--${activeMaintenanceStatus}`}
-              >
-                {activeMaintenanceStatus
-                  ? getMaintenanceWorkflowStatusLabel(t, activeMaintenanceStatus)
-                  : ""}
-              </div>
-            </div>
-          )}
-
-          {activeMaintenanceItem && activeMaintenanceItem.notificationRecipients.length > 0 && (
-            <div className="admin-maintenance-recipient-summary">
-              <div className="admin-inventory-field__label">
-                {t("admin.maintenanceNotifyPeople")}
-              </div>
-              <div className="admin-maintenance-recipient-summary__names">
-                {activeMaintenanceItem.notificationRecipients
-                  .map((recipient) => recipient.name)
-                  .join(", ")}
-              </div>
-            </div>
-          )}
-
           <div className="admin-maintenance-modal__fields">
             <label className="admin-inventory-field">
               <div className="admin-inventory-field__label">{t("admin.maintenanceAsset")}</div>
@@ -464,6 +427,15 @@ export default function MaintenanceSection({
                 <option value="cancelled">{t("admin.maintenanceStatusCancelled")}</option>
               </select>
             </label>
+            <label className="admin-inventory-field admin-maintenance-modal__field--full">
+              <div className="admin-inventory-field__label">{t("admin.maintenanceNote")}</div>
+              <textarea
+                className="admin-input admin-maintenance-modal__note"
+                value={maintenanceNote}
+                onChange={(event) => onMaintenanceNoteChange(event.target.value)}
+                placeholder={t("admin.maintenanceNotePlaceholder")}
+              />
+            </label>
             <div className="admin-inventory-field admin-maintenance-modal__field--full">
               <div className="admin-inventory-field__label">
                 {t("admin.maintenanceNotifyPeople")}
@@ -504,16 +476,17 @@ export default function MaintenanceSection({
                   );
                 })}
               </div>
+              {isSendingNotificationEmails && (
+                <div className="admin-maintenance-recipient-status" role="status">
+                  <span className="admin-buffering-spinner" aria-hidden="true" />
+                  <span>
+                    {t("admin.maintenanceSendingNotifications", {
+                      count: maintenanceNotificationRecipients.length,
+                    })}
+                  </span>
+                </div>
+              )}
             </div>
-            <label className="admin-inventory-field admin-maintenance-modal__field--full">
-              <div className="admin-inventory-field__label">{t("admin.maintenanceNote")}</div>
-              <textarea
-                className="admin-input admin-maintenance-modal__note"
-                value={maintenanceNote}
-                onChange={(event) => onMaintenanceNoteChange(event.target.value)}
-                placeholder={t("admin.maintenanceNotePlaceholder")}
-              />
-            </label>
           </div>
 
           <div className="admin-maintenance-modal__actions">
@@ -532,38 +505,13 @@ export default function MaintenanceSection({
               }
             >
               {plannedMaintenanceSaving
-                ? t("admin.saving")
+                ? isSendingNotificationEmails
+                  ? t("admin.maintenanceSendingEmails")
+                  : t("admin.saving")
                 : isMaintenanceEditing
                   ? t("common.save")
                   : t("admin.addMaintenancePlan")}
             </button>
-            {activeMaintenanceItem && (
-              <button
-                type="button"
-                className="admin-reset-button"
-                onClick={() => onSendPlannedMaintenanceReminder(activeMaintenanceItem.id)}
-                disabled={
-                  plannedMaintenanceSaving ||
-                  maintenanceActionKey === `${activeMaintenanceItem.id}:reminder` ||
-                  activeMaintenanceItem.notificationRecipients.length === 0
-                }
-              >
-                {t("admin.sendReminder")}
-              </button>
-            )}
-            {activeMaintenanceItem && (
-              <button
-                type="button"
-                className="admin-reset-button"
-                onClick={() => onUpdatePlannedMaintenanceStatus(activeMaintenanceItem.id, "planned")}
-                disabled={
-                  plannedMaintenanceSaving ||
-                  maintenanceActionKey === `${activeMaintenanceItem.id}:planned`
-                }
-              >
-                {t("admin.markPlanned")}
-              </button>
-            )}
             {activeMaintenanceItem && (
               <button
                 type="button"
@@ -583,22 +531,13 @@ export default function MaintenanceSection({
               <button
                 type="button"
                 className="admin-reset-button"
-                onClick={() =>
-                  onUpdatePlannedMaintenanceStatus(activeMaintenanceItem.id, "cancelled")
-                }
-                disabled={
-                  plannedMaintenanceSaving ||
-                  maintenanceActionKey === `${activeMaintenanceItem.id}:cancelled`
-                }
-              >
-                {t("admin.markCancelled")}
-              </button>
-            )}
-            {activeMaintenanceItem && (
-              <button
-                type="button"
-                className="admin-reset-button"
-                onClick={() => onDeletePlannedMaintenance(activeMaintenanceItem.id)}
+                onClick={() => {
+                  if (!window.confirm(t("admin.deleteMaintenanceConfirm"))) {
+                    return;
+                  }
+
+                  onDeletePlannedMaintenance(activeMaintenanceItem.id);
+                }}
                 disabled={
                   plannedMaintenanceSaving ||
                   maintenanceActionKey === `${activeMaintenanceItem.id}:delete`

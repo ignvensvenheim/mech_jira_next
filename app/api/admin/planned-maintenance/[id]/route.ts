@@ -15,6 +15,7 @@ import {
   normalizePlannedMaintenanceRecipients,
   type PlannedMaintenanceRecipient,
 } from "@/lib/plannedMaintenanceRecipients";
+import type { Locale } from "@/lib/i18n";
 
 export const runtime = "nodejs";
 
@@ -83,6 +84,38 @@ function getMaintenanceStatusLabel(status: string) {
     default:
       return "Planned";
   }
+}
+
+function getRequestLocale(value: unknown): Locale {
+  return value === "lt" ? "lt" : "en";
+}
+
+function getNotificationSuccessMessage(
+  recipientCount: number,
+  action: "updated" | "reminder",
+  locale: Locale
+) {
+  if (locale === "lt") {
+    if (action === "reminder") {
+      return recipientCount === 1
+        ? "Priminimo el. laiškas išsiųstas 1 žmogui."
+        : `Priminimo el. laiškas išsiųstas ${recipientCount} žmonėms.`;
+    }
+
+    return recipientCount === 1
+      ? "Pranešimo el. laiškas išsiųstas 1 žmogui."
+      : `Pranešimo el. laiškas išsiųstas ${recipientCount} žmonėms.`;
+  }
+
+  if (action === "reminder") {
+    return recipientCount === 1
+      ? "Reminder email was sent to 1 person."
+      : `Reminder email was sent to ${recipientCount} people.`;
+  }
+
+  return recipientCount === 1
+    ? "Notification email was sent to 1 person."
+    : `Notification email was sent to ${recipientCount} people.`;
 }
 
 async function hasCostColumn() {
@@ -213,6 +246,7 @@ export async function PATCH(
   const notificationRecipients = normalizePlannedMaintenanceRecipients(
     body?.notificationRecipients
   );
+  const locale = getRequestLocale(body?.locale);
   const action = String(body?.action || "").trim();
   const statusRaw = body?.status;
   const costRaw = body?.cost;
@@ -313,18 +347,28 @@ export async function PATCH(
       completedAt: currentItem.isCompleted ? new Date() : null,
       notificationRecipientsJson: currentItem.notificationRecipientsJson,
     });
-    const { warning } = await sendPlannedMaintenanceNotificationEmail({
+    const { sent, warning } = await sendPlannedMaintenanceNotificationEmail({
       recipients: currentRecipients,
       machineLabel: formatMachineLabel(currentItem.machineKey),
       title: currentItem.title,
       dueDate: formatDateOnly(currentItem.dueDate),
       note: currentItem.note,
-      statusLabel: getMaintenanceStatusLabel(currentStatus),
+      status: currentStatus,
       action: "reminder",
+      locale,
     });
 
     return NextResponse.json({
       ...serialized,
+      ...(sent
+        ? {
+            notificationSuccess: getNotificationSuccessMessage(
+              currentRecipients.length,
+              "reminder",
+              locale
+            ),
+          }
+        : {}),
       ...(warning ? { notificationWarning: warning } : {}),
     });
   }
@@ -498,18 +542,28 @@ export async function PATCH(
     jiraIssueKey,
     jiraIssueUrl,
   });
-  const { warning } = await sendPlannedMaintenanceNotificationEmail({
+  const { sent, warning } = await sendPlannedMaintenanceNotificationEmail({
     recipients: nextRecipients as PlannedMaintenanceRecipient[],
     machineLabel: formatMachineLabel(nextMachineKey),
     title: nextTitle,
     dueDate: nextDueDate,
     note: nextNote,
-    statusLabel: getMaintenanceStatusLabel(nextStatus),
+    status: nextStatus,
     action: "updated",
+    locale,
   });
 
   return NextResponse.json({
     ...serialized,
+    ...(sent
+      ? {
+          notificationSuccess: getNotificationSuccessMessage(
+            nextRecipients.length,
+            "updated",
+            locale
+          ),
+        }
+      : {}),
     ...(warning ? { notificationWarning: warning } : {}),
   });
 }

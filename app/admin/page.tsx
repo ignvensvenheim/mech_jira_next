@@ -196,6 +196,7 @@ function AdminPageContent() {
     plannedMaintenanceItems,
     plannedMaintenanceLoading,
     plannedMaintenanceError,
+    plannedMaintenanceSuccess,
     plannedMaintenanceSaving,
     maintenanceActionKey,
     selectedMaintenanceDate,
@@ -576,6 +577,7 @@ function AdminPageContent() {
                   locale={locale}
                   t={t}
                   plannedMaintenanceError={plannedMaintenanceError}
+                  plannedMaintenanceSuccess={plannedMaintenanceSuccess}
                   plannedMaintenanceLoading={plannedMaintenanceLoading}
                   plannedMaintenanceSaving={plannedMaintenanceSaving}
                   maintenanceCalendarLabel={maintenanceCalendarLabel}

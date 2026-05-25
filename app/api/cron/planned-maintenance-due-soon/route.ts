@@ -214,8 +214,9 @@ export async function GET(request: Request) {
       title: row.title,
       dueDate: dueDateOnly,
       note: row.note,
-      statusLabel: "Planned",
+      status: "planned",
       action: "reminder",
+      locale: "en",
     });
 
     if (!result.sent) {

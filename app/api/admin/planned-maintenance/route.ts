@@ -11,6 +11,7 @@ import {
 } from "@/lib/jiraServer";
 import { sendPlannedMaintenanceNotificationEmail } from "@/lib/plannedMaintenanceMailer";
 import { normalizePlannedMaintenanceRecipients } from "@/lib/plannedMaintenanceRecipients";
+import type { Locale } from "@/lib/i18n";
 
 export const runtime = "nodejs";
 
@@ -72,6 +73,22 @@ function getMaintenanceStatusLabel(status: string) {
     default:
       return "Planned";
   }
+}
+
+function getRequestLocale(value: unknown): Locale {
+  return value === "lt" ? "lt" : "en";
+}
+
+function getNotificationSuccessMessage(recipientCount: number, locale: Locale) {
+  if (locale === "lt") {
+    return recipientCount === 1
+      ? "Pranešimo el. laiškas išsiųstas 1 žmogui."
+      : `Pranešimo el. laiškas išsiųstas ${recipientCount} žmonėms.`;
+  }
+
+  return recipientCount === 1
+    ? "Notification email was sent to 1 person."
+    : `Notification email was sent to ${recipientCount} people.`;
 }
 
 function formatMachineLabel(machineKey: string) {
@@ -297,6 +314,7 @@ export async function POST(req: Request) {
   const notificationRecipients = normalizePlannedMaintenanceRecipients(
     body?.notificationRecipients
   );
+  const locale = getRequestLocale(body?.locale);
   const statusRaw = String(body?.status || "").trim();
   const costRaw = body?.cost;
   const cost =
@@ -777,18 +795,27 @@ export async function POST(req: Request) {
     );
 
     const serialized = serializePlannedMaintenance(rows[0]);
-    const { warning } = await sendPlannedMaintenanceNotificationEmail({
+    const { sent, warning } = await sendPlannedMaintenanceNotificationEmail({
       recipients: serialized.notificationRecipients,
       machineLabel: formatMachineLabel(machineKey),
       title,
       dueDate,
       note: note || null,
-      statusLabel: getMaintenanceStatusLabel(status),
+      status,
       action: "created",
+      locale,
     });
 
     return NextResponse.json({
       ...serialized,
+      ...(sent
+        ? {
+            notificationSuccess: getNotificationSuccessMessage(
+              serialized.notificationRecipients.length,
+              locale
+            ),
+          }
+        : {}),
       ...(warning ? { notificationWarning: warning } : {}),
     });
   } catch (error) {

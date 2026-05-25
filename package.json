@@ -15,15 +15,15 @@
   },
   "dependencies": {
     "@prisma/client": "^6.5.0",
-    "@types/nodemailer": "^8.0.0",
+    "@react-email/render": "^2.0.8",
     "bcryptjs": "^2.4.3",
     "next": "^16.0.7",
     "next-auth": "^5.0.0-beta.25",
-    "nodemailer": "^7.0.13",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-loader-spinner": "^7.0.3",
     "react-modal": "^3.16.3",
+    "resend": "^6.12.3",
     "swr": "^2.3.6",
     "xlsx": "^0.18.5"
   },

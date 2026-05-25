@@ -227,6 +227,16 @@
   font-size: 13px;
 }
 
+.page__success {
+  padding: 12px;
+  background: #edf9ef;
+  color: #1f5d1f;
+  border: 1px solid #b7e0bc;
+  border-radius: var(--border-radius);
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
 .page__loading {
   display: flex;
   justify-content: center;
@@ -904,7 +914,8 @@
 }
 
 .admin-maintenance-modal {
-  width: min(720px, 100%);
+  width: min(70vw, 1200px);
+  min-width: min(960px, 100%);
   max-height: 88vh;
   overflow: auto;
   border: 1px solid var(--border-color);
@@ -1048,6 +1059,18 @@
   gap: 8px;
   font-size: 13px;
   color: var(--color-primary);
+}
+
+.admin-maintenance-recipient-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: var(--border-radius);
+  background: rgba(79, 169, 77, 0.08);
+  color: var(--color-primary);
+  font-size: 12px;
 }
 
 .admin-maintenance-modal__actions {

@@ -46,6 +46,7 @@ export function useAdminMaintenance({
   >([]);
   const [plannedMaintenanceLoading, setPlannedMaintenanceLoading] = useState(false);
   const [plannedMaintenanceError, setPlannedMaintenanceError] = useState("");
+  const [plannedMaintenanceSuccess, setPlannedMaintenanceSuccess] = useState("");
   const [plannedMaintenanceSaving, setPlannedMaintenanceSaving] = useState(false);
   const [maintenanceActionKey, setMaintenanceActionKey] = useState<string | null>(null);
   const [selectedMaintenanceDate, setSelectedMaintenanceDate] = useState(
@@ -72,6 +73,7 @@ export function useAdminMaintenance({
     if (!sessionResolved || !currentUserIsAdmin) {
       setPlannedMaintenanceLoading(false);
       setPlannedMaintenanceError("");
+      setPlannedMaintenanceSuccess("");
       setPlannedMaintenanceItems([]);
       return;
     }
@@ -175,11 +177,13 @@ export function useAdminMaintenance({
     const cost = costRaw === "" ? null : Number(costRaw);
     if (cost !== null && (!Number.isFinite(cost) || cost < 0)) {
       setPlannedMaintenanceError(t("admin.maintenanceCostInvalid"));
+      setPlannedMaintenanceSuccess("");
       return;
     }
 
     setPlannedMaintenanceSaving(true);
     setPlannedMaintenanceError("");
+    setPlannedMaintenanceSuccess("");
     try {
       const res = await fetch(
         editingMaintenanceId
@@ -196,15 +200,22 @@ export function useAdminMaintenance({
             note: maintenanceNote.trim(),
             notificationRecipients: maintenanceNotificationRecipients,
             status: maintenanceStatus,
+            locale,
           }),
         }
       );
       const payload = await parseJson<
-        PlannedMaintenanceItem & { notificationWarning?: string }
+        PlannedMaintenanceItem & {
+          notificationWarning?: string;
+          notificationSuccess?: string;
+        }
       >(res);
       const saved = normalizePlannedMaintenanceItem(payload);
       if (payload.notificationWarning) {
         setPlannedMaintenanceError(payload.notificationWarning);
+      }
+      if (payload.notificationSuccess) {
+        setPlannedMaintenanceSuccess(payload.notificationSuccess);
       }
       upsertAssetDetailsCache(maintenanceMachineKey);
       setPlannedMaintenanceItems((prev) =>
@@ -226,6 +237,7 @@ export function useAdminMaintenance({
       setMaintenanceStatus("planned");
       syncMaintenanceCalendarToDate(saved.dueDate);
     } catch (e: unknown) {
+      setPlannedMaintenanceSuccess("");
       setPlannedMaintenanceError(String((e as Error).message || e));
     } finally {
       setPlannedMaintenanceSaving(false);
@@ -238,23 +250,31 @@ export function useAdminMaintenance({
   ) => {
     setMaintenanceActionKey(`${id}:${status}`);
     setPlannedMaintenanceError("");
+    setPlannedMaintenanceSuccess("");
     try {
       const res = await fetch(`/api/admin/planned-maintenance/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, locale }),
       });
       const payload = await parseJson<
-        PlannedMaintenanceItem & { notificationWarning?: string }
+        PlannedMaintenanceItem & {
+          notificationWarning?: string;
+          notificationSuccess?: string;
+        }
       >(res);
       const saved = normalizePlannedMaintenanceItem(payload);
       if (payload.notificationWarning) {
         setPlannedMaintenanceError(payload.notificationWarning);
       }
+      if (payload.notificationSuccess) {
+        setPlannedMaintenanceSuccess(payload.notificationSuccess);
+      }
       setPlannedMaintenanceItems((prev) =>
         sortPlannedMaintenanceItems(prev.map((item) => (item.id === id ? saved : item)))
       );
     } catch (e: unknown) {
+      setPlannedMaintenanceSuccess("");
       setPlannedMaintenanceError(String((e as Error).message || e));
     } finally {
       setMaintenanceActionKey(null);
@@ -264,6 +284,7 @@ export function useAdminMaintenance({
   const deletePlannedMaintenance = async (id: string) => {
     setMaintenanceActionKey(`${id}:delete`);
     setPlannedMaintenanceError("");
+    setPlannedMaintenanceSuccess("");
     try {
       const res = await fetch(`/api/admin/planned-maintenance/${id}`, { method: "DELETE" });
       await parseJson<{ ok: boolean }>(res);
@@ -273,6 +294,7 @@ export function useAdminMaintenance({
         cancelMaintenanceEdit();
       }
     } catch (e: unknown) {
+      setPlannedMaintenanceSuccess("");
       setPlannedMaintenanceError(String((e as Error).message || e));
     } finally {
       setMaintenanceActionKey(null);
@@ -282,19 +304,27 @@ export function useAdminMaintenance({
   const sendPlannedMaintenanceReminder = async (id: string) => {
     setMaintenanceActionKey(`${id}:reminder`);
     setPlannedMaintenanceError("");
+    setPlannedMaintenanceSuccess("");
     try {
       const res = await fetch(`/api/admin/planned-maintenance/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "sendReminder" }),
+        body: JSON.stringify({ action: "sendReminder", locale }),
       });
       const payload = await parseJson<
-        PlannedMaintenanceItem & { notificationWarning?: string }
+        PlannedMaintenanceItem & {
+          notificationWarning?: string;
+          notificationSuccess?: string;
+        }
       >(res);
       if (payload.notificationWarning) {
         setPlannedMaintenanceError(payload.notificationWarning);
       }
+      if (payload.notificationSuccess) {
+        setPlannedMaintenanceSuccess(payload.notificationSuccess);
+      }
     } catch (e: unknown) {
+      setPlannedMaintenanceSuccess("");
       setPlannedMaintenanceError(String((e as Error).message || e));
     } finally {
       setMaintenanceActionKey(null);
@@ -479,6 +509,7 @@ export function useAdminMaintenance({
     plannedMaintenanceItems,
     plannedMaintenanceLoading,
     plannedMaintenanceError,
+    plannedMaintenanceSuccess,
     plannedMaintenanceSaving,
     maintenanceActionKey,
     selectedMaintenanceDate,
