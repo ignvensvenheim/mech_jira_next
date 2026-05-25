@@ -31,6 +31,7 @@ type MaintenanceSectionProps = {
   locale: string;
   t: AdminTranslate;
   plannedMaintenanceError: string;
+  plannedMaintenanceSuccess: string;
   plannedMaintenanceLoading: boolean;
   plannedMaintenanceSaving: boolean;
   maintenanceCalendarLabel: string;
@@ -78,6 +79,7 @@ export default function MaintenanceSection({
   locale,
   t,
   plannedMaintenanceError,
+  plannedMaintenanceSuccess,
   plannedMaintenanceLoading,
   plannedMaintenanceSaving,
   maintenanceCalendarLabel,
@@ -123,6 +125,8 @@ export default function MaintenanceSection({
   const selectedRecipientEmails = new Set(
     maintenanceNotificationRecipients.map((recipient) => recipient.email.toLowerCase())
   );
+  const isSendingNotificationEmails =
+    plannedMaintenanceSaving && maintenanceNotificationRecipients.length > 0;
 
   return (
     <>
@@ -168,6 +172,9 @@ export default function MaintenanceSection({
           </div>
 
           {plannedMaintenanceError && <div className="page__error">{plannedMaintenanceError}</div>}
+          {plannedMaintenanceSuccess && (
+            <div className="page__success">{plannedMaintenanceSuccess}</div>
+          )}
 
           {plannedMaintenanceLoading ? (
             <div className="admin-buffering">
@@ -504,6 +511,16 @@ export default function MaintenanceSection({
                   );
                 })}
               </div>
+              {isSendingNotificationEmails && (
+                <div className="admin-maintenance-recipient-status" role="status">
+                  <span className="admin-buffering-spinner" aria-hidden="true" />
+                  <span>
+                    {t("admin.maintenanceSendingNotifications", {
+                      count: maintenanceNotificationRecipients.length,
+                    })}
+                  </span>
+                </div>
+              )}
             </div>
             <label className="admin-inventory-field admin-maintenance-modal__field--full">
               <div className="admin-inventory-field__label">{t("admin.maintenanceNote")}</div>
@@ -532,7 +549,9 @@ export default function MaintenanceSection({
               }
             >
               {plannedMaintenanceSaving
-                ? t("admin.saving")
+                ? isSendingNotificationEmails
+                  ? t("admin.maintenanceSendingEmails")
+                  : t("admin.saving")
                 : isMaintenanceEditing
                   ? t("common.save")
                   : t("admin.addMaintenancePlan")}

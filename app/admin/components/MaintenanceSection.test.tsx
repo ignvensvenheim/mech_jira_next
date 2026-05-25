@@ -51,6 +51,7 @@ const baseProps = {
   locale: "en",
   t,
   plannedMaintenanceError: "",
+  plannedMaintenanceSuccess: "",
   plannedMaintenanceLoading: false,
   plannedMaintenanceSaving: false,
   maintenanceCalendarLabel: "May 2026",
