@@ -1,8 +1,6 @@
 import { PlannedMaintenanceEmailTemplate } from "@/components/email-template";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export const runtime = "nodejs";
 
 function serializeError(error: unknown) {
@@ -26,9 +24,10 @@ function serializeError(error: unknown) {
 
 export async function POST() {
   try {
+    const apiKey = process.env.RESEND_API_KEY?.trim();
     const from = process.env.RESEND_FROM?.trim() || process.env.SMTP_FROM?.trim();
 
-    if (!process.env.RESEND_API_KEY?.trim()) {
+    if (!apiKey) {
       return Response.json(
         { error: { message: "RESEND_API_KEY is not configured." } },
         { status: 500 }
@@ -41,6 +40,8 @@ export async function POST() {
         { status: 500 }
       );
     }
+
+    const resend = new Resend(apiKey);
 
     const { data, error } = await resend.emails.send({
       from,
