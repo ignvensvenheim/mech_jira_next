@@ -8,6 +8,10 @@ import {
 } from "@/lib/dateOnly";
 import { DEPARTMENT_LINES } from "@/data/listData";
 import type { NormalizedIssue } from "@/lib/jira";
+import {
+  normalizePlannedMaintenanceRecipients,
+  type PlannedMaintenanceRecipient,
+} from "@/lib/plannedMaintenanceRecipients";
 
 export type AdminTranslate = (
   key: string,
@@ -67,13 +71,29 @@ export type PlannedMaintenanceItem = {
   jiraIssueId: string | null;
   jiraIssueKey: string | null;
   jiraIssueUrl: string | null;
+  notificationRecipients: PlannedMaintenanceRecipient[];
+  status: MaintenanceWorkflowStatus;
   isCompleted: boolean;
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
 
-export type MaintenanceStatus = "overdue" | "dueSoon" | "upcoming" | "completed";
+export type MaintenanceWorkflowStatus =
+  | "planned"
+  | "inProgress"
+  | "waitingForParts"
+  | "completed"
+  | "cancelled";
+
+export type MaintenanceStatus =
+  | "overdue"
+  | "dueSoon"
+  | "upcoming"
+  | "inProgress"
+  | "waitingForParts"
+  | "completed"
+  | "cancelled";
 
 export type MaintenanceLogEntry = {
   id: string;
@@ -213,9 +233,17 @@ export function getRepairCostTotalsByMachine(
 }
 
 export function sortPlannedMaintenanceItems(items: PlannedMaintenanceItem[]) {
+  const order: Record<MaintenanceWorkflowStatus, number> = {
+    planned: 0,
+    inProgress: 1,
+    waitingForParts: 2,
+    completed: 3,
+    cancelled: 4,
+  };
+
   return [...items].sort((a, b) => {
-    if (a.isCompleted !== b.isCompleted) {
-      return Number(a.isCompleted) - Number(b.isCompleted);
+    if (a.status !== b.status) {
+      return order[a.status] - order[b.status];
     }
 
     const dueDateSort = a.dueDate.localeCompare(b.dueDate);
@@ -225,11 +253,34 @@ export function sortPlannedMaintenanceItems(items: PlannedMaintenanceItem[]) {
   });
 }
 
+export function normalizeMaintenanceWorkflowStatus(
+  value: unknown,
+  fallbackIsCompleted: boolean = false
+): MaintenanceWorkflowStatus {
+  switch (value) {
+    case "planned":
+    case "inProgress":
+    case "waitingForParts":
+    case "completed":
+    case "cancelled":
+      return value;
+    default:
+      return fallbackIsCompleted ? "completed" : "planned";
+  }
+}
+
+export function isMaintenanceClosedStatus(status: MaintenanceWorkflowStatus) {
+  return status === "completed" || status === "cancelled";
+}
+
 export function getMaintenanceItemStatus(
   item: PlannedMaintenanceItem,
   todayDayKey: number = getCurrentLocalDayKey()
 ): MaintenanceStatus {
-  if (item.isCompleted) return "completed";
+  if (item.status === "completed") return "completed";
+  if (item.status === "cancelled") return "cancelled";
+  if (item.status === "inProgress") return "inProgress";
+  if (item.status === "waitingForParts") return "waitingForParts";
 
   const dueDayKey = dateOnlyToDayKey(item.dueDate);
   if (dueDayKey === null) return "upcoming";
@@ -362,6 +413,8 @@ export function getMaintenanceCountLabel(t: AdminTranslate, count: number) {
 export function normalizePlannedMaintenanceItem(
   item: PlannedMaintenanceItem
 ): PlannedMaintenanceItem {
+  const status = normalizeMaintenanceWorkflowStatus(item.status, item.isCompleted);
+
   return {
     ...item,
     note: item.note ?? null,
@@ -369,7 +422,39 @@ export function normalizePlannedMaintenanceItem(
     jiraIssueId: item.jiraIssueId ?? null,
     jiraIssueKey: item.jiraIssueKey ?? null,
     jiraIssueUrl: item.jiraIssueUrl ?? null,
+    notificationRecipients: normalizePlannedMaintenanceRecipients(
+      (item as PlannedMaintenanceItem & { notificationRecipients?: unknown })
+        .notificationRecipients
+    ),
+    status,
+    isCompleted: status === "completed",
+    completedAt:
+      status === "completed" ? item.completedAt ?? item.updatedAt ?? null : null,
   };
+}
+
+export function getMaintenanceWorkflowStatusLabel(
+  t: AdminTranslate,
+  status: MaintenanceStatus | MaintenanceWorkflowStatus
+) {
+  switch (status) {
+    case "planned":
+      return t("admin.maintenanceStatusPlanned");
+    case "inProgress":
+      return t("admin.maintenanceStatusInProgress");
+    case "waitingForParts":
+      return t("admin.maintenanceStatusWaitingForParts");
+    case "completed":
+      return t("admin.maintenanceStatusCompleted");
+    case "cancelled":
+      return t("admin.maintenanceStatusCancelled");
+    case "overdue":
+      return t("admin.overdueMaintenance");
+    case "dueSoon":
+      return t("admin.dueSoonMaintenance");
+    case "upcoming":
+      return t("admin.upcomingMaintenance");
+  }
 }
 
 export function getActiveDatePreset(from: string, to: string): DatePreset {
@@ -462,3 +547,5 @@ export {
   parseDateOnly,
   parseMachineKey,
 };
+
+export type { PlannedMaintenanceRecipient };

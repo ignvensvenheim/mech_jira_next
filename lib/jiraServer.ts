@@ -6,6 +6,13 @@ type JiraCreateIssueResponse = {
   self: string;
 };
 
+type MaintenanceWorkflowStatus =
+  | "planned"
+  | "inProgress"
+  | "waitingForParts"
+  | "completed"
+  | "cancelled";
+
 function getRequiredEnv(name: string) {
   const value = process.env[name]?.trim();
   if (!value) {
@@ -24,6 +31,19 @@ function getJiraConfig() {
     process.env.JIRA_MAINTENANCE_ISSUE_TYPE?.trim() || "Submit a request or incident";
   const maintenanceTargetStatus =
     process.env.JIRA_MAINTENANCE_TARGET_STATUS?.trim() || "To Do List";
+  const maintenanceStatusMap: Record<MaintenanceWorkflowStatus, string> = {
+    planned:
+      process.env.JIRA_MAINTENANCE_STATUS_PLANNED?.trim() || maintenanceTargetStatus,
+    inProgress:
+      process.env.JIRA_MAINTENANCE_STATUS_IN_PROGRESS?.trim() || "In Progress",
+    waitingForParts:
+      process.env.JIRA_MAINTENANCE_STATUS_WAITING_FOR_PARTS?.trim() ||
+      "Waiting for parts",
+    completed:
+      process.env.JIRA_MAINTENANCE_STATUS_COMPLETED?.trim() || "Done",
+    cancelled:
+      process.env.JIRA_MAINTENANCE_STATUS_CANCELLED?.trim() || "Cancelled",
+  };
 
   return {
     base,
@@ -32,6 +52,7 @@ function getJiraConfig() {
     maintenanceProjectKey,
     maintenanceIssueType,
     maintenanceTargetStatus,
+    maintenanceStatusMap,
   };
 }
 
@@ -54,6 +75,7 @@ function buildMaintenanceDescription(args: {
   dueDate: string;
   note: string | null;
   cost: number | null;
+  status: MaintenanceWorkflowStatus;
 }) {
   const { category, subcategory } = parseMachineKey(args.machineKey);
   const lines = [
@@ -62,6 +84,7 @@ function buildMaintenanceDescription(args: {
     category ? `Category: ${category}` : "",
     subcategory ? `Subcategory: ${subcategory}` : "",
     `Due date: ${args.dueDate}`,
+    `Workflow status: ${args.status}`,
     args.cost != null ? `Planned cost: ${args.cost.toFixed(2)} EUR` : "",
     args.note ? `Note: ${args.note}` : "",
   ].filter(Boolean);
@@ -142,12 +165,13 @@ export async function createJiraMaintenanceIssue(args: {
   dueDate: string;
   note: string | null;
   cost: number | null;
+  status: MaintenanceWorkflowStatus;
 }) {
   const {
     base,
     maintenanceProjectKey,
     maintenanceIssueType,
-    maintenanceTargetStatus,
+    maintenanceStatusMap,
   } = getJiraConfig();
 
   const { text } = await jiraRequest(
@@ -161,7 +185,7 @@ export async function createJiraMaintenanceIssue(args: {
         summary: buildMaintenanceSummary(args.machineKey, args.title),
         duedate: args.dueDate,
         description: buildMaintenanceDescription(args),
-        labels: ["planned-maintenance", "admin-calendar"],
+        labels: buildMaintenanceLabels(args.status),
       },
     }),
     },
@@ -173,7 +197,7 @@ export async function createJiraMaintenanceIssue(args: {
     throw new Error("Jira issue create did not return an issue key");
   }
 
-  await ensureJiraIssueStatus(data.key, maintenanceTargetStatus);
+  await ensureJiraIssueStatus(data.key, maintenanceStatusMap[args.status]);
 
   return {
     id: data.id ?? "",
@@ -190,12 +214,9 @@ export async function updateJiraMaintenanceIssue(args: {
   dueDate: string;
   note: string | null;
   cost: number | null;
-  isCompleted: boolean;
+  status: MaintenanceWorkflowStatus;
 }) {
-  const labels = ["planned-maintenance", "admin-calendar"];
-  if (args.isCompleted) {
-    labels.push("maintenance-completed");
-  }
+  const { maintenanceStatusMap } = getJiraConfig();
 
   await jiraRequest(
     `/rest/api/3/issue/${encodeURIComponent(args.issueKey)}`,
@@ -206,12 +227,18 @@ export async function updateJiraMaintenanceIssue(args: {
           summary: buildMaintenanceSummary(args.machineKey, args.title),
           duedate: args.dueDate,
           description: buildMaintenanceDescription(args),
-          labels,
+          labels: buildMaintenanceLabels(args.status),
         },
       }),
     },
     204
   );
+
+  try {
+    await ensureJiraIssueStatus(args.issueKey, maintenanceStatusMap[args.status]);
+  } catch (error) {
+    console.error("Failed to align Jira maintenance workflow status", error);
+  }
 }
 
 export async function addJiraMaintenanceComment(args: {
@@ -276,6 +303,29 @@ export async function getExistingJiraIssueKeys(issueKeys: string[]) {
   }
 
   return foundKeys;
+}
+
+function buildMaintenanceLabels(status: MaintenanceWorkflowStatus) {
+  const workflowLabel =
+    status === "inProgress"
+      ? "maintenance-status-in-progress"
+      : status === "waitingForParts"
+        ? "maintenance-status-waiting-for-parts"
+        : `maintenance-status-${status}`;
+  const labels = [
+    "planned-maintenance",
+    "admin-calendar",
+    workflowLabel,
+  ];
+
+  if (status === "completed") {
+    labels.push("maintenance-completed");
+  }
+  if (status === "cancelled") {
+    labels.push("maintenance-cancelled");
+  }
+
+  return labels;
 }
 
 async function ensureJiraIssueStatus(issueKey: string, targetStatusName: string) {

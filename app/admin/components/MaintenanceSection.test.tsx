@@ -5,6 +5,7 @@ import type {
   AdminTranslate,
   MaintenanceLogEntry,
   MachineDirectoryItem,
+  PlannedMaintenanceRecipient,
   PlannedMaintenanceItem,
 } from "../adminShared";
 
@@ -38,6 +39,8 @@ const maintenanceItem: PlannedMaintenanceItem = {
   jiraIssueId: "10001",
   jiraIssueKey: "MECH-321",
   jiraIssueUrl: "https://svenheim.atlassian.net/browse/MECH-321",
+  notificationRecipients: [],
+  status: "planned",
   isCompleted: false,
   completedAt: null,
   createdAt: "2026-05-01T08:00:00.000Z",
@@ -79,6 +82,8 @@ const baseProps = {
   maintenanceDueDate: "2026-05-30",
   maintenanceCost: "125",
   maintenanceNote: "Check belts",
+  maintenanceNotificationRecipients: [] as PlannedMaintenanceRecipient[],
+  maintenanceStatus: "planned" as const,
   selectedMaintenanceDateLabel: "Saturday, May 30, 2026",
   maintenanceActionKey: null,
   onPreviousMonth: vi.fn(),
@@ -92,8 +97,11 @@ const baseProps = {
   onMaintenanceDueDateChange: vi.fn(),
   onMaintenanceCostChange: vi.fn(),
   onMaintenanceNoteChange: vi.fn(),
+  onMaintenanceNotificationRecipientsChange: vi.fn(),
+  onMaintenanceStatusChange: vi.fn(),
   onSavePlannedMaintenance: vi.fn(),
-  onUpdatePlannedMaintenanceState: vi.fn(),
+  onUpdatePlannedMaintenanceStatus: vi.fn(),
+  onSendPlannedMaintenanceReminder: vi.fn(),
   onDeletePlannedMaintenance: vi.fn(),
 };
 
@@ -105,7 +113,7 @@ describe("MaintenanceSection", () => {
     expect(jiraLink).toBeInTheDocument();
     expect(jiraLink).toHaveAttribute(
       "href",
-      "https://svenheim.atlassian.net/browse/MECH-321"
+      "https://svenheim.atlassian.net/browse/MECH-321",
     );
   });
 
@@ -119,9 +127,11 @@ describe("MaintenanceSection", () => {
           jiraIssueKey: null,
           jiraIssueUrl: null,
         }}
-      />
+      />,
     );
 
-    expect(screen.queryByRole("link", { name: "admin.openInJira" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "admin.openInJira" }),
+    ).not.toBeInTheDocument();
   });
 });

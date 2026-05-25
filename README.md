@@ -69,6 +69,14 @@ Create `.env.local` for local dev and set:
 - `JIRA_BASE` - Jira base URL
 - `JIRA_EMAIL` - Jira account email
 - `JIRA_API_TOKEN` - Jira API token
+- `SMTP_HOST` - SMTP server host for maintenance notifications
+- `SMTP_PORT` - SMTP server port
+- `SMTP_SECURE` - `true` for implicit TLS, otherwise `false`
+- `SMTP_USER` - SMTP username
+- `SMTP_PASS` - SMTP password
+- `SMTP_FROM` - sender email shown on maintenance notifications
+- `CRON_SECRET` - secret used to authorize the automatic reminder cron endpoint
+- `PLANNED_MAINTENANCE_DUE_SOON_DAYS` - optional reminder window in days (default `7`)
 
 Notes:
 
@@ -208,6 +216,9 @@ Usually caused by missing/incorrect production env vars or DB connectivity. Veri
 - Set all required env vars in Vercel
 - Ensure database schema is deployed (`prisma migrate deploy`)
 - Build command: `npm run build`
+- Automatic due-soon maintenance reminders are scheduled through `vercel.json`
+  at `/api/cron/planned-maintenance-due-soon`
+  and use `CRON_SECRET` for authorization
 
 ## Documentation Scope
 

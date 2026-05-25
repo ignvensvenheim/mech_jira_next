@@ -16,14 +16,11 @@ import {
   getDateRangeBounds,
   getCurrentLocalDateOnly,
   getIssueCategoryAndSubcategory,
-  getLocaleTag,
-  getMaintenanceItemStatus,
   getRepairCostTotalsByMachine,
+  isMaintenanceClosedStatus,
   parseMachineKey,
   summarizeIssuesByAsset,
   type AssetStatisticsRow,
-  type MaintenanceLogEntry,
-  type MaintenanceStatus,
 } from "./adminShared";
 import { useAdminAssetData } from "./hooks/useAdminAssetData";
 import { useAdminFilters } from "./hooks/useAdminFilters";
@@ -213,6 +210,10 @@ function AdminPageContent() {
     setMaintenanceCost,
     maintenanceNote,
     setMaintenanceNote,
+    maintenanceNotificationRecipients,
+    setMaintenanceNotificationRecipients,
+    maintenanceStatus,
+    setMaintenanceStatus,
     maintenanceCalendarMonth,
     setMaintenanceCalendarMonth,
     isMaintenanceModalOpen,
@@ -232,7 +233,8 @@ function AdminPageContent() {
     closeMaintenanceModal,
     selectMaintenanceDate,
     savePlannedMaintenance,
-    updatePlannedMaintenanceState,
+    updatePlannedMaintenanceStatus,
+    sendPlannedMaintenanceReminder,
     deletePlannedMaintenance,
   } = maintenance;
 
@@ -316,11 +318,13 @@ function AdminPageContent() {
     [maintenanceCostsByMachineKey]
   );
   const statisticsMaintenanceCompletedCount = useMemo(
-    () => plannedMaintenanceItems.filter((item) => item.isCompleted).length,
+    () => plannedMaintenanceItems.filter((item) => item.status === "completed").length,
     [plannedMaintenanceItems]
   );
-  const statisticsMaintenanceActiveCount =
-    plannedMaintenanceItems.length - statisticsMaintenanceCompletedCount;
+  const statisticsMaintenanceActiveCount = useMemo(
+    () => plannedMaintenanceItems.filter((item) => !isMaintenanceClosedStatus(item.status)).length,
+    [plannedMaintenanceItems]
+  );
   const assetStatistics = useMemo<AssetStatisticsRow[]>(() => {
     const machineKeys = new Set<string>([
       ...statisticsIssueAssetSummary.byMachine.keys(),
@@ -592,6 +596,8 @@ function AdminPageContent() {
                   maintenanceDueDate={maintenanceDueDate}
                   maintenanceCost={maintenanceCost}
                   maintenanceNote={maintenanceNote}
+                  maintenanceNotificationRecipients={maintenanceNotificationRecipients}
+                  maintenanceStatus={maintenanceStatus}
                   selectedMaintenanceDateLabel={selectedMaintenanceDateLabel}
                   maintenanceActionKey={maintenanceActionKey}
                   onPreviousMonth={() =>
@@ -619,9 +625,16 @@ function AdminPageContent() {
                   onMaintenanceDueDateChange={setMaintenanceDueDate}
                   onMaintenanceCostChange={setMaintenanceCost}
                   onMaintenanceNoteChange={setMaintenanceNote}
+                  onMaintenanceNotificationRecipientsChange={
+                    setMaintenanceNotificationRecipients
+                  }
+                  onMaintenanceStatusChange={setMaintenanceStatus}
                   onSavePlannedMaintenance={() => void savePlannedMaintenance()}
-                  onUpdatePlannedMaintenanceState={(id, isCompleted) =>
-                    void updatePlannedMaintenanceState(id, isCompleted)
+                  onUpdatePlannedMaintenanceStatus={(id, status) =>
+                    void updatePlannedMaintenanceStatus(id, status)
+                  }
+                  onSendPlannedMaintenanceReminder={(id) =>
+                    void sendPlannedMaintenanceReminder(id)
                   }
                   onDeletePlannedMaintenance={(id) => void deletePlannedMaintenance(id)}
                 />

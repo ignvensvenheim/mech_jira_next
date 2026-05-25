@@ -12,6 +12,14 @@ enum UserRole {
   USER
 }
 
+enum MaintenanceWorkflowStatus {
+  planned
+  inProgress
+  waitingForParts
+  completed
+  cancelled
+}
+
 model User {
   id           String        @id @default(cuid())
   email        String        @unique
@@ -96,6 +104,10 @@ model PlannedMaintenance {
   jiraIssueId  String?
   jiraIssueKey String?
   jiraIssueUrl String?
+  notificationRecipientsJson String @default("[]")
+  dueSoonReminderSentAt DateTime?
+  dueSoonReminderSentForDate String?
+  status       MaintenanceWorkflowStatus @default(planned)
   isCompleted  Boolean  @default(false)
   completedAt  DateTime?
   createdAt    DateTime @default(now())
@@ -104,6 +116,7 @@ model PlannedMaintenance {
 
   @@index([machineKey])
   @@index([dueDate])
+  @@index([status])
   @@index([isCompleted])
   @@index([jiraIssueKey])
 }

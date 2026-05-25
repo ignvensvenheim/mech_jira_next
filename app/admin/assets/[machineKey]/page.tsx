@@ -15,8 +15,9 @@ import {
   formatMachineDirectoryLabel,
   formatMachineKeyDisplay,
   formatSeconds,
-  getAdminAssetHref,
   getMaintenanceDueLabel,
+  getMaintenanceWorkflowStatusLabel,
+  isMaintenanceClosedStatus,
   parseMachineKey,
 } from "../../adminShared";
 import { useAdminAssetDetail } from "../../hooks/useAdminAssetDetail";
@@ -112,11 +113,15 @@ function AssetDetailPageContent() {
     [machineKey, plannedMaintenanceItems]
   );
   const plannedItems = useMemo(
-    () => assetMaintenanceItems.filter((item) => !item.isCompleted),
+    () => assetMaintenanceItems.filter((item) => !isMaintenanceClosedStatus(item.status)),
     [assetMaintenanceItems]
   );
   const completedItems = useMemo(
-    () => assetMaintenanceItems.filter((item) => item.isCompleted),
+    () => assetMaintenanceItems.filter((item) => item.status === "completed"),
+    [assetMaintenanceItems]
+  );
+  const cancelledItems = useMemo(
+    () => assetMaintenanceItems.filter((item) => item.status === "cancelled"),
     [assetMaintenanceItems]
   );
   const maintenanceCostTotal = useMemo(
@@ -321,6 +326,7 @@ function AssetDetailPageContent() {
                           <div className="admin-asset-maintenance-row__main">
                             <div className="admin-asset-maintenance-row__title">{item.title}</div>
                             <div className="admin-asset-maintenance-row__meta">
+                              {getMaintenanceWorkflowStatusLabel(t, item.status)} |{" "}
                               {getMaintenanceDueLabel(item.dueDate, t)}
                             </div>
                           </div>
@@ -353,6 +359,33 @@ function AssetDetailPageContent() {
                               {item.completedAt
                                 ? formatDateTimeForLocale(item.completedAt, locale)
                                 : item.dueDate}
+                            </div>
+                          </div>
+                          <div className="admin-asset-maintenance-row__cost">
+                            {item.cost == null ? "-" : formatCurrency(item.cost, locale)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="admin-panel">
+                  <div className="admin-chart-title">{t("admin.maintenanceStatusCancelled")}</div>
+                  {plannedMaintenanceLoading && (
+                    <div className="admin-chart-empty">{t("common.loading")}</div>
+                  )}
+                  {!plannedMaintenanceLoading && cancelledItems.length === 0 && (
+                    <div className="admin-chart-empty">{t("admin.noCancelledMaintenanceForAsset")}</div>
+                  )}
+                  {!plannedMaintenanceLoading && cancelledItems.length > 0 && (
+                    <div className="admin-asset-list">
+                      {cancelledItems.map((item) => (
+                        <div key={item.id} className="admin-asset-maintenance-row">
+                          <div className="admin-asset-maintenance-row__main">
+                            <div className="admin-asset-maintenance-row__title">{item.title}</div>
+                            <div className="admin-asset-maintenance-row__meta">
+                              {formatDateTimeForLocale(item.updatedAt, locale)}
                             </div>
                           </div>
                           <div className="admin-asset-maintenance-row__cost">
