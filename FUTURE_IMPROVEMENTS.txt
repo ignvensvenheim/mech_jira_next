@@ -43,6 +43,12 @@ Current Admin Responsibilities
   manage app users, limited to super-admin access
   self-service password change for other admins through My Account
 
+Login Screen Notes
+- Login now presents email-only wording, not email-or-username wording.
+- The email input uses a short example placeholder instead of helper text below the field.
+- Current example format shown to users:
+  e.g. varpav@svenheim.lt
+
 Latest Planned Maintenance State
 - Email notifications now use Resend, not Nodemailer.
 - Shared mailer:
