@@ -444,7 +444,7 @@ export const dictionaries = {
       next3Months: "3 mėnesiai",
       overdueMaintenance: "Vėluoja",
       dueSoonMaintenance: "Per artimiausias 7 dienas",
-      upcomingMaintenance: "Artėja vėliau",
+      upcomingMaintenance: "Artėja",
       completedMaintenance: "Atlikta",
       maintenanceStatusPlanned: "Suplanuota",
       maintenanceStatusInProgress: "Vykdoma",

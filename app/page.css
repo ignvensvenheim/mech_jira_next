@@ -1357,17 +1357,9 @@
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-.admin-maintenance-calendar__day--placeholder {
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  pointer-events: none;
-}
-
 .admin-maintenance-calendar__day--outside {
-  background: rgba(255, 255, 255, 0.6);
-  opacity: 0.62;
+  background: rgba(44, 62, 80, 0.035);
+  border-color: rgba(44, 62, 80, 0.08);
 }
 
 .admin-maintenance-calendar__day--today {
@@ -1395,15 +1387,8 @@
   color: var(--color-primary);
 }
 
-.admin-maintenance-calendar__day-count {
-  min-width: 24px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(79, 169, 77, 0.12);
-  color: #1f5d1f;
-  font-size: 11px;
-  font-weight: 700;
-  text-align: center;
+.admin-maintenance-calendar__day--outside .admin-maintenance-calendar__day-number {
+  color: rgba(44, 62, 80, 0.42);
 }
 
 .admin-maintenance-calendar__events {
@@ -1436,6 +1421,20 @@
 .admin-maintenance-calendar__event:focus-visible {
   outline: 2px solid rgba(79, 169, 77, 0.45);
   outline-offset: 2px;
+}
+
+.admin-maintenance-calendar__event-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-maintenance-calendar__event-dot {
+  margin-top: 2px;
+  width: 8px;
+  height: 8px;
 }
 
 .admin-maintenance-calendar__event--selected {

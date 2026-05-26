@@ -220,7 +220,6 @@ function AdminPageContent() {
     setMaintenanceCalendarMonth,
     isMaintenanceModalOpen,
     loadPlannedMaintenance,
-    maintenanceBadgeCount,
     maintenanceCalendarLabel,
     maintenanceWeekdayLabels,
     maintenanceCalendarDays,
