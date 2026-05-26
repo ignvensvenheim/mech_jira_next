@@ -41,6 +41,13 @@ Current Admin Responsibilities
   derive rollups from Jira tickets plus stored admin data
 - Users:
   manage app users, limited to super-admin access
+  self-service password change for other admins through My Account
+
+Login Screen Notes
+- Login now presents email-only wording, not email-or-username wording.
+- The email input uses a short example placeholder instead of helper text below the field.
+- Current example format shown to users:
+  e.g. varpav@svenheim.lt
 
 Latest Planned Maintenance State
 - Email notifications now use Resend, not Nodemailer.
@@ -111,6 +118,13 @@ Latest Planned Maintenance Modal/UI State
 - The due-date input now supports both date and time.
   The UI uses a date field plus an explicit 24-hour time selector.
   Current selectable time window is 06:00 through 23:30 in 30-minute steps.
+- Small event cards in the month grid now show a status dot in the top-right corner
+  using the same colors as the legend.
+- The old green event-count badge was removed from:
+  calendar day cards
+  the sidebar item next to Planned maintenance
+- Empty month-edge placeholders were replaced with muted previous/next month day cards
+  so users can orient themselves more easily in the calendar grid.
 - The duplicate recipient summary block at the top of the modal was removed.
 - The extra "Register maintenance ticket" links were removed from the maintenance
   toolbar and modal header because Add now drives the flow.
@@ -152,6 +166,10 @@ Important Data Model Notes
 - Mutating admin APIs now enforce admin auth plus same-origin checks.
 - Bootstrap admin login should be treated as setup-only and is now gated by
   ALLOW_ADMIN_BOOTSTRAP=true and zero existing users.
+- User-management boundary now works like this:
+  ignven is the super-admin identity
+  only super-admin can create, edit, delete, or fully list other users
+  other admins can open My Account and change only their own password
 
 Maintenance Sync Status
 - Implemented:

@@ -6,8 +6,8 @@ import type { AdminFunction, AdminTranslate } from "../adminShared";
 type AdminSidebarProps = {
   activeFunction?: AdminFunction | null;
   currentUserLabel: string;
+  currentUserIsAdmin: boolean;
   currentUserCanManageUsers: boolean;
-  maintenanceBadgeCount: number;
   onSelectFunction?: (value: AdminFunction) => void;
   getFunctionHref?: (value: AdminFunction) => string;
   title?: string;
@@ -18,8 +18,8 @@ type AdminSidebarProps = {
 export default function AdminSidebar({
   activeFunction,
   currentUserLabel,
+  currentUserIsAdmin,
   currentUserCanManageUsers,
-  maintenanceBadgeCount,
   onSelectFunction,
   getFunctionHref,
   title,
@@ -29,20 +29,18 @@ export default function AdminSidebar({
   const items: Array<{
     value: AdminFunction;
     label: string;
-    badgeCount?: number;
   }> = [
     { value: "costs", label: t("admin.timeAndCost") },
-    {
-      value: "maintenance",
-      label: t("admin.plannedMaintenance"),
-      badgeCount: maintenanceBadgeCount,
-    },
+    { value: "maintenance", label: t("admin.plannedMaintenance") },
     { value: "statistics", label: t("admin.statistics") },
     { value: "inventory", label: t("admin.manageInventory") },
   ];
 
-  if (currentUserCanManageUsers) {
-    items.push({ value: "users", label: t("admin.manageUsers") });
+  if (currentUserIsAdmin) {
+    items.push({
+      value: "users",
+      label: currentUserCanManageUsers ? t("admin.manageUsers") : t("admin.myAccount"),
+    });
   }
 
   return (
@@ -60,16 +58,7 @@ export default function AdminSidebar({
               const className = `admin-function-button ${
                 activeFunction === item.value ? "admin-function-button--active" : ""
               }`.trim();
-              const content = item.badgeCount !== undefined ? (
-                <span className="admin-function-button__content">
-                  <span>{item.label}</span>
-                  {item.badgeCount > 0 && (
-                    <span className="admin-function-badge">{item.badgeCount}</span>
-                  )}
-                </span>
-              ) : (
-                item.label
-              );
+              const content = item.label;
 
               if (getFunctionHref) {
                 return (

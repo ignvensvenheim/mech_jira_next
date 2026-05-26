@@ -21,7 +21,7 @@ export default function AdminLayoutShell({
     activeFunction,
     handleLogout,
   } = useAdminSession(searchParams);
-  const { maintenanceBadgeCount } = useAdminMaintenance({
+  useAdminMaintenance({
     sessionResolved,
     currentUserIsAdmin,
     locale,
@@ -36,8 +36,8 @@ export default function AdminLayoutShell({
         <AdminSidebar
           activeFunction={activeFunction}
           currentUserLabel={currentUserLabel}
+          currentUserIsAdmin={currentUserIsAdmin}
           currentUserCanManageUsers={currentUserCanManageUsers}
-          maintenanceBadgeCount={maintenanceBadgeCount}
           getFunctionHref={(value) => `/admin?view=${value}`}
           onLogout={handleLogout}
           t={t}

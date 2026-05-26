@@ -34,6 +34,7 @@ export default function UsersManager({
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const [createEmail, setCreateEmail] = useState("");
   const [createName, setCreateName] = useState("");
@@ -48,10 +49,15 @@ export default function UsersManager({
   const [editPassword, setEditPassword] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [nextPassword, setNextPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const loadUsers = async () => {
     setLoading(true);
     setError("");
+    setSuccess("");
     try {
       const res = await fetch("/api/admin/users", { cache: "no-store" });
       const data = await parseJson<{ users: UserItem[] }>(res);
@@ -71,6 +77,7 @@ export default function UsersManager({
   const createUser = async () => {
     setCreating(true);
     setError("");
+    setSuccess("");
     try {
       const res = await fetch("/api/admin/users", {
         method: "POST",
@@ -115,6 +122,7 @@ export default function UsersManager({
     if (!editingId) return;
     setSavingId(editingId);
     setError("");
+    setSuccess("");
     try {
       const res = await fetch(`/api/admin/users/${editingId}`, {
         method: "PATCH",
@@ -145,6 +153,7 @@ export default function UsersManager({
 
     setDeletingId(id);
     setError("");
+    setSuccess("");
     try {
       const res = await fetch(`/api/admin/users/${id}`, {
         method: "DELETE",
@@ -157,6 +166,117 @@ export default function UsersManager({
       setDeletingId(null);
     }
   };
+
+  const changeOwnPassword = async () => {
+    const selfUser = users.find((user) => user.id === currentUserId);
+    if (!selfUser) return;
+
+    if (nextPassword !== confirmPassword) {
+      setError(t("admin.passwordMismatch"));
+      setSuccess("");
+      return;
+    }
+
+    setChangingPassword(true);
+    setError("");
+    setSuccess("");
+    try {
+      const res = await fetch(`/api/admin/users/${currentUserId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: selfUser.email,
+          name: selfUser.name || "",
+          role: selfUser.role,
+          currentPassword,
+          password: nextPassword,
+        }),
+      });
+      await parseJson<UserItem>(res);
+      setCurrentPassword("");
+      setNextPassword("");
+      setConfirmPassword("");
+      setSuccess(t("admin.passwordUpdated"));
+    } catch (e: unknown) {
+      setError(String((e as Error).message || e));
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  if (!canManageUsers) {
+    const selfUser = users.find((user) => user.id === currentUserId) || null;
+
+    return (
+      <div className="admin-dashboard">
+        <div className="admin-card">
+          <h1 className="admin-title">{t("admin.myAccount")}</h1>
+          <p className="admin-subtitle">{t("admin.changeOwnPasswordSubtitle")}</p>
+
+          {loading && <div className="admin-chart-empty">{t("admin.loadingUsers")}</div>}
+          {!loading && selfUser && (
+            <div className="admin-account-form">
+              <div className="admin-account-form__identity">
+                <input
+                  className="admin-input admin-account-form__readonly"
+                  type="email"
+                  value={selfUser.email}
+                  disabled
+                />
+                <input
+                  className="admin-input admin-account-form__readonly"
+                  type="text"
+                  value={selfUser.name || ""}
+                  disabled
+                />
+              </div>
+              <div className="admin-account-form__passwords">
+                <input
+                  className="admin-input"
+                  type="password"
+                  placeholder={t("admin.currentPassword")}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
+                <input
+                  className="admin-input"
+                  type="password"
+                  placeholder={t("admin.newPassword")}
+                  value={nextPassword}
+                  onChange={(e) => setNextPassword(e.target.value)}
+                />
+                <input
+                  className="admin-input"
+                  type="password"
+                  placeholder={t("admin.confirmNewPassword")}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="admin-reset-button admin-account-form__submit"
+                  onClick={() => {
+                    void changeOwnPassword();
+                  }}
+                  disabled={
+                    changingPassword ||
+                    !currentPassword.trim() ||
+                    nextPassword.trim().length < 6 ||
+                    confirmPassword.trim().length < 6
+                  }
+                >
+                  {changingPassword ? t("admin.savingPassword") : t("admin.changePassword")}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {error && <div className="page__error">{error}</div>}
+          {success && <div className="page__success">{success}</div>}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-dashboard">
@@ -209,6 +329,7 @@ export default function UsersManager({
         </div>
 
         {error && <div className="page__error">{error}</div>}
+        {success && <div className="page__success">{success}</div>}
       </div>
 
       <div className="admin-panel">

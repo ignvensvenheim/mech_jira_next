@@ -92,13 +92,13 @@ export const dictionaries = {
     login: {
       title: "Admin Login",
       subtitle: "Sign in to access the admin panel.",
-      emailOrUsername: "Email or username",
-      emailPlaceholder: "admin@example.com or ignven",
+      emailOrUsername: "Email",
+      emailPlaceholder: "e.g. namsurn@svenheim.lt",
       password: "Password",
       passwordPlaceholder: "********",
       signIn: "Sign in",
       signingIn: "Signing in...",
-      requiredError: "Username/email and password are required.",
+      requiredError: "Email and password are required.",
       invalidCredentials: "Invalid credentials.",
     },
     admin: {
@@ -141,7 +141,8 @@ export const dictionaries = {
       maintenanceNote: "Description",
       maintenanceNotePlaceholder: "Optional description",
       maintenanceNotifyPeople: "Notify people",
-      maintenanceSendingNotifications: "Sending email to {count} selected people...",
+      maintenanceSendingNotifications:
+        "Sending email to {count} selected people...",
       maintenanceSendingEmails: "Sending email...",
       sendReminder: "Send reminder",
       addMaintenancePlan: "Add",
@@ -209,9 +210,12 @@ export const dictionaries = {
       recentActivity: "Recent activity",
       noActivityYet: "No activity yet for this asset.",
       noAssetTickets: "No breakdown tickets mapped to this asset yet.",
-      noPlannedMaintenanceForAsset: "No active maintenance plans for this asset.",
-      noCompletedMaintenanceForAsset: "No completed maintenance for this asset yet.",
-      noCancelledMaintenanceForAsset: "No cancelled maintenance for this asset yet.",
+      noPlannedMaintenanceForAsset:
+        "No active maintenance plans for this asset.",
+      noCompletedMaintenanceForAsset:
+        "No completed maintenance for this asset yet.",
+      noCancelledMaintenanceForAsset:
+        "No cancelled maintenance for this asset yet.",
       maintenanceStatistics: "Maintenance",
       maintenancePlans: "Maintenance plans",
       activeMaintenancePlans: "Active plans",
@@ -220,8 +224,7 @@ export const dictionaries = {
       mappedAssets: "Mapped assets",
       assetsMissingInventory: "Assets missing inventory",
       assetsInFilteredTickets: "Assets in tickets",
-      assetsInFilteredTicketsMissingInventory:
-        "Missing inventory in tickets",
+      assetsInFilteredTicketsMissingInventory: "Missing inventory in tickets",
       unmappedTickets: "Unmapped tickets",
       assetCoverage: "Coverage",
       assetCoverageSubtitle:
@@ -256,6 +259,15 @@ export const dictionaries = {
       maintenanceCount: "{count} maintenance",
       userManagement: "User Management",
       userManagementSubtitle: "Create and manage application users and roles.",
+      myAccount: "My Account",
+      changeOwnPasswordSubtitle: "Change your own account password.",
+      currentPassword: "Current password",
+      newPassword: "New password",
+      confirmNewPassword: "Confirm new password",
+      changePassword: "Change password",
+      savingPassword: "Saving...",
+      passwordMismatch: "New passwords do not match.",
+      passwordUpdated: "Password updated.",
       email: "Email",
       name: "Name",
       passwordMin: "Password (min 6)",
@@ -264,8 +276,7 @@ export const dictionaries = {
       users: "Users",
       loadingUsers: "Loading users...",
       noUsersYet: "No users yet.",
-      deleteUserConfirm:
-        "Delete this user? This action cannot be undone.",
+      deleteUserConfirm: "Delete this user? This action cannot be undone.",
       deletingUser: "Deleting...",
       roleUser: "User",
       roleAdmin: "Admin",
@@ -380,13 +391,14 @@ export const dictionaries = {
     login: {
       title: "Administratoriaus prisijungimas",
       subtitle: "Prisijunkite, kad pasiektumėte administratoriaus panelę.",
-      emailOrUsername: "El. paštas arba vardas",
-      emailPlaceholder: "admin@example.com arba ignven",
+      emailOrUsername: "El. paštas",
+      emailPlaceholder: "pvz. vardpavard@svenheim.lt",
       password: "Slaptažodis",
       passwordPlaceholder: "********",
       signIn: "Prisijungti",
       signingIn: "Jungiamasi...",
-      requiredError: "Vartotojo vardas / el. paštas ir slaptažodis yra privalomi.",
+      requiredError:
+        "Vartotojo vardas / el. paštas ir slaptažodis yra privalomi.",
       invalidCredentials: "Neteisingi prisijungimo duomenys.",
     },
     admin: {
@@ -430,7 +442,8 @@ export const dictionaries = {
       maintenanceNote: "Aprašymas",
       maintenanceNotePlaceholder: "Neprivalomas aprašymas",
       maintenanceNotifyPeople: "Pranešti žmonėms",
-      maintenanceSendingNotifications: "Siunčiamas el. laiškas {count} pasirinktiems žmonėms...",
+      maintenanceSendingNotifications:
+        "Siunčiamas el. laiškas {count} pasirinktiems žmonėms...",
       maintenanceSendingEmails: "Siunčiamas el. laiškas...",
       sendReminder: "Siųsti priminimą",
       addMaintenancePlan: "Pridėti",
@@ -444,7 +457,7 @@ export const dictionaries = {
       next3Months: "3 mėnesiai",
       overdueMaintenance: "Vėluoja",
       dueSoonMaintenance: "Per artimiausias 7 dienas",
-      upcomingMaintenance: "Artėja vėliau",
+      upcomingMaintenance: "Artėja",
       completedMaintenance: "Atlikta",
       maintenanceStatusPlanned: "Suplanuota",
       maintenanceStatusInProgress: "Vykdoma",
@@ -491,8 +504,7 @@ export const dictionaries = {
       mappedAssets: "Susieti įrenginiai",
       assetsMissingInventory: "Įrenginiai be inventoriaus duomenų",
       assetsInFilteredTickets: "Įrenginiai užklausose",
-      assetsInFilteredTicketsMissingInventory:
-        "Be inventoriaus užklausose",
+      assetsInFilteredTicketsMissingInventory: "Be inventoriaus užklausose",
       unmappedTickets: "Nesusietos užklausos",
       assetCoverage: "Padengimas",
       assetCoverageSubtitle:
@@ -517,10 +529,8 @@ export const dictionaries = {
       maintenanceCostByMachine: "Priežiūros kaina pagal mašiną",
       noMachineBreakdownData:
         "Pagal pasirinktus filtrus mašinų gedimų duomenų nėra.",
-      noRepairCostData:
-        "Pagal pasirinktus filtrus remonto kaštų duomenų nėra.",
-      noMaintenanceCostData:
-        "Priežiūros kainų duomenų dar nėra.",
+      noRepairCostData: "Pagal pasirinktus filtrus remonto kaštų duomenų nėra.",
+      noMaintenanceCostData: "Priežiūros kainų duomenų dar nėra.",
       ticketsCountOne: "{count} užklausa",
       ticketsCountMany: "{count} užklausos",
       maintenanceCountOne: "{count} priežiūra",
@@ -530,6 +540,15 @@ export const dictionaries = {
       userManagement: "Vartotojų valdymas",
       userManagementSubtitle:
         "Kurkite ir valdykite programos vartotojus bei roles.",
+      myAccount: "Mano paskyra",
+      changeOwnPasswordSubtitle: "Pakeiskite savo paskyros slaptažodį.",
+      currentPassword: "Dabartinis slaptažodis",
+      newPassword: "Naujas slaptažodis",
+      confirmNewPassword: "Patvirtinkite naują slaptažodį",
+      changePassword: "Keisti slaptažodį",
+      savingPassword: "Saugoma...",
+      passwordMismatch: "Nauji slaptažodžiai nesutampa.",
+      passwordUpdated: "Slaptažodis atnaujintas.",
       email: "El. paštas",
       name: "Vardas",
       passwordMin: "Slaptažodis (min 6)",
@@ -577,9 +596,12 @@ export const dictionaries = {
       recentActivity: "Naujausia veikla",
       noActivityYet: "Šiam įrenginiui veiklos dar nėra.",
       noAssetTickets: "Su šiuo įrenginiu dar nesusieta gedimų užklausų.",
-      noPlannedMaintenanceForAsset: "Šiam įrenginiui aktyvių priežiūros planų nėra.",
-      noCompletedMaintenanceForAsset: "Šiam įrenginiui atliktos priežiūros įrašų dar nėra.",
-      noCancelledMaintenanceForAsset: "Šiam įrenginiui atšauktų priežiūros įrašų dar nėra.",
+      noPlannedMaintenanceForAsset:
+        "Šiam įrenginiui aktyvių priežiūros planų nėra.",
+      noCompletedMaintenanceForAsset:
+        "Šiam įrenginiui atliktos priežiūros įrašų dar nėra.",
+      noCancelledMaintenanceForAsset:
+        "Šiam įrenginiui atšauktų priežiūros įrašų dar nėra.",
     },
   },
 } as const;
@@ -598,17 +620,17 @@ function getNestedValue(source: Record<string, unknown>, key: string): string {
 export function translate(
   locale: Locale,
   key: TranslationKey,
-  params?: Record<string, string | number>
+  params?: Record<string, string | number>,
 ) {
   const template = getNestedValue(
     dictionaries[locale] as unknown as Record<string, unknown>,
-    key
+    key,
   );
 
   if (!params) return template;
 
   return Object.entries(params).reduce(
     (result, [name, value]) => result.replaceAll(`{${name}}`, String(value)),
-    template
+    template,
   );
 }

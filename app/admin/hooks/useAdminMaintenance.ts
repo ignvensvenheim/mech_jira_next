@@ -402,13 +402,18 @@ export function useAdminMaintenance({
     const monthIndex = maintenanceCalendarMonth.getMonth();
     const firstDayOffset = (new Date(monthYear, monthIndex, 1).getDay() + 6) % 7;
     const daysInMonth = new Date(monthYear, monthIndex + 1, 0).getDate();
+    const previousMonthDays = new Date(monthYear, monthIndex, 0).getDate();
 
     const leadingPlaceholders = Array.from({ length: firstDayOffset }, (_, index) => ({
-      dateKey: `placeholder-start-${index}`,
-      dayNumber: null,
+      dateKey: toDateOnlyFromParts(
+        monthYear,
+        monthIndex - 1,
+        previousMonthDays - firstDayOffset + index + 1
+      ),
+      dayNumber: previousMonthDays - firstDayOffset + index + 1,
       isCurrentMonth: false,
       isToday: false,
-      isPlaceholder: true,
+      isPlaceholder: false,
       items: [],
     }));
 
@@ -430,11 +435,11 @@ export function useAdminMaintenance({
     const trailingPlaceholderCount =
       (7 - ((leadingPlaceholders.length + monthDays.length) % 7)) % 7;
     const trailingPlaceholders = Array.from({ length: trailingPlaceholderCount }, (_, index) => ({
-      dateKey: `placeholder-end-${index}`,
-      dayNumber: null,
+      dateKey: toDateOnlyFromParts(monthYear, monthIndex + 1, index + 1),
+      dayNumber: index + 1,
       isCurrentMonth: false,
       isToday: false,
-      isPlaceholder: true,
+      isPlaceholder: false,
       items: [],
     }));
 

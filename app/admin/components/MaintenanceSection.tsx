@@ -233,16 +233,6 @@ export default function MaintenanceSection({
 
               <div className="admin-maintenance-calendar__grid">
                 {maintenanceCalendarDays.map((day) => {
-                  if (day.isPlaceholder) {
-                    return (
-                      <div
-                        key={day.dateKey}
-                        className="admin-maintenance-calendar__day admin-maintenance-calendar__day--placeholder"
-                        aria-hidden="true"
-                      />
-                    );
-                  }
-
                   const isSelectedDay = day.dateKey === selectedMaintenanceDate;
 
                   return (
@@ -253,16 +243,12 @@ export default function MaintenanceSection({
                       }${day.isToday ? " admin-maintenance-calendar__day--today" : ""}${
                         isSelectedDay ? " admin-maintenance-calendar__day--selected" : ""
                       }`}
+                      aria-disabled={!day.isCurrentMonth}
                     >
                       <div className="admin-maintenance-calendar__day-header">
                         <div className="admin-maintenance-calendar__day-number">
                           {day.dayNumber}
                         </div>
-                        {day.items.length > 0 && (
-                          <div className="admin-maintenance-calendar__day-count">
-                            {day.items.length}
-                          </div>
-                        )}
                       </div>
 
                       <div className="admin-maintenance-calendar__events">
@@ -284,8 +270,14 @@ export default function MaintenanceSection({
                                 onOpenEditMaintenanceModal(item);
                               }}
                             >
-                              <div className="admin-maintenance-calendar__event-title">
-                                {item.title}
+                              <div className="admin-maintenance-calendar__event-top">
+                                <div className="admin-maintenance-calendar__event-title">
+                                  {item.title}
+                                </div>
+                                <span
+                                  className={`admin-maintenance-calendar__legend-dot admin-maintenance-calendar__event-dot admin-maintenance-calendar__legend-dot--${status}`}
+                                  aria-hidden="true"
+                                />
                               </div>
                               <div className="admin-maintenance-calendar__event-meta">
                                 {machineLabelByKey[item.machineKey] || item.machineKey}

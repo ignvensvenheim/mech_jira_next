@@ -334,6 +334,13 @@
   margin-bottom: 6px;
 }
 
+.auth-help {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-text-light);
+}
+
 .auth-input {
   width: 100%;
   padding: 10px 12px;
@@ -1357,17 +1364,9 @@
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-.admin-maintenance-calendar__day--placeholder {
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  pointer-events: none;
-}
-
 .admin-maintenance-calendar__day--outside {
-  background: rgba(255, 255, 255, 0.6);
-  opacity: 0.62;
+  background: rgba(44, 62, 80, 0.035);
+  border-color: rgba(44, 62, 80, 0.08);
 }
 
 .admin-maintenance-calendar__day--today {
@@ -1395,15 +1394,8 @@
   color: var(--color-primary);
 }
 
-.admin-maintenance-calendar__day-count {
-  min-width: 24px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(79, 169, 77, 0.12);
-  color: #1f5d1f;
-  font-size: 11px;
-  font-weight: 700;
-  text-align: center;
+.admin-maintenance-calendar__day--outside .admin-maintenance-calendar__day-number {
+  color: rgba(44, 62, 80, 0.42);
 }
 
 .admin-maintenance-calendar__events {
@@ -1436,6 +1428,20 @@
 .admin-maintenance-calendar__event:focus-visible {
   outline: 2px solid rgba(79, 169, 77, 0.45);
   outline-offset: 2px;
+}
+
+.admin-maintenance-calendar__event-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-maintenance-calendar__event-dot {
+  margin-top: 2px;
+  width: 8px;
+  height: 8px;
 }
 
 .admin-maintenance-calendar__event--selected {
@@ -1904,6 +1910,31 @@
   align-items: center;
 }
 
+.admin-account-form {
+  display: grid;
+  gap: 14px;
+  max-width: 720px;
+}
+
+.admin-account-form__identity,
+.admin-account-form__passwords {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-account-form__passwords {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-account-form__readonly {
+  max-width: 100%;
+}
+
+.admin-account-form__submit {
+  justify-self: start;
+}
+
 .admin-users-row {
   display: grid;
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) 110px 140px auto;
@@ -2116,6 +2147,11 @@
   }
 
   .admin-users-form {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-account-form__identity,
+  .admin-account-form__passwords {
     grid-template-columns: 1fr;
   }
 

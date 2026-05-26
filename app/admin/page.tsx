@@ -220,7 +220,6 @@ function AdminPageContent() {
     setMaintenanceCalendarMonth,
     isMaintenanceModalOpen,
     loadPlannedMaintenance,
-    maintenanceBadgeCount,
     maintenanceCalendarLabel,
     maintenanceWeekdayLabels,
     maintenanceCalendarDays,
@@ -686,7 +685,7 @@ function AdminPageContent() {
                 />
               )}
 
-              {activeFunction === "users" && currentUserCanManageUsers && (
+              {activeFunction === "users" && currentUserIsAdmin && (
                 <UsersManager
                   currentUserId={currentUserId}
                   canManageUsers={currentUserCanManageUsers}

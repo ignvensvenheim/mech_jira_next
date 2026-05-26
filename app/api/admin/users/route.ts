@@ -14,13 +14,33 @@ export async function GET() {
 
   const actor = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, name: true, email: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+      updatedAt: true,
+    },
   });
-  if (!actor || !isSuperAdminIdentity(actor)) {
-    return NextResponse.json(
-      { error: "Only super admin can view users" },
-      { status: 403 }
-    );
+  if (!actor) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!isSuperAdminIdentity(actor)) {
+    return NextResponse.json({
+      users: [
+        {
+          id: actor.id,
+          email: actor.email,
+          name: actor.name,
+          role: actor.role,
+          createdAt: actor.createdAt,
+          updatedAt: actor.updatedAt,
+        },
+      ],
+      selfOnly: true,
+    });
   }
 
   const users = await prisma.user.findMany({

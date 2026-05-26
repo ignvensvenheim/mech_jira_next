@@ -24,11 +24,8 @@ export async function PATCH(
     where: { id: session.user.id },
     select: { id: true, name: true, email: true },
   });
-  if (!actor || !isSuperAdminIdentity(actor)) {
-    return NextResponse.json(
-      { error: "Only super admin can edit users" },
-      { status: 403 }
-    );
+  if (!actor) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { id } = await context.params;
@@ -47,6 +44,58 @@ export async function PATCH(
   const existing = await prisma.user.findUnique({ where: { id } });
   if (!existing) {
     return NextResponse.json({ error: "user not found" }, { status: 404 });
+  }
+
+  const isSuperAdmin = isSuperAdminIdentity(actor);
+  if (!isSuperAdmin) {
+    if (id !== session.user.id) {
+      return NextResponse.json(
+        { error: "You can only edit your own account" },
+        { status: 403 }
+      );
+    }
+
+    const currentPassword = String(body?.currentPassword || "");
+    if (!currentPassword) {
+      return NextResponse.json(
+        { error: "current password is required" },
+        { status: 400 }
+      );
+    }
+
+    if (password.trim().length < 6) {
+      return NextResponse.json(
+        { error: "password must be at least 6 characters" },
+        { status: 400 }
+      );
+    }
+
+    const currentPasswordMatches = await bcrypt.compare(
+      currentPassword,
+      existing.passwordHash
+    );
+    if (!currentPasswordMatches) {
+      return NextResponse.json(
+        { error: "current password is incorrect" },
+        { status: 400 }
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await prisma.user.update({
+      where: { id },
+      data: { passwordHash },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return NextResponse.json(user);
   }
 
   const emailTaken = await prisma.user.findFirst({
