@@ -6,6 +6,7 @@ import type { AdminFunction, AdminTranslate } from "../adminShared";
 type AdminSidebarProps = {
   activeFunction?: AdminFunction | null;
   currentUserLabel: string;
+  currentUserIsAdmin: boolean;
   currentUserCanManageUsers: boolean;
   onSelectFunction?: (value: AdminFunction) => void;
   getFunctionHref?: (value: AdminFunction) => string;
@@ -17,6 +18,7 @@ type AdminSidebarProps = {
 export default function AdminSidebar({
   activeFunction,
   currentUserLabel,
+  currentUserIsAdmin,
   currentUserCanManageUsers,
   onSelectFunction,
   getFunctionHref,
@@ -34,8 +36,11 @@ export default function AdminSidebar({
     { value: "inventory", label: t("admin.manageInventory") },
   ];
 
-  if (currentUserCanManageUsers) {
-    items.push({ value: "users", label: t("admin.manageUsers") });
+  if (currentUserIsAdmin) {
+    items.push({
+      value: "users",
+      label: currentUserCanManageUsers ? t("admin.manageUsers") : t("admin.myAccount"),
+    });
   }
 
   return (

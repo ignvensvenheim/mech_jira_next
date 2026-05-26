@@ -685,7 +685,7 @@ function AdminPageContent() {
                 />
               )}
 
-              {activeFunction === "users" && currentUserCanManageUsers && (
+              {activeFunction === "users" && currentUserIsAdmin && (
                 <UsersManager
                   currentUserId={currentUserId}
                   canManageUsers={currentUserCanManageUsers}

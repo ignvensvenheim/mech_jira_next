@@ -36,6 +36,7 @@ export default function AdminLayoutShell({
         <AdminSidebar
           activeFunction={activeFunction}
           currentUserLabel={currentUserLabel}
+          currentUserIsAdmin={currentUserIsAdmin}
           currentUserCanManageUsers={currentUserCanManageUsers}
           getFunctionHref={(value) => `/admin?view=${value}`}
           onLogout={handleLogout}
