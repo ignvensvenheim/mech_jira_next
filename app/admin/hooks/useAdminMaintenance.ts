@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  formatMaintenanceDateTimeInput,
   getCurrentLocalDateOnly,
+  getDateOnlyFromMaintenanceDateTime,
   getLocaleTag,
   getMaintenanceItemStatus,
   getMaintenanceWorkflowStatusLabel,
   isMaintenanceClosedStatus,
   normalizePlannedMaintenanceItem,
+  parseMaintenanceDateTime,
   parseDateOnly,
   parseJson,
   sortPlannedMaintenanceItems,
@@ -41,6 +44,10 @@ export function useAdminMaintenance({
   machineLabelByKey,
   upsertAssetDetailsCache,
 }: UseAdminMaintenanceArgs) {
+  const getDefaultMaintenanceDateTime = useCallback(
+    (dateOnly: string) => `${dateOnly}T09:00`,
+    []
+  );
   const [plannedMaintenanceItems, setPlannedMaintenanceItems] = useState<
     PlannedMaintenanceItem[]
   >([]);
@@ -55,7 +62,9 @@ export function useAdminMaintenance({
   const [editingMaintenanceId, setEditingMaintenanceId] = useState<string | null>(null);
   const [maintenanceMachineKey, setMaintenanceMachineKey] = useState("");
   const [maintenanceTitle, setMaintenanceTitle] = useState("");
-  const [maintenanceDueDate, setMaintenanceDueDate] = useState(getCurrentLocalDateOnly());
+  const [maintenanceDueDate, setMaintenanceDueDate] = useState(() =>
+    `${getCurrentLocalDateOnly()}T09:00`
+  );
   const [maintenanceCost, setMaintenanceCost] = useState("");
   const [maintenanceNote, setMaintenanceNote] = useState("");
   const [maintenanceNotificationRecipients, setMaintenanceNotificationRecipients] = useState<
@@ -98,6 +107,16 @@ export function useAdminMaintenance({
     void loadPlannedMaintenance();
   }, [loadPlannedMaintenance]);
 
+  useEffect(() => {
+    if (!plannedMaintenanceSuccess) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setPlannedMaintenanceSuccess("");
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [plannedMaintenanceSuccess]);
+
   const syncMaintenanceCalendarToDate = useCallback((dateKey: string) => {
     const parsedDate = parseDateOnly(dateKey);
     if (!parsedDate) return;
@@ -113,28 +132,29 @@ export function useAdminMaintenance({
       setEditingMaintenanceId(null);
       setMaintenanceMachineKey("");
       setMaintenanceTitle("");
-      setMaintenanceDueDate(dateKey);
+      setMaintenanceDueDate(getDefaultMaintenanceDateTime(dateKey));
       setMaintenanceCost("");
       setMaintenanceNote("");
       setMaintenanceNotificationRecipients([]);
       setMaintenanceStatus("planned");
       syncMaintenanceCalendarToDate(dateKey);
     },
-    [syncMaintenanceCalendarToDate]
+    [getDefaultMaintenanceDateTime, syncMaintenanceCalendarToDate]
   );
 
   const startEditPlannedMaintenance = useCallback(
     (item: PlannedMaintenanceItem) => {
-      setSelectedMaintenanceDate(item.dueDate);
+      const selectedDateOnly = getDateOnlyFromMaintenanceDateTime(item.dueDate);
+      setSelectedMaintenanceDate(selectedDateOnly || item.dueDate);
       setEditingMaintenanceId(item.id);
       setMaintenanceMachineKey(item.machineKey);
       setMaintenanceTitle(item.title);
-      setMaintenanceDueDate(item.dueDate);
+      setMaintenanceDueDate(formatMaintenanceDateTimeInput(item.dueDate));
       setMaintenanceCost(item.cost == null ? "" : String(item.cost));
       setMaintenanceNote(item.note ?? "");
       setMaintenanceNotificationRecipients(item.notificationRecipients ?? []);
       setMaintenanceStatus(item.status);
-      syncMaintenanceCalendarToDate(item.dueDate);
+      syncMaintenanceCalendarToDate(selectedDateOnly || item.dueDate);
     },
     [syncMaintenanceCalendarToDate]
   );
@@ -143,12 +163,12 @@ export function useAdminMaintenance({
     setEditingMaintenanceId(null);
     setMaintenanceMachineKey("");
     setMaintenanceTitle("");
-    setMaintenanceDueDate(selectedMaintenanceDate);
+    setMaintenanceDueDate(getDefaultMaintenanceDateTime(selectedMaintenanceDate));
     setMaintenanceCost("");
     setMaintenanceNote("");
     setMaintenanceNotificationRecipients([]);
     setMaintenanceStatus("planned");
-  }, [selectedMaintenanceDate]);
+  }, [getDefaultMaintenanceDateTime, selectedMaintenanceDate]);
 
   const openCreateMaintenanceModal = useCallback(
     (dateKey: string) => {
@@ -173,6 +193,12 @@ export function useAdminMaintenance({
 
   const savePlannedMaintenance = async () => {
     if (!maintenanceMachineKey || !maintenanceTitle.trim() || !maintenanceDueDate) return;
+    const parsedMaintenanceDueDate = parseMaintenanceDateTime(maintenanceDueDate);
+    if (!parsedMaintenanceDueDate) {
+      setPlannedMaintenanceError("Invalid maintenance due date.");
+      setPlannedMaintenanceSuccess("");
+      return;
+    }
     const costRaw = maintenanceCost.trim();
     const cost = costRaw === "" ? null : Number(costRaw);
     if (cost !== null && (!Number.isFinite(cost) || cost < 0)) {
@@ -195,7 +221,7 @@ export function useAdminMaintenance({
           body: JSON.stringify({
             machineKey: maintenanceMachineKey,
             title: maintenanceTitle.trim(),
-            dueDate: maintenanceDueDate,
+            dueDate: parsedMaintenanceDueDate.toISOString(),
             cost,
             note: maintenanceNote.trim(),
             notificationRecipients: maintenanceNotificationRecipients,
@@ -211,6 +237,7 @@ export function useAdminMaintenance({
         }
       >(res);
       const saved = normalizePlannedMaintenanceItem(payload);
+      const savedDateOnly = getDateOnlyFromMaintenanceDateTime(saved.dueDate);
       if (payload.notificationWarning) {
         setPlannedMaintenanceError(payload.notificationWarning);
       }
@@ -225,17 +252,17 @@ export function useAdminMaintenance({
             : [...prev, saved]
         )
       );
-      setSelectedMaintenanceDate(saved.dueDate);
+      setSelectedMaintenanceDate(savedDateOnly || saved.dueDate);
       setIsMaintenanceModalOpen(false);
       setEditingMaintenanceId(null);
       setMaintenanceMachineKey("");
       setMaintenanceTitle("");
-      setMaintenanceDueDate(saved.dueDate);
+      setMaintenanceDueDate(formatMaintenanceDateTimeInput(saved.dueDate));
       setMaintenanceCost(saved.cost == null ? "" : String(saved.cost));
       setMaintenanceNote("");
       setMaintenanceNotificationRecipients([]);
       setMaintenanceStatus("planned");
-      syncMaintenanceCalendarToDate(saved.dueDate);
+      syncMaintenanceCalendarToDate(savedDateOnly || saved.dueDate);
     } catch (e: unknown) {
       setPlannedMaintenanceSuccess("");
       setPlannedMaintenanceError(String((e as Error).message || e));
@@ -343,9 +370,10 @@ export function useAdminMaintenance({
   const maintenanceItemsByDate = useMemo(() => {
     const itemsByDate = new Map<string, PlannedMaintenanceItem[]>();
     for (const item of sortPlannedMaintenanceItems(plannedMaintenanceItems)) {
-      const existing = itemsByDate.get(item.dueDate) || [];
+      const dateKey = getDateOnlyFromMaintenanceDateTime(item.dueDate);
+      const existing = itemsByDate.get(dateKey) || [];
       existing.push(item);
-      itemsByDate.set(item.dueDate, existing);
+      itemsByDate.set(dateKey, existing);
     }
     return itemsByDate;
   }, [plannedMaintenanceItems]);

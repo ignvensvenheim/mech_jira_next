@@ -26,6 +26,7 @@ export async function POST() {
   try {
     const apiKey = process.env.RESEND_API_KEY?.trim();
     const from = process.env.RESEND_FROM?.trim() || process.env.SMTP_FROM?.trim();
+    const replyTo = process.env.RESEND_REPLY_TO?.trim();
 
     if (!apiKey) {
       return Response.json(
@@ -45,6 +46,7 @@ export async function POST() {
 
     const { data, error } = await resend.emails.send({
       from,
+      replyTo: replyTo || undefined,
       to: ["ignas.venckunas@svenheim.lt"],
       subject: "Test planned maintenance notification",
       react: PlannedMaintenanceEmailTemplate({
@@ -60,12 +62,14 @@ export async function POST() {
           title: "Maintenance title",
           dueDate: "Due date",
           status: "Status",
+          createdBy: "Created by",
           note: "Note",
         },
         machineLabel: "TEST / LINE",
         title: "Test notification",
-        dueDate: "2026-05-25",
+        dueDate: "May 25, 2026, 09:00",
         statusLabel: "Planned",
+        createdByLabel: "Ignas Venckūnas",
         note: "This email verifies the Resend integration.",
       }),
       text: [
@@ -75,8 +79,9 @@ export async function POST() {
         "",
         "Asset: TEST / LINE",
         "Maintenance title: Test notification",
-        "Due date: 2026-05-25",
+        "Due date: May 25, 2026, 09:00",
         "Status: Planned",
+        "Created by: Ignas Venckūnas",
         "Note: This email verifies the Resend integration.",
       ].join("\n"),
     });

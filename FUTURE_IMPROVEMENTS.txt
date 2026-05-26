@@ -53,8 +53,12 @@ Latest Planned Maintenance State
 - Required env for real sends:
   RESEND_API_KEY
   RESEND_FROM
+  RESEND_REPLY_TO
 - Working sender during this session was moved to the verified subdomain setup,
   and live test sends succeeded only after Resend verified the sender domain.
+- The sender can now stay generic while replies go elsewhere:
+  use RESEND_FROM for the visible sender
+  use RESEND_REPLY_TO for the reply target
 - Current real behavior:
   when a planned maintenance item is created or updated, emails are sent to the
   selected recipients from the "Notify people" checklist, not to the hardcoded
@@ -66,9 +70,11 @@ Latest Planned Maintenance State
 - Email template content currently includes:
   asset
   maintenance title
-  due date
+  due date and time
   status
+  created by
   description
+- Maintenance email due date/time now renders in 24-hour format.
 - If email rendering fails in future sessions, remember that the React-template
   Resend flow depends on:
   @react-email/render
@@ -100,6 +106,11 @@ Latest Planned Maintenance Modal/UI State
   cancelled
 - The field label "Note" was renamed to "Description" in the modal and emails.
 - The Description field now appears above the recipient checklist.
+- The modal now shows Created by in both edit and create modes.
+  In create mode it is prefilled from the currently signed-in admin user.
+- The due-date input now supports both date and time.
+  The UI uses a date field plus an explicit 24-hour time selector.
+  Current selectable time window is 06:00 through 23:30 in 30-minute steps.
 - The duplicate recipient summary block at the top of the modal was removed.
 - The extra "Register maintenance ticket" links were removed from the maintenance
   toolbar and modal header because Add now drives the flow.
@@ -112,6 +123,7 @@ Latest Planned Maintenance Modal/UI State
 - Delete now asks for confirmation before removing a maintenance item.
 - Success feedback after create/update/reminder was localized so Lithuanian
   users no longer see English-only confirmation messages in the maintenance flow.
+- Planned maintenance success notifications now auto-dismiss after 5 seconds.
 
 Important Data Model Notes
 - Machine identity is centered around machineKey, usually in category::subcategory form.
@@ -120,6 +132,11 @@ Important Data Model Notes
 - Planned maintenance currently uses item-based scheduling, not reusable PM templates.
 - Planned maintenance rows can now store Jira linkage:
   jiraIssueId, jiraIssueKey, jiraIssueUrl
+- Planned maintenance rows now preserve the selected due timestamp, not only a date.
+  Calendar grouping and due-soon logic still work off the local day portion.
+- Maintenance creator handling is now more consistent:
+  new items use the signed-in session user
+  legacy items without createdBy can be backfilled when edited
 - Planned maintenance create/edit/delete is no longer local-only.
   New items are created in Jira first and then stored locally.
 - Current Jira maintenance sync defaults:
@@ -145,6 +162,9 @@ Maintenance Sync Status
   repair local stale rows when Jira issue no longer exists
   selected-recipient email notifications through Resend
   localized EN/LT maintenance emails
+  reply-to support for Resend notifications
+  creator included in maintenance emails
+  due date and time included in maintenance emails
 - Not implemented:
   Jira-side edits changing local maintenance rows automatically
   Jira-side status transitions mapping back into richer local workflow states

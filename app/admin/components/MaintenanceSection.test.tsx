@@ -33,7 +33,7 @@ const maintenanceItem: PlannedMaintenanceItem = {
   id: "maintenance-1",
   machineKey: "CUTTING::LINE-1",
   title: "Monthly inspection",
-  dueDate: "2026-05-30",
+  dueDate: "2026-05-30T09:00:00.000Z",
   note: "Check belts",
   cost: 125,
   jiraIssueId: "10001",
@@ -43,6 +43,11 @@ const maintenanceItem: PlannedMaintenanceItem = {
   status: "planned",
   isCompleted: false,
   completedAt: null,
+  createdBy: {
+    id: "user-1",
+    name: "Sven",
+    email: "sven@example.com",
+  },
   createdAt: "2026-05-01T08:00:00.000Z",
   updatedAt: "2026-05-02T08:00:00.000Z",
 };
@@ -74,13 +79,14 @@ const baseProps = {
   isMaintenanceEditing: true,
   activeMaintenanceItem: maintenanceItem,
   activeMaintenanceStatus: "upcoming" as const,
+  currentUserLabel: "Sven",
   machineDirectory,
   machineLabelByKey: {
     "CUTTING::LINE-1": "CUTTING / LINE-1",
   },
   maintenanceMachineKey: "CUTTING::LINE-1",
   maintenanceTitle: "Monthly inspection",
-  maintenanceDueDate: "2026-05-30",
+  maintenanceDueDate: "2026-05-30T09:00",
   maintenanceCost: "125",
   maintenanceNote: "Check belts",
   maintenanceNotificationRecipients: [] as PlannedMaintenanceRecipient[],
@@ -134,5 +140,12 @@ describe("MaintenanceSection", () => {
     expect(
       screen.queryByRole("link", { name: "admin.openInJira" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("shows the maintenance creator in the modal", () => {
+    render(<MaintenanceSection {...baseProps} />);
+
+    expect(screen.getByText("admin.maintenanceCreatedBy")).toBeInTheDocument();
+    expect(screen.getByText("Sven")).toBeInTheDocument();
   });
 });

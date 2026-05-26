@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { dateOnlyToDayKey, formatDateOnly, getCurrentLocalDayKey } from "@/lib/dateOnly";
+import {
+  dateOnlyToDayKey,
+  formatDateOnly,
+  formatMaintenanceDateTimeForLocale,
+  getCurrentLocalDayKey,
+} from "@/lib/dateOnly";
 import { parseMachineKey } from "@/lib/assets";
 import { sendPlannedMaintenanceNotificationEmail } from "@/lib/plannedMaintenanceMailer";
 import { normalizePlannedMaintenanceRecipients } from "@/lib/plannedMaintenanceRecipients";
@@ -23,6 +28,8 @@ type DueSoonMaintenanceRow = {
   status: string | null;
   isCompleted: boolean;
   dueSoonReminderSentForDate: string | null;
+  createdByName: string | null;
+  createdByEmail: string | null;
 };
 
 function isAuthorizedCronRequest(request: Request) {
@@ -114,31 +121,51 @@ async function hasDueSoonReminderColumns() {
   };
 }
 
+async function hasCreatedByColumn() {
+  const rows = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_name = 'PlannedMaintenance'
+        AND column_name = 'createdById'
+    ) AS "exists"
+  `;
+
+  return rows[0]?.exists ?? false;
+}
+
 function selectSql(
   withStatus: boolean,
   withNotificationRecipients: boolean,
-  withDueSoonReminderColumns: boolean
+  withDueSoonReminderColumns: boolean,
+  withCreatedBy: boolean
 ) {
   return Prisma.sql`
     SELECT
-      "id",
-      "machineKey",
-      "title",
-      "dueDate",
-      "note",
+      pm."id",
+      pm."machineKey",
+      pm."title",
+      pm."dueDate",
+      pm."note",
       ${
         withNotificationRecipients
-          ? Prisma.sql`"notificationRecipientsJson"`
+          ? Prisma.sql`pm."notificationRecipientsJson"`
           : Prisma.sql`'[]'::TEXT AS "notificationRecipientsJson"`
       },
-      ${withStatus ? Prisma.sql`"status"` : Prisma.sql`NULL::TEXT AS "status"`},
-      "isCompleted",
+      ${withStatus ? Prisma.sql`pm."status"` : Prisma.sql`NULL::TEXT AS "status"`},
+      pm."isCompleted",
       ${
         withDueSoonReminderColumns
-          ? Prisma.sql`"dueSoonReminderSentForDate"`
+          ? Prisma.sql`pm."dueSoonReminderSentForDate"`
           : Prisma.sql`NULL::TEXT AS "dueSoonReminderSentForDate"`
+      },
+      ${
+        withCreatedBy
+          ? Prisma.sql`u."name" AS "createdByName", u."email" AS "createdByEmail"`
+          : Prisma.sql`NULL::TEXT AS "createdByName", NULL::TEXT AS "createdByEmail"`
       }
-    FROM "PlannedMaintenance"
+    FROM "PlannedMaintenance" pm
+    ${withCreatedBy ? Prisma.sql`LEFT JOIN "User" u ON u."id" = pm."createdById"` : Prisma.empty}
   `;
 }
 
@@ -148,11 +175,12 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-  const [withStatus, withNotificationRecipients, dueSoonReminderColumns] =
+  const [withStatus, withNotificationRecipients, dueSoonReminderColumns, withCreatedBy] =
     await Promise.all([
       hasStatusColumn(),
       hasNotificationRecipientsColumn(),
       hasDueSoonReminderColumns(),
+      hasCreatedByColumn(),
     ]);
   const withDueSoonReminderColumns =
     dueSoonReminderColumns.dueSoonReminderSentAt &&
@@ -172,7 +200,8 @@ export async function GET(request: Request) {
     Prisma.sql`${selectSql(
       withStatus,
       withNotificationRecipients,
-      withDueSoonReminderColumns
+      withDueSoonReminderColumns,
+      withCreatedBy
     )} ORDER BY "dueDate" ASC`
   );
 
@@ -212,8 +241,9 @@ export async function GET(request: Request) {
       recipients,
       machineLabel: formatMachineLabel(row.machineKey),
       title: row.title,
-      dueDate: dueDateOnly,
+      dueDate: formatMaintenanceDateTimeForLocale(row.dueDate, "en-US"),
       note: row.note,
+      createdByLabel: row.createdByName || row.createdByEmail || null,
       status: "planned",
       action: "reminder",
       locale: "en",

@@ -2,8 +2,12 @@ import { getIssueAssetParts, parseMachineKey } from "@/lib/assets";
 import {
   dateOnlyToDayKey,
   formatDateOnly,
+  formatMaintenanceDateTimeInput,
+  formatMaintenanceDateTimeForLocale,
   getCurrentLocalDateOnly,
+  getDateOnlyFromMaintenanceDateTime,
   getCurrentLocalDayKey,
+  parseMaintenanceDateTime,
   parseDateOnly,
 } from "@/lib/dateOnly";
 import { DEPARTMENT_LINES } from "@/data/listData";
@@ -75,6 +79,11 @@ export type PlannedMaintenanceItem = {
   status: MaintenanceWorkflowStatus;
   isCompleted: boolean;
   completedAt: string | null;
+  createdBy: {
+    id: string;
+    name: string | null;
+    email: string | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -282,7 +291,7 @@ export function getMaintenanceItemStatus(
   if (item.status === "inProgress") return "inProgress";
   if (item.status === "waitingForParts") return "waitingForParts";
 
-  const dueDayKey = dateOnlyToDayKey(item.dueDate);
+  const dueDayKey = dateOnlyToDayKey(getDateOnlyFromMaintenanceDateTime(item.dueDate));
   if (dueDayKey === null) return "upcoming";
   if (dueDayKey < todayDayKey) return "overdue";
   if (dueDayKey <= todayDayKey + 7) return "dueSoon";
@@ -397,6 +406,10 @@ export function formatDateTimeForLocale(value: string, locale: string) {
   }).format(date);
 }
 
+export function formatMaintenanceDueDateTimeForLocale(value: string, locale: string) {
+  return formatMaintenanceDateTimeForLocale(value, getLocaleTag(locale));
+}
+
 export function getTicketCountLabel(t: AdminTranslate, count: number) {
   return t(count === 1 ? "admin.ticketsCountOne" : "admin.ticketsCountMany", {
     count,
@@ -426,6 +439,20 @@ export function normalizePlannedMaintenanceItem(
       (item as PlannedMaintenanceItem & { notificationRecipients?: unknown })
         .notificationRecipients
     ),
+    createdBy:
+      item.createdBy && typeof item.createdBy === "object"
+        ? {
+            id: String(item.createdBy.id ?? ""),
+            name:
+              typeof item.createdBy.name === "string" || item.createdBy.name === null
+                ? item.createdBy.name
+                : null,
+            email:
+              typeof item.createdBy.email === "string" || item.createdBy.email === null
+                ? item.createdBy.email
+                : null,
+          }
+        : null,
     status,
     isCompleted: status === "completed",
     completedAt:
@@ -526,7 +553,7 @@ export function getMaintenanceDueLabel(
   dueDateRaw: string,
   t: AdminTranslate
 ) {
-  const dueDayKey = dateOnlyToDayKey(dueDateRaw);
+  const dueDayKey = dateOnlyToDayKey(getDateOnlyFromMaintenanceDateTime(dueDateRaw));
   if (dueDayKey === null) return dueDateRaw;
 
   const diffDays = dueDayKey - getCurrentLocalDayKey();
@@ -543,7 +570,10 @@ export function getAdminAssetHref(machineKey: string) {
 export {
   DEPARTMENT_LINES,
   getCurrentLocalDateOnly,
+  getDateOnlyFromMaintenanceDateTime,
   getIssueAssetParts,
+  formatMaintenanceDateTimeInput,
+  parseMaintenanceDateTime,
   parseDateOnly,
   parseMachineKey,
 };

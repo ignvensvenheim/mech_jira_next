@@ -4,7 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { requireTrustedOrigin } from "@/lib/requireTrustedOrigin";
 import { ensureAssetExists, isConcreteMachineKey, parseMachineKey } from "@/lib/assets";
-import { formatDateOnly, parseDateOnly } from "@/lib/dateOnly";
+import {
+  formatMaintenanceDateTimeForLocale,
+  getDateOnlyFromMaintenanceDateTime,
+  parseMaintenanceDateTime,
+} from "@/lib/dateOnly";
 import {
   addJiraMaintenanceComment,
   deleteJiraIssue,
@@ -29,6 +33,9 @@ function serializePlannedMaintenance(item: {
   status: string | null;
   isCompleted: boolean;
   completedAt: Date | null;
+  createdById?: string | null;
+  createdByName?: string | null;
+  createdByEmail?: string | null;
   createdAt: Date;
   updatedAt: Date;
   cost?: number | null;
@@ -51,6 +58,13 @@ function serializePlannedMaintenance(item: {
     notificationRecipients: normalizePlannedMaintenanceRecipients(
       JSON.parse(item.notificationRecipientsJson || "[]")
     ),
+    createdBy: item.createdById
+      ? {
+          id: item.createdById,
+          name: item.createdByName ?? null,
+          email: item.createdByEmail ?? null,
+        }
+      : null,
     status,
     cost: item.cost ?? null,
     jiraIssueId: item.jiraIssueId ?? null,
@@ -58,7 +72,7 @@ function serializePlannedMaintenance(item: {
     jiraIssueUrl: item.jiraIssueUrl ?? null,
     isCompleted: status === "completed",
     completedAt: status === "completed" ? item.completedAt : null,
-    dueDate: formatDateOnly(item.dueDate),
+    dueDate: item.dueDate.toISOString(),
   };
 }
 
@@ -193,6 +207,19 @@ async function hasNotificationRecipientsColumn() {
   return rows[0]?.exists ?? false;
 }
 
+async function hasCreatedByColumn() {
+  const rows = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_name = 'PlannedMaintenance'
+        AND column_name = 'createdById'
+    ) AS "exists"
+  `;
+
+  return rows[0]?.exists ?? false;
+}
+
 function normalizeMaintenanceStatus(status: unknown, fallbackIsCompleted: boolean) {
   switch (status) {
     case "planned":
@@ -259,11 +286,12 @@ export async function PATCH(
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
-  const [withCost, jiraLinkColumns, withStatus, withNotificationRecipients] = await Promise.all([
+  const [withCost, jiraLinkColumns, withStatus, withNotificationRecipients, withCreatedBy] = await Promise.all([
     hasCostColumn(),
     hasJiraLinkColumns(),
     hasStatusColumn(),
     hasNotificationRecipientsColumn(),
+    hasCreatedByColumn(),
   ]);
   if (
     body &&
@@ -289,40 +317,49 @@ export async function PATCH(
       notificationRecipientsJson: string | null;
       status: string | null;
       isCompleted: boolean;
+      createdById: string | null;
+      createdByName: string | null;
+      createdByEmail: string | null;
       jiraIssueKey: string | null;
       jiraIssueUrl: string | null;
     }>
   >(
     Prisma.sql`
       SELECT
-        "id",
-        "machineKey",
-        "title",
-        "dueDate",
-        "note",
+        pm."id",
+        pm."machineKey",
+        pm."title",
+        pm."dueDate",
+        pm."note",
         ${
           withCost
-            ? Prisma.sql`"cost"`
+            ? Prisma.sql`pm."cost"`
             : Prisma.sql`NULL::DOUBLE PRECISION AS "cost"`
         },
         ${
           withStatus
-            ? Prisma.sql`"status"`
+            ? Prisma.sql`pm."status"`
             : Prisma.sql`NULL::TEXT AS "status"`
         },
         ${
           withNotificationRecipients
-            ? Prisma.sql`"notificationRecipientsJson"`
+            ? Prisma.sql`pm."notificationRecipientsJson"`
             : Prisma.sql`'[]'::TEXT AS "notificationRecipientsJson"`
         },
-        "isCompleted",
+        ${
+          withCreatedBy
+            ? Prisma.sql`pm."createdById", u."name" AS "createdByName", u."email" AS "createdByEmail"`
+            : Prisma.sql`NULL::TEXT AS "createdById", NULL::TEXT AS "createdByName", NULL::TEXT AS "createdByEmail"`
+        },
+        pm."isCompleted",
         ${
           withJiraLink
-            ? Prisma.sql`"jiraIssueKey", "jiraIssueUrl"`
+            ? Prisma.sql`pm."jiraIssueKey", pm."jiraIssueUrl"`
             : Prisma.sql`NULL::TEXT AS "jiraIssueKey", NULL::TEXT AS "jiraIssueUrl"`
         }
-      FROM "PlannedMaintenance"
-      WHERE "id" = ${id}
+      FROM "PlannedMaintenance" pm
+      ${withCreatedBy ? Prisma.sql`LEFT JOIN "User" u ON u."id" = pm."createdById"` : Prisma.empty}
+      WHERE pm."id" = ${id}
       LIMIT 1
     `
   );
@@ -331,6 +368,17 @@ export async function PATCH(
   if (!currentItem) {
     return NextResponse.json({ error: "Maintenance item not found" }, { status: 404 });
   }
+
+  const shouldBackfillCreator = withCreatedBy && !currentItem.createdById;
+  const resolvedCreatedById = shouldBackfillCreator
+    ? session.user.id
+    : currentItem.createdById ?? null;
+  const resolvedCreatedByName = shouldBackfillCreator
+    ? session.user.name ?? null
+    : currentItem.createdByName ?? null;
+  const resolvedCreatedByEmail = shouldBackfillCreator
+    ? session.user.email ?? null
+    : currentItem.createdByEmail ?? null;
 
   if (action === "sendReminder") {
     const currentStatus = normalizeMaintenanceStatus(
@@ -346,13 +394,20 @@ export async function PATCH(
       updatedAt: new Date(),
       completedAt: currentItem.isCompleted ? new Date() : null,
       notificationRecipientsJson: currentItem.notificationRecipientsJson,
+      createdById: resolvedCreatedById,
+      createdByName: resolvedCreatedByName,
+      createdByEmail: resolvedCreatedByEmail,
     });
     const { sent, warning } = await sendPlannedMaintenanceNotificationEmail({
       recipients: currentRecipients,
       machineLabel: formatMachineLabel(currentItem.machineKey),
       title: currentItem.title,
-      dueDate: formatDateOnly(currentItem.dueDate),
+      dueDate: formatMaintenanceDateTimeForLocale(
+        currentItem.dueDate,
+        locale === "lt" ? "lt-LT" : "en-US"
+      ),
       note: currentItem.note,
+      createdByLabel: serialized.createdBy?.name || serialized.createdBy?.email || null,
       status: currentStatus,
       action: "reminder",
       locale,
@@ -405,7 +460,7 @@ export async function PATCH(
   }
   if (title) data.title = title;
   if (dueDate) {
-    const parsedDueDate = parseDateOnly(dueDate);
+    const parsedDueDate = parseMaintenanceDateTime(dueDate);
     if (!parsedDueDate) {
       return NextResponse.json({ error: "dueDate is invalid" }, { status: 400 });
     }
@@ -422,7 +477,7 @@ export async function PATCH(
 
   const nextMachineKey = machineKey || currentItem.machineKey;
   const nextTitle = title || currentItem.title;
-  const nextDueDate = dueDate || formatDateOnly(currentItem.dueDate);
+  const nextDueDate = dueDate || currentItem.dueDate.toISOString();
   const nextNote =
     body && "note" in (body as object) ? note || null : currentItem.note;
   const nextRecipients = recipientsWereProvided
@@ -438,7 +493,7 @@ export async function PATCH(
         issueKey: currentItem.jiraIssueKey,
         machineKey: nextMachineKey,
         title: nextTitle,
-        dueDate: nextDueDate,
+        dueDate: getDateOnlyFromMaintenanceDateTime(nextDueDate),
         note: nextNote,
         cost: body && "cost" in (body as object) ? cost : currentItem.cost,
         status: nextStatus,
@@ -463,7 +518,10 @@ export async function PATCH(
 
   const updated = await prisma.plannedMaintenance.update({
     where: { id },
-    data,
+    data: {
+      ...data,
+      ...(shouldBackfillCreator ? { createdById: session.user.id } : {}),
+    },
     select: {
       id: true,
       machineKey: true,
@@ -541,13 +599,20 @@ export async function PATCH(
     jiraIssueId,
     jiraIssueKey,
     jiraIssueUrl,
+    createdById: resolvedCreatedById,
+    createdByName: resolvedCreatedByName,
+    createdByEmail: resolvedCreatedByEmail,
   });
   const { sent, warning } = await sendPlannedMaintenanceNotificationEmail({
     recipients: nextRecipients as PlannedMaintenanceRecipient[],
     machineLabel: formatMachineLabel(nextMachineKey),
     title: nextTitle,
-    dueDate: nextDueDate,
+    dueDate: formatMaintenanceDateTimeForLocale(
+      nextDueDate,
+      locale === "lt" ? "lt-LT" : "en-US"
+    ),
     note: nextNote,
+    createdByLabel: serialized.createdBy?.name || serialized.createdBy?.email || null,
     status: nextStatus,
     action: "updated",
     locale,
