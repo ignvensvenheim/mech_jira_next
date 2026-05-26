@@ -14,6 +14,7 @@ type PlannedMaintenanceMailArgs = {
   title: string;
   dueDate: string;
   note: string | null;
+  createdByLabel: string | null;
   status: "planned" | "inProgress" | "waitingForParts" | "completed" | "cancelled";
   action: "created" | "updated" | "reminder";
   locale?: Locale;
@@ -23,12 +24,13 @@ function getResendConfig() {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   const from =
     process.env.RESEND_FROM?.trim() || process.env.SMTP_FROM?.trim() || "";
+  const replyTo = process.env.RESEND_REPLY_TO?.trim() || "";
 
   if (!apiKey || !from) {
     return null;
   }
 
-  return { apiKey, from };
+  return { apiKey, from, replyTo };
 }
 
 function resolveLocale(locale: string | undefined): Locale {
@@ -136,6 +138,12 @@ export async function sendPlannedMaintenanceNotificationEmail(
   const resend = new Resend(config.apiKey);
   const locale = resolveLocale(args.locale);
   const copy = getMailCopy(locale, args.action, args.status);
+  const createdByFieldLabel =
+    ("createdBy" in copy.fieldLabels && typeof copy.fieldLabels.createdBy === "string"
+      ? copy.fieldLabels.createdBy
+      : locale === "lt"
+        ? "Sukūrė"
+        : "Created by");
   const subject = `${copy.subjectPrefix}: ${args.machineLabel} | ${args.title}`;
   const text = [
     copy.greeting,
@@ -146,6 +154,7 @@ export async function sendPlannedMaintenanceNotificationEmail(
     `${copy.fieldLabels.title}: ${args.title}`,
     `${copy.fieldLabels.dueDate}: ${args.dueDate}`,
     `${copy.fieldLabels.status}: ${copy.statusLabel}`,
+    `${createdByFieldLabel}: ${args.createdByLabel?.trim() || "-"}`,
     `${copy.fieldLabels.note}: ${args.note?.trim() || "-"}`,
     ``,
     copy.textClosing,
@@ -154,6 +163,7 @@ export async function sendPlannedMaintenanceNotificationEmail(
   try {
     const { error } = await resend.emails.send({
       from: config.from,
+      replyTo: config.replyTo || undefined,
       to: args.recipients.map((recipient) => recipient.email),
       subject,
       react: PlannedMaintenanceEmailTemplate({
@@ -164,11 +174,15 @@ export async function sendPlannedMaintenanceNotificationEmail(
         summaryLabel: copy.summaryLabel,
         detailsLabel: copy.detailsLabel,
         footerLine: copy.footerLine,
-        fieldLabels: copy.fieldLabels,
+        fieldLabels: {
+          ...copy.fieldLabels,
+          createdBy: createdByFieldLabel,
+        },
         machineLabel: args.machineLabel,
         title: args.title,
         dueDate: args.dueDate,
         statusLabel: copy.statusLabel,
+        createdByLabel: args.createdByLabel?.trim() || "-",
         note: args.note,
       }),
       text,

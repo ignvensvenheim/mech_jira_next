@@ -31,6 +31,7 @@ model User {
   machineRates  MachineRate[]
   manualEntries ManualEntry[]
   ticketFixCosts TicketFixCost[]
+  plannedMaintenances PlannedMaintenance[]
   assetsUpdated Asset[]      @relation("AssetUpdatedBy")
 }
 
@@ -110,6 +111,8 @@ model PlannedMaintenance {
   status       MaintenanceWorkflowStatus @default(planned)
   isCompleted  Boolean  @default(false)
   completedAt  DateTime?
+  createdById  String?
+  createdBy    User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   asset        Asset    @relation(fields: [machineKey], references: [machineKey], onDelete: Restrict)

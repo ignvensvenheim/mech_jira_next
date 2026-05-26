@@ -40,6 +40,7 @@ function AdminPageContent() {
 
   const {
     currentUserId,
+    currentUserLabel,
     currentUserIsAdmin,
     currentUserCanManageUsers,
     sessionResolved,
@@ -591,6 +592,7 @@ function AdminPageContent() {
                   isMaintenanceEditing={isMaintenanceEditing}
                   activeMaintenanceItem={activeMaintenanceItem}
                   activeMaintenanceStatus={activeMaintenanceStatus}
+                  currentUserLabel={currentUserLabel}
                   machineDirectory={machineDirectory}
                   machineLabelByKey={machineLabelByKey}
                   maintenanceMachineKey={maintenanceMachineKey}

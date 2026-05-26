@@ -13,12 +13,14 @@ type PlannedMaintenanceEmailTemplateProps = {
     title: string;
     dueDate: string;
     status: string;
+    createdBy: string;
     note: string;
   };
   machineLabel: string;
   title: string;
   dueDate: string;
   statusLabel: string;
+  createdByLabel: string;
   note: string | null;
 };
 
@@ -35,6 +37,7 @@ export function PlannedMaintenanceEmailTemplate({
   title,
   dueDate,
   statusLabel,
+  createdByLabel,
   note,
 }: PlannedMaintenanceEmailTemplateProps) {
   return (
@@ -119,6 +122,7 @@ export function PlannedMaintenanceEmailTemplate({
                   [fieldLabels.title, title],
                   [fieldLabels.dueDate, dueDate],
                   [fieldLabels.status, statusLabel],
+                  [fieldLabels.createdBy, createdByLabel],
                   [fieldLabels.note, note?.trim() || "-"],
                 ].map(([label, value]) => (
                   <tr key={label}>

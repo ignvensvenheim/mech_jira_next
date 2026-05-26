@@ -4,7 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { requireTrustedOrigin } from "@/lib/requireTrustedOrigin";
 import { ensureAssetExists, isConcreteMachineKey, parseMachineKey } from "@/lib/assets";
-import { formatDateOnly, parseDateOnly } from "@/lib/dateOnly";
+import {
+  formatMaintenanceDateTimeForLocale,
+  getDateOnlyFromMaintenanceDateTime,
+  parseMaintenanceDateTime,
+} from "@/lib/dateOnly";
 import {
   createJiraMaintenanceIssue,
   getExistingJiraIssueKeys,
@@ -29,6 +33,9 @@ type PlannedMaintenanceRow = {
   status: string | null;
   isCompleted: boolean;
   completedAt: Date | null;
+  createdById: string | null;
+  createdByName: string | null;
+  createdByEmail: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -53,10 +60,17 @@ function serializePlannedMaintenance(item: PlannedMaintenanceRow) {
     notificationRecipients: normalizePlannedMaintenanceRecipients(
       JSON.parse(item.notificationRecipientsJson || "[]")
     ),
+    createdBy: item.createdById
+      ? {
+          id: item.createdById,
+          name: item.createdByName,
+          email: item.createdByEmail,
+        }
+      : null,
     status,
     isCompleted: status === "completed",
     completedAt: status === "completed" ? item.completedAt : null,
-    dueDate: formatDateOnly(item.dueDate),
+    dueDate: item.dueDate.toISOString(),
   };
 }
 
@@ -175,54 +189,72 @@ async function hasNotificationRecipientsColumn() {
   return rows[0]?.exists ?? false;
 }
 
+async function hasCreatedByColumn() {
+  const rows = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_name = 'PlannedMaintenance'
+        AND column_name = 'createdById'
+    ) AS "exists"
+  `;
+
+  return rows[0]?.exists ?? false;
+}
+
 function selectSql(
   withCost: boolean,
   withJiraLink: boolean,
   withStatus: boolean,
-  withNotificationRecipients: boolean
+  withNotificationRecipients: boolean,
+  withCreatedBy: boolean
 ) {
   return withCost
     ? Prisma.sql`
         SELECT
-          "id",
-          "machineKey",
-          "title",
-          "dueDate",
-          "note",
-          "cost",
-          ${withJiraLink ? Prisma.sql`"jiraIssueId", "jiraIssueKey", "jiraIssueUrl",` : Prisma.sql`NULL::TEXT AS "jiraIssueId", NULL::TEXT AS "jiraIssueKey", NULL::TEXT AS "jiraIssueUrl",`}
+          pm."id",
+          pm."machineKey",
+          pm."title",
+          pm."dueDate",
+          pm."note",
+          pm."cost",
+          ${withJiraLink ? Prisma.sql`pm."jiraIssueId", pm."jiraIssueKey", pm."jiraIssueUrl",` : Prisma.sql`NULL::TEXT AS "jiraIssueId", NULL::TEXT AS "jiraIssueKey", NULL::TEXT AS "jiraIssueUrl",`}
           ${
             withNotificationRecipients
-              ? Prisma.sql`"notificationRecipientsJson",`
+              ? Prisma.sql`pm."notificationRecipientsJson",`
               : Prisma.sql`'[]'::TEXT AS "notificationRecipientsJson",`
           }
-          ${withStatus ? Prisma.sql`"status",` : Prisma.sql`NULL::TEXT AS "status",`}
-          "isCompleted",
-          "completedAt",
-          "createdAt",
-          "updatedAt"
-        FROM "PlannedMaintenance"
+          ${withStatus ? Prisma.sql`pm."status",` : Prisma.sql`NULL::TEXT AS "status",`}
+          ${withCreatedBy ? Prisma.sql`pm."createdById", u."name" AS "createdByName", u."email" AS "createdByEmail",` : Prisma.sql`NULL::TEXT AS "createdById", NULL::TEXT AS "createdByName", NULL::TEXT AS "createdByEmail",`}
+          pm."isCompleted",
+          pm."completedAt",
+          pm."createdAt",
+          pm."updatedAt"
+        FROM "PlannedMaintenance" pm
+        ${withCreatedBy ? Prisma.sql`LEFT JOIN "User" u ON u."id" = pm."createdById"` : Prisma.empty}
       `
     : Prisma.sql`
         SELECT
-          "id",
-          "machineKey",
-          "title",
-          "dueDate",
-          "note",
+          pm."id",
+          pm."machineKey",
+          pm."title",
+          pm."dueDate",
+          pm."note",
           NULL::DOUBLE PRECISION AS "cost",
-          ${withJiraLink ? Prisma.sql`"jiraIssueId", "jiraIssueKey", "jiraIssueUrl",` : Prisma.sql`NULL::TEXT AS "jiraIssueId", NULL::TEXT AS "jiraIssueKey", NULL::TEXT AS "jiraIssueUrl",`}
+          ${withJiraLink ? Prisma.sql`pm."jiraIssueId", pm."jiraIssueKey", pm."jiraIssueUrl",` : Prisma.sql`NULL::TEXT AS "jiraIssueId", NULL::TEXT AS "jiraIssueKey", NULL::TEXT AS "jiraIssueUrl",`}
           ${
             withNotificationRecipients
-              ? Prisma.sql`"notificationRecipientsJson",`
+              ? Prisma.sql`pm."notificationRecipientsJson",`
               : Prisma.sql`'[]'::TEXT AS "notificationRecipientsJson",`
           }
-          ${withStatus ? Prisma.sql`"status",` : Prisma.sql`NULL::TEXT AS "status",`}
-          "isCompleted",
-          "completedAt",
-          "createdAt",
-          "updatedAt"
-        FROM "PlannedMaintenance"
+          ${withStatus ? Prisma.sql`pm."status",` : Prisma.sql`NULL::TEXT AS "status",`}
+          ${withCreatedBy ? Prisma.sql`pm."createdById", u."name" AS "createdByName", u."email" AS "createdByEmail",` : Prisma.sql`NULL::TEXT AS "createdById", NULL::TEXT AS "createdByName", NULL::TEXT AS "createdByEmail",`}
+          pm."isCompleted",
+          pm."completedAt",
+          pm."createdAt",
+          pm."updatedAt"
+        FROM "PlannedMaintenance" pm
+        ${withCreatedBy ? Prisma.sql`LEFT JOIN "User" u ON u."id" = pm."createdById"` : Prisma.empty}
       `;
 }
 
@@ -258,11 +290,12 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [withCost, jiraLinkColumns, withStatus, withNotificationRecipients] = await Promise.all([
+  const [withCost, jiraLinkColumns, withStatus, withNotificationRecipients, withCreatedBy] = await Promise.all([
     hasCostColumn(),
     hasJiraLinkColumns(),
     hasStatusColumn(),
     hasNotificationRecipientsColumn(),
+    hasCreatedByColumn(),
   ]);
   const withJiraLink =
     jiraLinkColumns.jiraIssueId &&
@@ -273,10 +306,11 @@ export async function GET() {
       withCost,
       withJiraLink,
       withStatus,
-      withNotificationRecipients
+      withNotificationRecipients,
+      withCreatedBy
     )} ORDER BY ${
-      withStatus ? Prisma.sql`"status"` : Prisma.sql`"isCompleted"`
-    } ASC, "dueDate" ASC`
+      withStatus ? Prisma.sql`pm."status"` : Prisma.sql`pm."isCompleted"`
+    } ASC, pm."dueDate" ASC`
   );
   let deletedIds = new Set<string>();
 
@@ -339,7 +373,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const parsedDueDate = parseDateOnly(dueDate);
+  const parsedDueDate = parseMaintenanceDateTime(dueDate);
   if (!parsedDueDate) {
     return NextResponse.json({ error: "dueDate is invalid" }, { status: 400 });
   }
@@ -352,15 +386,16 @@ export async function POST(req: Request) {
     const jiraIssue = await createJiraMaintenanceIssue({
       machineKey,
       title,
-      dueDate,
+      dueDate: getDateOnlyFromMaintenanceDateTime(dueDate),
       note: note || null,
       cost,
       status,
     });
-    const [jiraLinkColumns, withStatus, withNotificationRecipients] = await Promise.all([
+    const [jiraLinkColumns, withStatus, withNotificationRecipients, withCreatedBy] = await Promise.all([
       hasJiraLinkColumns(),
       hasStatusColumn(),
       hasNotificationRecipientsColumn(),
+      hasCreatedByColumn(),
     ]);
     const withJiraLink =
       jiraLinkColumns.jiraIssueId &&
@@ -794,13 +829,30 @@ export async function POST(req: Request) {
               `
     );
 
-    const serialized = serializePlannedMaintenance(rows[0]);
+    const serialized = serializePlannedMaintenance({
+      ...rows[0],
+      createdById: withCreatedBy ? session.user.id : null,
+      createdByName: withCreatedBy ? session.user.name ?? null : null,
+      createdByEmail: withCreatedBy ? session.user.email ?? null : null,
+    });
+
+    if (withCreatedBy) {
+      await prisma.$executeRaw`
+        UPDATE "PlannedMaintenance"
+        SET "createdById" = ${session.user.id}
+        WHERE "id" = ${rows[0].id}
+      `;
+    }
     const { sent, warning } = await sendPlannedMaintenanceNotificationEmail({
       recipients: serialized.notificationRecipients,
       machineLabel: formatMachineLabel(machineKey),
       title,
-      dueDate,
+      dueDate: formatMaintenanceDateTimeForLocale(
+        serialized.dueDate,
+        locale === "lt" ? "lt-LT" : "en-US"
+      ),
       note: note || null,
+      createdByLabel: serialized.createdBy?.name || serialized.createdBy?.email || null,
       status,
       action: "created",
       locale,

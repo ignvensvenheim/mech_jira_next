@@ -45,6 +45,7 @@ type MaintenanceSectionProps = {
   isMaintenanceEditing: boolean;
   activeMaintenanceItem: PlannedMaintenanceItem | null;
   activeMaintenanceStatus: MaintenanceStatus | null;
+  currentUserLabel: string;
   machineDirectory: MachineDirectoryItem[];
   machineLabelByKey: Record<string, string>;
   maintenanceMachineKey: string;
@@ -93,6 +94,7 @@ export default function MaintenanceSection({
   isMaintenanceEditing,
   activeMaintenanceItem,
   activeMaintenanceStatus,
+  currentUserLabel,
   machineDirectory,
   machineLabelByKey,
   maintenanceMachineKey,
@@ -122,6 +124,14 @@ export default function MaintenanceSection({
   onSendPlannedMaintenanceReminder,
   onDeletePlannedMaintenance,
 }: MaintenanceSectionProps) {
+  const [maintenanceDueDateDate = "", maintenanceDueTime = "09:00"] =
+    maintenanceDueDate.split("T");
+  const timeOptions = Array.from({ length: 36 }, (_, index) => {
+    const slot = index + 12;
+    const hours = String(Math.floor(slot / 2)).padStart(2, "0");
+    const minutes = slot % 2 === 0 ? "00" : "30";
+    return `${hours}:${minutes}`;
+  });
   const selectedRecipientEmails = new Set(
     maintenanceNotificationRecipients.map((recipient) => recipient.email.toLowerCase())
   );
@@ -135,6 +145,11 @@ export default function MaintenanceSection({
         ? getMaintenanceDueLabel(activeMaintenanceItem.dueDate, t)
         : getMaintenanceWorkflowStatusLabel(t, activeMaintenanceStatus)
       : "";
+  const activeMaintenanceCreatorLabel = activeMaintenanceItem
+    ? activeMaintenanceItem.createdBy?.name ||
+      activeMaintenanceItem.createdBy?.email ||
+      t("common.unknown")
+    : currentUserLabel || t("common.unknown");
 
   return (
     <>
@@ -390,12 +405,33 @@ export default function MaintenanceSection({
             </label>
             <label className="admin-inventory-field">
               <div className="admin-inventory-field__label">{t("admin.maintenanceDueDate")}</div>
-              <input
-                type="date"
-                className="admin-input"
-                value={maintenanceDueDate}
-                onChange={(event) => onMaintenanceDueDateChange(event.target.value)}
-              />
+              <div className="admin-maintenance-modal__date-time-inputs">
+                <input
+                  type="date"
+                  className="admin-input"
+                  value={maintenanceDueDateDate}
+                  onChange={(event) =>
+                    onMaintenanceDueDateChange(
+                      `${event.target.value}T${maintenanceDueTime || "09:00"}`
+                    )
+                  }
+                />
+                <select
+                  className="admin-input"
+                  value={maintenanceDueTime || "09:00"}
+                  onChange={(event) =>
+                    onMaintenanceDueDateChange(
+                      `${maintenanceDueDateDate || getCurrentLocalDateOnly()}T${event.target.value}`
+                    )
+                  }
+                >
+                  {timeOptions.map((timeValue) => (
+                    <option key={timeValue} value={timeValue}>
+                      {timeValue}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </label>
             <label className="admin-inventory-field">
               <div className="admin-inventory-field__label">{t("admin.maintenanceCost")}</div>
@@ -427,6 +463,14 @@ export default function MaintenanceSection({
                 <option value="cancelled">{t("admin.maintenanceStatusCancelled")}</option>
               </select>
             </label>
+            <div className="admin-inventory-field">
+              <div className="admin-inventory-field__label">
+                {t("admin.maintenanceCreatedBy")}
+              </div>
+              <div className="admin-input" aria-readonly="true">
+                {activeMaintenanceCreatorLabel}
+              </div>
+            </div>
             <label className="admin-inventory-field admin-maintenance-modal__field--full">
               <div className="admin-inventory-field__label">{t("admin.maintenanceNote")}</div>
               <textarea

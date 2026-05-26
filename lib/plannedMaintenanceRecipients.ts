@@ -11,12 +11,12 @@ export const PLANNED_MAINTENANCE_RECIPIENTS: PlannedMaintenanceRecipient[] = [
   { name: "Alius Giniūnas", email: "meistras2a@svenheim.lt" },
   { name: "Aurimas Čyžius", email: "baldeka09@svenheim.lt" },
   { name: "Aurimas Mizeras", email: "aurmiz@svenheim.lt" },
-  { name: "Ignas Venckunas", email: "ignas.venckunas@svenheim.lt" },
   { name: "Ramūnas Čibirka", email: "meistras5@svenheim.lt" },
   { name: "Ramūnas Kučinskas", email: "ramunas.k@svenheim.lt" },
   { name: "Rimantas Aleknavičius", email: "rimale@svenheim.lt" },
   { name: "Stanislovas Paulauskas", email: "machinery@svenheim.lt" },
   { name: "Virginijus Čiras", email: "meistras3@svenheim.lt" },
+  { name: "Ignas Venckūnas", email: "ignas.venckunas@svenheim.lt" },
 ];
 
 const RECIPIENTS_BY_EMAIL = new Map(

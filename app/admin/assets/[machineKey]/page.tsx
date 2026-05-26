@@ -12,6 +12,7 @@ import type { NormalizedIssue } from "@/lib/jira";
 import {
   formatCurrency,
   formatDateTimeForLocale,
+  formatMaintenanceDueDateTimeForLocale,
   formatMachineDirectoryLabel,
   formatMachineKeyDisplay,
   formatSeconds,
@@ -358,7 +359,7 @@ function AssetDetailPageContent() {
                             <div className="admin-asset-maintenance-row__meta">
                               {item.completedAt
                                 ? formatDateTimeForLocale(item.completedAt, locale)
-                                : item.dueDate}
+                                : formatMaintenanceDueDateTimeForLocale(item.dueDate, locale)}
                             </div>
                           </div>
                           <div className="admin-asset-maintenance-row__cost">
