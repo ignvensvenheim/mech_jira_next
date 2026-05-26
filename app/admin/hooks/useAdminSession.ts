@@ -31,10 +31,10 @@ export function useAdminSession(searchParams: ReadonlyURLSearchParams) {
   }, [searchParams]);
 
   useEffect(() => {
-    if (sessionResolved && !currentUserCanManageUsers && activeFunction === "users") {
+    if (sessionResolved && !currentUserIsAdmin && activeFunction === "users") {
       setActiveFunction("costs");
     }
-  }, [activeFunction, currentUserCanManageUsers, sessionResolved]);
+  }, [activeFunction, currentUserIsAdmin, sessionResolved]);
 
   useEffect(() => {
     const loadSession = async () => {

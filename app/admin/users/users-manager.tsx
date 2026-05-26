@@ -215,50 +215,59 @@ export default function UsersManager({
 
           {loading && <div className="admin-chart-empty">{t("admin.loadingUsers")}</div>}
           {!loading && selfUser && (
-            <div className="admin-users-form">
-              <input className="admin-input" type="email" value={selfUser.email} disabled />
-              <input
-                className="admin-input"
-                type="text"
-                value={selfUser.name || ""}
-                disabled
-              />
-              <input
-                className="admin-input"
-                type="password"
-                placeholder={t("admin.currentPassword")}
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
-              <input
-                className="admin-input"
-                type="password"
-                placeholder={t("admin.newPassword")}
-                value={nextPassword}
-                onChange={(e) => setNextPassword(e.target.value)}
-              />
-              <input
-                className="admin-input"
-                type="password"
-                placeholder={t("admin.confirmNewPassword")}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-              <button
-                type="button"
-                className="admin-reset-button"
-                onClick={() => {
-                  void changeOwnPassword();
-                }}
-                disabled={
-                  changingPassword ||
-                  !currentPassword.trim() ||
-                  nextPassword.trim().length < 6 ||
-                  confirmPassword.trim().length < 6
-                }
-              >
-                {changingPassword ? t("admin.savingPassword") : t("admin.changePassword")}
-              </button>
+            <div className="admin-account-form">
+              <div className="admin-account-form__identity">
+                <input
+                  className="admin-input admin-account-form__readonly"
+                  type="email"
+                  value={selfUser.email}
+                  disabled
+                />
+                <input
+                  className="admin-input admin-account-form__readonly"
+                  type="text"
+                  value={selfUser.name || ""}
+                  disabled
+                />
+              </div>
+              <div className="admin-account-form__passwords">
+                <input
+                  className="admin-input"
+                  type="password"
+                  placeholder={t("admin.currentPassword")}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
+                <input
+                  className="admin-input"
+                  type="password"
+                  placeholder={t("admin.newPassword")}
+                  value={nextPassword}
+                  onChange={(e) => setNextPassword(e.target.value)}
+                />
+                <input
+                  className="admin-input"
+                  type="password"
+                  placeholder={t("admin.confirmNewPassword")}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="admin-reset-button admin-account-form__submit"
+                  onClick={() => {
+                    void changeOwnPassword();
+                  }}
+                  disabled={
+                    changingPassword ||
+                    !currentPassword.trim() ||
+                    nextPassword.trim().length < 6 ||
+                    confirmPassword.trim().length < 6
+                  }
+                >
+                  {changingPassword ? t("admin.savingPassword") : t("admin.changePassword")}
+                </button>
+              </div>
             </div>
           )}
 
