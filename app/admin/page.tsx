@@ -37,6 +37,8 @@ function AdminPageContent() {
   const { loadingInitial, fetchingAllTickets, error } = useJiraSearch();
   const { issues } = useIssues();
   const [selectedIssue, setSelectedIssue] = useState<NormalizedIssue | null>(null);
+  const [inventoryCategory, setInventoryCategory] = useState("");
+  const [inventorySubCategory, setInventorySubCategory] = useState("");
 
   const {
     currentUserId,
@@ -162,7 +164,6 @@ function AdminPageContent() {
     setInventoryQuery,
     inventoryLoading,
     inventoryError,
-    inventorySavingKey,
     inventoryDrafts,
     assetDetailsByMachineKey,
     machineCatalog,
@@ -185,8 +186,6 @@ function AdminPageContent() {
     loadEquipmentData,
     loadInventoryData,
     saveEquipmentDetails,
-    setInventoryDraftField,
-    saveInventoryMachine,
     addManualCostEntry,
     deleteManualCostEntry,
     startEditManualCostEntry,
@@ -205,6 +204,33 @@ function AdminPageContent() {
             .map((item) => item.subcategory)
         : [],
     [machineCatalog, statisticsCategory]
+  );
+  const inventoryCategoryOptions = useMemo(
+    () => Array.from(new Set(machineDirectory.map((item) => item.category))).sort(),
+    [machineDirectory]
+  );
+  const inventorySubCategoryOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          machineDirectory
+            .filter((item) => !inventoryCategory || item.category === inventoryCategory)
+            .map((item) => item.subcategory)
+        )
+      ).sort(),
+    [inventoryCategory, machineDirectory]
+  );
+  const inventoryFilteredMachineDirectory = useMemo(
+    () =>
+      filteredMachineDirectory.filter((machine) => {
+        const matchCategory =
+          !inventoryCategory || machine.category === inventoryCategory;
+        const matchSubCategory =
+          !inventorySubCategory || machine.subcategory === inventorySubCategory;
+
+        return matchCategory && matchSubCategory;
+      }),
+    [filteredMachineDirectory, inventoryCategory, inventorySubCategory]
   );
 
   const maintenance = useAdminMaintenance({
@@ -582,15 +608,21 @@ function AdminPageContent() {
                 <InventorySection
                   t={t}
                   inventoryQuery={inventoryQuery}
+                  inventoryCategory={inventoryCategory}
+                  inventorySubCategory={inventorySubCategory}
+                  inventoryCategoryOptions={inventoryCategoryOptions}
+                  inventorySubCategoryOptions={inventorySubCategoryOptions}
                   inventoryLoading={inventoryLoading}
                   inventoryError={inventoryError}
-                  filteredMachineDirectory={filteredMachineDirectory}
+                  filteredMachineDirectory={inventoryFilteredMachineDirectory}
                   inventoryDrafts={inventoryDrafts}
-                  inventorySavingKey={inventorySavingKey}
                   onInventoryQueryChange={setInventoryQuery}
+                  onInventoryCategoryChange={(value) => {
+                    setInventoryCategory(value);
+                    setInventorySubCategory("");
+                  }}
+                  onInventorySubCategoryChange={setInventorySubCategory}
                   onRefreshInventory={() => void loadInventoryData()}
-                  onSetInventoryDraftField={setInventoryDraftField}
-                  onSaveInventoryMachine={(machineKey) => void saveInventoryMachine(machineKey)}
                 />
               )}
 

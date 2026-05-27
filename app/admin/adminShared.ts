@@ -306,6 +306,19 @@ export function toDateOnlyFromParts(year: number, monthIndex: number, day: numbe
   )}`;
 }
 
+function parseDateOnlyToLocalTime(value: string, endOfDay: boolean) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return Number.NaN;
+
+  const year = Number(match[1]);
+  const monthIndex = Number(match[2]) - 1;
+  const day = Number(match[3]);
+
+  return endOfDay
+    ? new Date(year, monthIndex, day, 23, 59, 59, 999).getTime()
+    : new Date(year, monthIndex, day, 0, 0, 0, 0).getTime();
+}
+
 export function formatSeconds(total: number, locale: string = "en") {
   const safe = Math.max(0, Math.floor(total || 0));
   const hours = Math.floor(safe / 3600);
@@ -331,7 +344,9 @@ export async function parseJson<T>(response: Response): Promise<T> {
 export function toDateInputValue(date: Date) {
   const safe = new Date(date);
   safe.setHours(0, 0, 0, 0);
-  return formatDateOnly(safe);
+  return `${safe.getFullYear()}-${String(safe.getMonth() + 1).padStart(2, "0")}-${String(
+    safe.getDate()
+  ).padStart(2, "0")}`;
 }
 
 export function getLastSevenDaysRange() {
@@ -383,10 +398,8 @@ export function formatDisplayDate(value: string) {
 }
 
 export function getDateRangeBounds(from: string, to: string) {
-  const fromTime = from ? new Date(from).getTime() : -Infinity;
-  const toTime = to
-    ? new Date(`${to}T23:59:59.999`).getTime()
-    : Infinity;
+  const fromTime = from ? parseDateOnlyToLocalTime(from, false) : -Infinity;
+  const toTime = to ? parseDateOnlyToLocalTime(to, true) : Infinity;
 
   return {
     fromTime,

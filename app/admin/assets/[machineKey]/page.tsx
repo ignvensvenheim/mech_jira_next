@@ -1,8 +1,7 @@
 "use client";
 
 import "../../../../components/TicketCard/ticketCard.css";
-import { Suspense, useCallback, useMemo, useState } from "react";
-import Link from "next/link";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useI18n } from "@/components/I18nProvider";
 import AdminTicketModal from "../../components/AdminTicketModal/AdminTicketModal";
@@ -10,6 +9,7 @@ import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { useIssues } from "@/lib/IssuesContext";
 import type { NormalizedIssue } from "@/lib/jira";
 import {
+  parseJson,
   formatCurrency,
   formatDateTimeForLocale,
   formatMaintenanceDueDateTimeForLocale,
@@ -20,6 +20,7 @@ import {
   getMaintenanceWorkflowStatusLabel,
   isMaintenanceClosedStatus,
   parseMachineKey,
+  type EquipmentDetailsResponse,
 } from "../../adminShared";
 import { useAdminAssetDetail } from "../../hooks/useAdminAssetDetail";
 import { useAdminMaintenance } from "../../hooks/useAdminMaintenance";
@@ -100,9 +101,12 @@ function AssetDetailPageContent() {
     equipmentDetails?.category?.trim() || parsedMachine.category || t("common.unknown");
   const machineSubcategory =
     equipmentDetails?.subcategory?.trim() || parsedMachine.subcategory || t("common.unknown");
-  const machineModel = equipmentDetails?.model?.trim() || "";
-  const machineSerialNumber = equipmentDetails?.serialNumber?.trim() || "";
-  const machineManufacturer = equipmentDetails?.manufacturer?.trim() || "";
+  const [equipmentModelDraft, setEquipmentModelDraft] = useState("");
+  const [equipmentSerialNumberDraft, setEquipmentSerialNumberDraft] = useState("");
+  const [equipmentManufacturerDraft, setEquipmentManufacturerDraft] = useState("");
+  const [equipmentEditing, setEquipmentEditing] = useState(false);
+  const [equipmentSaving, setEquipmentSaving] = useState(false);
+  const [equipmentSaveError, setEquipmentSaveError] = useState("");
   const machineLabel =
     formatMachineDirectoryLabel({
       category: machineCategory,
@@ -146,6 +150,49 @@ function AssetDetailPageContent() {
     void loadPlannedMaintenance();
   }, [loadPlannedMaintenance, reloadAssetData]);
 
+  useEffect(() => {
+    setEquipmentModelDraft(equipmentDetails?.model || "");
+    setEquipmentSerialNumberDraft(equipmentDetails?.serialNumber || "");
+    setEquipmentManufacturerDraft(equipmentDetails?.manufacturer || "");
+  }, [equipmentDetails]);
+
+  const resetEquipmentDrafts = useCallback(() => {
+    setEquipmentModelDraft(equipmentDetails?.model || "");
+    setEquipmentSerialNumberDraft(equipmentDetails?.serialNumber || "");
+    setEquipmentManufacturerDraft(equipmentDetails?.manufacturer || "");
+  }, [equipmentDetails]);
+
+  const handleSaveEquipment = useCallback(async () => {
+    const model = equipmentModelDraft.trim();
+    const serialNumber = equipmentSerialNumberDraft.trim();
+    const manufacturer = equipmentManufacturerDraft.trim();
+    if (!model || !serialNumber || !manufacturer) return;
+
+    setEquipmentSaving(true);
+    setEquipmentSaveError("");
+    try {
+      await parseJson<EquipmentDetailsResponse>(
+        await fetch("/api/admin/equipment", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ machineKey, model, serialNumber, manufacturer }),
+        })
+      );
+      await reloadAssetData();
+      setEquipmentEditing(false);
+    } catch (saveError) {
+      setEquipmentSaveError(String((saveError as Error).message || saveError));
+    } finally {
+      setEquipmentSaving(false);
+    }
+  }, [
+    equipmentManufacturerDraft,
+    equipmentModelDraft,
+    equipmentSerialNumberDraft,
+    machineKey,
+    reloadAssetData,
+  ]);
+
   return (
     <>
       {!sessionResolved && (
@@ -176,9 +223,49 @@ function AssetDetailPageContent() {
                       </div>
                     </div>
                     <div className="page__content-actions">
-                      <Link href="/admin?view=inventory" className="page__action-link">
-                        {t("admin.backToAdmin")}
-                      </Link>
+                      {equipmentEditing ? (
+                        <>
+                          <button
+                            type="button"
+                            className="admin-reset-button"
+                            onClick={() => {
+                              resetEquipmentDrafts();
+                              setEquipmentEditing(false);
+                              setEquipmentSaveError("");
+                            }}
+                            disabled={equipmentSaving}
+                          >
+                            {t("common.cancel")}
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-reset-button"
+                            onClick={() => {
+                              void handleSaveEquipment();
+                            }}
+                            disabled={
+                              equipmentSaving ||
+                              !equipmentModelDraft.trim() ||
+                              !equipmentSerialNumberDraft.trim() ||
+                              !equipmentManufacturerDraft.trim()
+                            }
+                          >
+                            {equipmentSaving ? t("admin.saving") : t("admin.saveDetails")}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          className="admin-reset-button"
+                          onClick={() => {
+                            resetEquipmentDrafts();
+                            setEquipmentEditing(true);
+                            setEquipmentSaveError("");
+                          }}
+                        >
+                          {t("admin.editDetails")}
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="admin-asset-header__details">
@@ -188,27 +275,80 @@ function AssetDetailPageContent() {
                         {machineKeyDisplay}
                       </span>
                     </div>
-                    <div className="admin-asset-field">
+                    <div
+                      className={`admin-asset-field${
+                        equipmentEditing ? " admin-asset-field--editing" : ""
+                      }`}
+                    >
                       <span className="admin-asset-field__label">{t("admin.model")}</span>
-                      <span className="admin-asset-field__value">{machineModel || "-"}</span>
+                      {equipmentEditing ? (
+                        <input
+                          type="text"
+                          className="admin-asset-field__input"
+                          value={equipmentModelDraft}
+                          onChange={(event) => setEquipmentModelDraft(event.target.value)}
+                          placeholder={t("admin.model")}
+                        />
+                      ) : (
+                        <span className="admin-asset-field__value">
+                          {equipmentModelDraft.trim() || "-"}
+                        </span>
+                      )}
                     </div>
-                    <div className="admin-asset-field">
+                    <div
+                      className={`admin-asset-field${
+                        equipmentEditing ? " admin-asset-field--editing" : ""
+                      }`}
+                    >
                       <span className="admin-asset-field__label">{t("admin.serialNumber")}</span>
-                      <span className="admin-asset-field__value">
-                        {machineSerialNumber || "-"}
-                      </span>
+                      {equipmentEditing ? (
+                        <input
+                          type="text"
+                          className="admin-asset-field__input"
+                          value={equipmentSerialNumberDraft}
+                          onChange={(event) =>
+                            setEquipmentSerialNumberDraft(event.target.value)
+                          }
+                          placeholder={t("admin.serialNumber")}
+                        />
+                      ) : (
+                        <span className="admin-asset-field__value">
+                          {equipmentSerialNumberDraft.trim() || "-"}
+                        </span>
+                      )}
                     </div>
-                    <div className="admin-asset-field">
+                    <div
+                      className={`admin-asset-field${
+                        equipmentEditing ? " admin-asset-field--editing" : ""
+                      }`}
+                    >
                       <span className="admin-asset-field__label">{t("admin.manufacturer")}</span>
-                      <span className="admin-asset-field__value">
-                        {machineManufacturer || "-"}
-                      </span>
+                      {equipmentEditing ? (
+                        <input
+                          type="text"
+                          className="admin-asset-field__input"
+                          value={equipmentManufacturerDraft}
+                          onChange={(event) =>
+                            setEquipmentManufacturerDraft(event.target.value)
+                          }
+                          placeholder={t("admin.manufacturer")}
+                        />
+                      ) : (
+                        <span className="admin-asset-field__value">
+                          {equipmentManufacturerDraft.trim() || "-"}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
-                {(error || assetDataError || plannedMaintenanceError) && (
+                {(error || assetDataError || plannedMaintenanceError || equipmentSaveError) && (
                   <div className="page__error">
-                    {String(error || assetDataError || plannedMaintenanceError)}
+                    {String(
+                      error ||
+                        assetDataError ||
+                        plannedMaintenanceError ||
+                        equipmentSaveError
+                    )}
                   </div>
                 )}
               </div>

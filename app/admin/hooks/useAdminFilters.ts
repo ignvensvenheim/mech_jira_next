@@ -12,12 +12,13 @@ import {
 
 export function useAdminFilters(activeFunction: AdminFunction) {
   const defaultDateRange = useMemo(() => getLastSevenDaysRange(), []);
+  const defaultCostsDateRange = useMemo(() => ({ from: "", to: "" }), []);
   const [costsCategory, setCostsCategory] = useState("");
   const [costsSubCategory, setCostsSubCategory] = useState("");
   const [statisticsCategory, setStatisticsCategory] = useState("");
   const [statisticsSubCategory, setStatisticsSubCategory] = useState("");
-  const [costsDateFrom, setCostsDateFrom] = useState(defaultDateRange.from);
-  const [costsDateTo, setCostsDateTo] = useState(defaultDateRange.to);
+  const [costsDateFrom, setCostsDateFrom] = useState(defaultCostsDateRange.from);
+  const [costsDateTo, setCostsDateTo] = useState(defaultCostsDateRange.to);
   const [costsSearchText, setCostsSearchText] = useState("");
   const [statisticsDateFrom, setStatisticsDateFrom] = useState(defaultDateRange.from);
   const [statisticsDateTo, setStatisticsDateTo] = useState(defaultDateRange.to);
@@ -45,8 +46,8 @@ export function useAdminFilters(activeFunction: AdminFunction) {
   const resetCostsFilters = () => {
     setCostsCategory("");
     setCostsSubCategory("");
-    setCostsDateFrom(defaultDateRange.from);
-    setCostsDateTo(defaultDateRange.to);
+    setCostsDateFrom(defaultCostsDateRange.from);
+    setCostsDateTo(defaultCostsDateRange.to);
     setCostsSearchText("");
   };
 

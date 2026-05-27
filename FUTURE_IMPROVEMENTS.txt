@@ -41,6 +41,11 @@ Current Cost State
   list-card formatting/spacing as the main page tickets list.
 - Inline cost editing was intentionally removed from that selected-period list.
 - Manual machine-cost management still exists in the costs page when a machine is selected.
+- Costs view now defaults to All tickets on first load/reset, not Last 7 days.
+- Last 7 days now means:
+  today included
+  previous 6 days included
+  local date boundaries, not UTC-shifted boundaries
 
 Current Ticket Modal Cost State
 - Ticket modal header now shows:
@@ -101,6 +106,24 @@ Current Auth/Security Notes
   zero existing users
 - Mutating admin APIs already enforce admin auth + same-origin checks.
 
+Current Inventory / Asset Detail State
+- Inventory first view is read-only by design.
+- Model, serial number, and manufacturer are no longer editable in the inventory list.
+- Inventory first view now has:
+  full-width search bar
+  category filter
+  subcategory filter
+  refresh action aligned bottom-right on desktop
+- Inventory row details are intentionally slightly muted so they read as view-only.
+- Open asset details link was toned down visually so it does not overpower the row.
+- Asset detail page now owns machine detail editing.
+- On asset detail page:
+  machine key stays read-only
+  model / serial number / manufacturer can be edited inline under the title
+  editing starts only after pressing Edit details
+  edit state should keep the same layout and typography as read-only state
+  main active-state visual cue is white background on editable fields
+
 Highest-Value Next Work
 1. Cost workflow depth
 - Decide whether additional asset costs should remain visible in ticket modal long term.
@@ -131,6 +154,9 @@ Highest-Value Next Work
 - Vendor/service provider
 - Criticality
 - Notes/documents
+- Consider whether asset detail should get a small read-only/edit-state regression check
+  if this section is redesigned again, because spacing and local-date behavior were both
+  recent polish areas.
 
 5. Parts and spare inventory
 - Part number
@@ -162,6 +188,9 @@ Useful Reminders
 - Cost-section search depends on:
   app/api/jira/search/route.ts
   lib/jira.ts
+- Shared admin date filtering depends on:
+  app/admin/adminShared.ts
+  local date parsing matters here; avoid UTC-only formatting for date input values
 - Shared modal scroll locking now goes through:
   hooks/useBodyScrollLock.ts
 - If maintenance email delivery fails again, check:
