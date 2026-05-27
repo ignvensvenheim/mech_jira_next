@@ -1,3 +1,8 @@
+.ticket-modal__html--open,
+.ticket-modal__body--open {
+  overflow: hidden;
+}
+
 .ticket-modal__overlay {
   background: rgba(44, 62, 80, 0.35);
   position: fixed;
@@ -48,6 +53,21 @@
   font-size: 16px;
   font-weight: 600;
   color: var(--color-primary);
+}
+
+.ticket-modal__header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 10px;
+  color: var(--color-text-light);
+  font-size: 12px;
+}
+
+.ticket-modal__header-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ticket-modal__header-actions {

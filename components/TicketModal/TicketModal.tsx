@@ -7,6 +7,8 @@ import type { NormalizedIssue } from "@/lib/jira";
 import { normalizeIssue } from "@/lib/normalizeIssue";
 import type { Issue } from "@/lib/types";
 import { getStatusClassName } from "@/helpers/getStatusClassName";
+import { fmtDuration } from "@/helpers/fmtDuration";
+import { relativeDate } from "@/helpers/relativeDate";
 
 Modal.setAppElement("body");
 
@@ -17,7 +19,7 @@ type Props = {
 };
 
 export default function TicketModal({ isOpen, onClose, issue }: Props) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [detailIssue, setDetailIssue] = React.useState<NormalizedIssue | null>(
     issue
   );
@@ -70,6 +72,8 @@ export default function TicketModal({ isOpen, onClose, issue }: Props) {
       onRequestClose={onClose}
       className="ticket-modal"
       overlayClassName="ticket-modal__overlay"
+      bodyOpenClassName="ticket-modal__body--open"
+      htmlOpenClassName="ticket-modal__html--open"
     >
       {detailIssue && (
         <>
@@ -77,6 +81,24 @@ export default function TicketModal({ isOpen, onClose, issue }: Props) {
             <div className="ticket-modal__title-wrap">
               <p className="ticket-modal__key">{detailIssue.key}</p>
               <h2 className="ticket-modal__title">{detailIssue.summary}</h2>
+              <div className="ticket-modal__header-meta">
+                <div className="ticket-modal__header-meta-item">
+                  <span className="detailed-ticket__label">{t("common.created")}</span>
+                  <span>{relativeDate(detailIssue.created, locale)}</span>
+                </div>
+                <div className="ticket-modal__header-meta-item">
+                  <span className="detailed-ticket__label">{t("common.updated")}</span>
+                  <span>{relativeDate(detailIssue.updated || detailIssue.created, locale)}</span>
+                </div>
+                <div className="ticket-modal__header-meta-item">
+                  <span className="detailed-ticket__label">{t("common.timeSpent")}</span>
+                  <span>{fmtDuration(detailIssue.timeSpentSeconds, locale)}</span>
+                </div>
+                <div className="ticket-modal__header-meta-item">
+                  <span className="detailed-ticket__label">{t("common.priority")}</span>
+                  <span>{detailIssue.priority || "-"}</span>
+                </div>
+              </div>
             </div>
             <div className="ticket-modal__header-actions">
               <span className={getStatusClassName(detailIssue.statusCategory)}>
@@ -99,7 +121,11 @@ export default function TicketModal({ isOpen, onClose, issue }: Props) {
           </div>
 
           <div className="ticket-modal__body">
-            <DetailedSingleTicket issue={detailIssue} loadingDetail={loadingDetail} />
+            <DetailedSingleTicket
+              issue={detailIssue}
+              loadingDetail={loadingDetail}
+              hideMetaSection
+            />
           </div>
         </>
       )}

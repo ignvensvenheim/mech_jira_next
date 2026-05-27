@@ -329,6 +329,8 @@ export default function MaintenanceSection({
         onRequestClose={onCloseMaintenanceModal}
         className="admin-maintenance-modal"
         overlayClassName="admin-maintenance-modal__overlay"
+        bodyOpenClassName="ticket-modal__body--open"
+        htmlOpenClassName="ticket-modal__html--open"
         shouldCloseOnOverlayClick
       >
         <div className="admin-maintenance-modal__header">
