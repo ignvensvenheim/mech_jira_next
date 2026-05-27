@@ -19,9 +19,11 @@ type Attachment = {
 export function DetailedSingleTicket({
   issue,
   loadingDetail = false,
+  hideMetaSection = false,
 }: {
   issue: NormalizedIssue;
   loadingDetail?: boolean;
+  hideMetaSection?: boolean;
 }) {
   const { locale, t } = useI18n();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -85,26 +87,28 @@ export function DetailedSingleTicket({
 
   return (
     <div className="detailed-ticket">
-      <section className="detailed-ticket__section detailed-ticket__section--compact">
-        <div className="detailed-ticket__meta-grid">
-          <div className="detailed-ticket__meta-item">
-            <span className="detailed-ticket__label">{t("common.created")}</span>
-            <span>{relativeDate(issue.created, locale)}</span>
+      {!hideMetaSection && (
+        <section className="detailed-ticket__section detailed-ticket__section--compact">
+          <div className="detailed-ticket__meta-grid">
+            <div className="detailed-ticket__meta-item">
+              <span className="detailed-ticket__label">{t("common.created")}</span>
+              <span>{relativeDate(issue.created, locale)}</span>
+            </div>
+            <div className="detailed-ticket__meta-item">
+              <span className="detailed-ticket__label">{t("common.updated")}</span>
+              <span>{relativeDate(issue.updated || issue.created, locale)}</span>
+            </div>
+            <div className="detailed-ticket__meta-item">
+              <span className="detailed-ticket__label">{t("common.timeSpent")}</span>
+              <span>{fmtDuration(issue.timeSpentSeconds, locale)}</span>
+            </div>
+            <div className="detailed-ticket__meta-item">
+              <span className="detailed-ticket__label">{t("common.priority")}</span>
+              <span>{issue.priority || "-"}</span>
+            </div>
           </div>
-          <div className="detailed-ticket__meta-item">
-            <span className="detailed-ticket__label">{t("common.updated")}</span>
-            <span>{relativeDate(issue.updated || issue.created, locale)}</span>
-          </div>
-          <div className="detailed-ticket__meta-item">
-            <span className="detailed-ticket__label">{t("common.timeSpent")}</span>
-            <span>{fmtDuration(issue.timeSpentSeconds, locale)}</span>
-          </div>
-          <div className="detailed-ticket__meta-item">
-            <span className="detailed-ticket__label">{t("common.priority")}</span>
-            <span>{issue.priority || "-"}</span>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <section className="detailed-ticket__section detailed-ticket__section--compact">
         <div className="detailed-ticket__people-row">

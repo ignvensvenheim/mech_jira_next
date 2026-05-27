@@ -13,6 +13,7 @@ export type NormalizedIssue = {
   priority?: string | null;
   assignee: UserLite;
   reporter: UserLite;
+  creator?: UserLite;
   created: string;
   updated: string; // added
   resolved?: string | null;
@@ -103,6 +104,7 @@ export function normalizeIssue(issue: any): NormalizedIssue {
     priority: f.priority?.name ?? null,
     assignee: userLite(f.assignee),
     reporter: userLite(f.reporter),
+    creator: userLite(f.creator),
     created: f.created,
     updated: f.updated, // added
     resolved: f.resolutiondate ?? null,

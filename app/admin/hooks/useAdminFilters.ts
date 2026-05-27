@@ -18,6 +18,7 @@ export function useAdminFilters(activeFunction: AdminFunction) {
   const [statisticsSubCategory, setStatisticsSubCategory] = useState("");
   const [costsDateFrom, setCostsDateFrom] = useState(defaultDateRange.from);
   const [costsDateTo, setCostsDateTo] = useState(defaultDateRange.to);
+  const [costsSearchText, setCostsSearchText] = useState("");
   const [statisticsDateFrom, setStatisticsDateFrom] = useState(defaultDateRange.from);
   const [statisticsDateTo, setStatisticsDateTo] = useState(defaultDateRange.to);
   const [costsCurrentPage, setCostsCurrentPage] = useState(1);
@@ -39,13 +40,14 @@ export function useAdminFilters(activeFunction: AdminFunction) {
 
   useEffect(() => {
     setCostsCurrentPage(1);
-  }, [costsCategory, costsSubCategory, costsDateFrom, costsDateTo]);
+  }, [costsCategory, costsSubCategory, costsDateFrom, costsDateTo, costsSearchText]);
 
   const resetCostsFilters = () => {
     setCostsCategory("");
     setCostsSubCategory("");
     setCostsDateFrom(defaultDateRange.from);
     setCostsDateTo(defaultDateRange.to);
+    setCostsSearchText("");
   };
 
   const resetStatisticsFilters = () => {
@@ -103,6 +105,8 @@ export function useAdminFilters(activeFunction: AdminFunction) {
     setCostsDateFrom,
     costsDateTo,
     setCostsDateTo,
+    costsSearchText,
+    setCostsSearchText,
     statisticsDateFrom,
     setStatisticsDateFrom,
     statisticsDateTo,

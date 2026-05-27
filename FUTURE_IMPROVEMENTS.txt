@@ -1,374 +1,189 @@
 Future Improvements
 
 Purpose
-- This file is meant to help future work sessions quickly understand what the admin
-  panel is already doing and what should be improved next.
-- The project is currently a custom mini-CMMS built on top of Jira tickets.
-- Jira tickets are the operational source, while the admin panel adds machine-level
-  metadata, repair/manual cost tracking, maintenance planning, and statistics.
+- Quick handoff file for future admin-panel sessions.
+- Project = custom mini-CMMS on top of Jira.
+- Jira is still the operational source; admin adds machine metadata, repair costs,
+  asset costs, maintenance planning, and reporting.
 
-Current Admin Structure
-- Main page: app/admin/page.tsx
+Current Admin Map
+- Main admin page: app/admin/page.tsx
+- Shared admin helpers/types: app/admin/adminShared.ts
+- Costs section: app/admin/components/CostsSection.tsx
+- Ticket modal: app/admin/components/AdminTicketModal/AdminTicketModal.tsx
+- Inventory: app/admin/components/InventorySection.tsx
+- Maintenance: app/admin/components/MaintenanceSection.tsx
+- Statistics: app/admin/components/StatisticsSection.tsx
 - Asset detail page: app/admin/assets/[machineKey]/page.tsx
-- Shared admin utilities/types: app/admin/adminShared.ts
-- Presentational sections:
-  app/admin/components/CostsSection.tsx
-  app/admin/components/InventorySection.tsx
-  app/admin/components/MaintenanceSection.tsx
-  app/admin/components/StatisticsSection.tsx
-  app/admin/components/AdminSidebar.tsx
-  app/admin/components/AdminFilters.tsx
-- Admin-only modal/components that are not shared outside admin:
-  app/admin/components/AdminTicketModal/AdminTicketModal.tsx
-- Admin hooks:
+- Main hooks:
   app/admin/hooks/useAdminSession.ts
   app/admin/hooks/useAdminFilters.ts
   app/admin/hooks/useAdminAssetData.ts
   app/admin/hooks/useAdminAssetDetail.ts
   app/admin/hooks/useAdminMaintenance.ts
 
-Current Admin Responsibilities
-- Costs:
-  filter Jira tickets, attach repair costs to tickets, and manage manual machine costs
-- Inventory:
-  manage equipment metadata per machine key
-- Asset detail:
-  show one-machine rollup across tickets, repair/manual costs, maintenance, and metadata
-- Maintenance:
-  plan, edit, complete, delete, and repair maintenance items in a calendar UI
-  while syncing linked maintenance items with Jira
-- Statistics:
-  derive rollups from Jira tickets plus stored admin data
-- Users:
-  manage app users, limited to super-admin access
-  self-service password change for other admins through My Account
+Current Cost State
+- Costs first view now has:
+  category filter
+  subcategory filter
+  date range filter
+  text search
+- Cost search matches:
+  Jira key
+  category
+  subcategory
+  summary
+  description
+  creator
+  reporter fallback
+- Search bar is full-width and shown above the other cost filters.
+- Selected-period ticket list in the costs view is now read-only and uses the same
+  list-card formatting/spacing as the main page tickets list.
+- Inline cost editing was intentionally removed from that selected-period list.
+- Manual machine-cost management still exists in the costs page when a machine is selected.
 
-Login Screen Notes
-- Login now presents email-only wording, not email-or-username wording.
-- The email input uses a short example placeholder instead of helper text below the field.
-- Current example format shown to users:
-  e.g. varpav@svenheim.lt
+Current Ticket Modal Cost State
+- Ticket modal header now shows:
+  key
+  summary
+  created
+  updated
+  time spent
+  status
+- Priority was intentionally removed from the modal header because it is not useful
+  in the cost flow.
+- Cost area now centers on one clearer ticket-cost workflow:
+  direct ticket cost
+  optional additional asset costs
+- Direct ticket cost stays visible by default.
+- Additional asset costs only appear when:
+  the checkbox is enabled
+  or existing extra asset-cost rows already exist for that ticket/machine
+- Modal summary cards now show:
+  ticket time spent
+  direct ticket cost
+  total cost
+- Current behavior of total cost in the modal:
+  total = direct ticket cost + additional asset costs
 
-Latest Planned Maintenance State
-- Email notifications now use Resend, not Nodemailer.
+Important Cost Model Note
+- Current storage is still split:
+  ticket direct cost = /api/admin/ticket-costs
+  asset-level extra costs = /api/admin/manual-entries
+- UI is clearer now, but the underlying model is still mixed.
+- Long term desired direction:
+  ticket-linked repair costs should live with the Jira ticket
+  non-ticket asset costs should live on the asset/costs page, not inside the ticket modal
+
+Current Maintenance State
+- Planned maintenance is already fairly deep and Jira-synced.
+- Main maintenance files:
+  app/admin/components/MaintenanceSection.tsx
+  app/admin/hooks/useAdminMaintenance.ts
+  app/api/admin/planned-maintenance/route.ts
+  app/api/admin/planned-maintenance/[id]/route.ts
+- Current maintenance sync includes:
+  create in Jira + local DB
+  edit in UI + Jira
+  complete/reopen sync
+  delete in Jira + local cleanup
+  stale linked-row repair
+- Notifications use Resend.
 - Shared mailer:
   lib/plannedMaintenanceMailer.ts
-- React email template:
-  components/email-template.tsx
-- Test sender route kept intentionally for future verification:
+- Test sender route intentionally kept:
   app/api/send/route.ts
-- Required env for real sends:
+
+Current Auth/Security Notes
+- Login wording is email-only now.
+- Bootstrap admin login is setup-only and gated by:
+  ALLOW_ADMIN_BOOTSTRAP=true
+  zero existing users
+- Mutating admin APIs already enforce admin auth + same-origin checks.
+
+Highest-Value Next Work
+1. Cost workflow depth
+- Decide whether additional asset costs should remain visible in ticket modal long term.
+- If keeping them for now, consider better naming so admins understand these are not
+  the same as the direct ticket repair cost.
+- Consider whether ticket costs should support multiple line items instead of one
+  direct-cost record plus separate asset-cost rows.
+
+2. Asset-level cost handling
+- Move non-ticket machine/asset costs toward the asset page instead of the ticket modal.
+- Decide whether the asset detail page should own:
+  manual cost entry creation
+  asset-level cost history
+  asset-level edit actions
+
+3. Preventive maintenance templates
+- Reusable templates
+- Recurrence rules
+- Checklist steps
+- Estimated labor
+- Expected cost
+
+4. Asset master data expansion
+- Internal asset ID
+- Location
+- Install date
+- Warranty end date
+- Vendor/service provider
+- Criticality
+- Notes/documents
+
+5. Parts and spare inventory
+- Part number
+- Stock count
+- Minimum stock
+- Supplier
+- Asset compatibility
+- Parts used on jobs
+
+6. Notifications and reminders
+- Due-soon / overdue alerts
+- Missing asset-detail reminders
+- Missing inventory-data reminders
+- Better admin-visible email failure reporting
+
+7. Statistics cleanup
+- Move remaining stats derivations into a dedicated hook.
+- Only deepen reporting after workflow improvements beat visual/reporting polish.
+
+8. Localization cleanup
+- Audit admin panel for leftover hardcoded English strings or fallback-key leaks.
+
+9. Admin page cleanup
+- Keep app/admin/page.tsx as composition-only where possible.
+- Push section-specific derived state back into hooks if it grows again.
+
+Useful Reminders
+- Ticket search API now includes Jira creator in normalized issues.
+- Cost-section search depends on:
+  app/api/jira/search/route.ts
+  lib/jira.ts
+- Shared modal scroll locking now goes through:
+  hooks/useBodyScrollLock.ts
+- If maintenance email delivery fails again, check:
   RESEND_API_KEY
   RESEND_FROM
   RESEND_REPLY_TO
-- Working sender during this session was moved to the verified subdomain setup,
-  and live test sends succeeded only after Resend verified the sender domain.
-- The sender can now stay generic while replies go elsewhere:
-  use RESEND_FROM for the visible sender
-  use RESEND_REPLY_TO for the reply target
-- Current real behavior:
-  when a planned maintenance item is created or updated, emails are sent to the
-  selected recipients from the "Notify people" checklist, not to the hardcoded
-  test recipient.
-- The hardcoded recipient only exists in app/api/send/route.ts and is there on
-  purpose for manual testing later.
-- Email content is now localized for EN/LT based on the selected admin language
-  passed from the admin UI into the maintenance API routes.
-- Email template content currently includes:
-  asset
-  maintenance title
-  due date and time
-  status
-  created by
-  description
-- Maintenance email due date/time now renders in 24-hour format.
-- If email rendering fails in future sessions, remember that the React-template
-  Resend flow depends on:
-  @react-email/render
-- Relevant package changes already made:
-  removed nodemailer / @types/nodemailer
-  added resend
-  added @react-email/render
+  Resend domain verification
 
-Latest Planned Maintenance Modal/UI State
-- Main modal component:
+Quick Start By Topic
+- Cost section / ticket modal:
+  app/admin/components/CostsSection.tsx
+  app/admin/components/AdminTicketModal/AdminTicketModal.tsx
+  app/admin/components/AdminTicketModal/adminTicketModal.css
+  app/admin/hooks/useAdminFilters.ts
+  app/admin/hooks/useAdminAssetData.ts
+- Maintenance:
   app/admin/components/MaintenanceSection.tsx
-- The planned maintenance modal was intentionally enlarged and now uses roughly
-  up to 70% of the viewport on desktop.
-- Modal title for existing items now shows:
-  Asset / Maintenance title
-- The old top summary row was removed because it became redundant after moving
-  title/status information into the header.
-- The status pill was moved into the modal header next to the Jira action area.
-- The pill no longer shows a fixed bucket like "due in the next 7 days" for
-  date-based items.
-  It now calculates:
-  due today
-  due in X days
-  X days overdue
-- Workflow-style pill labels are still used for:
-  in progress
-  waiting for parts
-  completed
-  cancelled
-- The field label "Note" was renamed to "Description" in the modal and emails.
-- The Description field now appears above the recipient checklist.
-- The modal now shows Created by in both edit and create modes.
-  In create mode it is prefilled from the currently signed-in admin user.
-- The due-date input now supports both date and time.
-  The UI uses a date field plus an explicit 24-hour time selector.
-  Current selectable time window is 06:00 through 23:30 in 30-minute steps.
-- Small event cards in the month grid now show a status dot in the top-right corner
-  using the same colors as the legend.
-- The old green event-count badge was removed from:
-  calendar day cards
-  the sidebar item next to Planned maintenance
-- Empty month-edge placeholders were replaced with muted previous/next month day cards
-  so users can orient themselves more easily in the calendar grid.
-- The duplicate recipient summary block at the top of the modal was removed.
-- The extra "Register maintenance ticket" links were removed from the maintenance
-  toolbar and modal header because Add now drives the flow.
-- Modal footer actions were intentionally reduced.
-  Current bottom buttons:
-  Save/Add
-  Mark done
-  Delete
-  Cancel
-- Delete now asks for confirmation before removing a maintenance item.
-- Success feedback after create/update/reminder was localized so Lithuanian
-  users no longer see English-only confirmation messages in the maintenance flow.
-- Planned maintenance success notifications now auto-dismiss after 5 seconds.
+  app/admin/hooks/useAdminMaintenance.ts
+  app/api/admin/planned-maintenance/route.ts
+  app/api/admin/planned-maintenance/[id]/route.ts
 
-Important Data Model Notes
-- Machine identity is centered around machineKey, usually in category::subcategory form.
-- Jira issues are mapped to machines through parsed issue asset metadata.
-- Asset/equipment details are stored separately from Jira and are merged in admin views.
-- Planned maintenance currently uses item-based scheduling, not reusable PM templates.
-- Planned maintenance rows can now store Jira linkage:
-  jiraIssueId, jiraIssueKey, jiraIssueUrl
-- Planned maintenance rows now preserve the selected due timestamp, not only a date.
-  Calendar grouping and due-soon logic still work off the local day portion.
-- Maintenance creator handling is now more consistent:
-  new items use the signed-in session user
-  legacy items without createdBy can be backfilled when edited
-- Planned maintenance create/edit/delete is no longer local-only.
-  New items are created in Jira first and then stored locally.
-- Current Jira maintenance sync defaults:
-  project key: MECH
-  issue type: Submit a request or incident
-  target status after create: To Do List
-  labels: planned-maintenance, admin-calendar
-- Ticket sync is stale-while-revalidate and supports manual full refresh.
-- If a linked Jira maintenance issue is deleted outside the app, the next maintenance
-  load repairs local state by removing the stale local row.
-- Linked maintenance delete from the admin panel now deletes the Jira issue first and
-  then removes the local row.
-- Mutating admin APIs now enforce admin auth plus same-origin checks.
-- Bootstrap admin login should be treated as setup-only and is now gated by
-  ALLOW_ADMIN_BOOTSTRAP=true and zero existing users.
-- User-management boundary now works like this:
-  ignven is the super-admin identity
-  only super-admin can create, edit, delete, or fully list other users
-  other admins can open My Account and change only their own password
-
-Maintenance Sync Status
-- Implemented:
-  create in Jira + local DB
-  edit in local UI + Jira
-  complete/reopen in local UI + Jira field update/comment
-  delete in local UI + Jira delete
-  repair local stale rows when Jira issue no longer exists
-  selected-recipient email notifications through Resend
-  localized EN/LT maintenance emails
-  reply-to support for Resend notifications
-  creator included in maintenance emails
-  due date and time included in maintenance emails
-- Not implemented:
-  Jira-side edits changing local maintenance rows automatically
-  Jira-side status transitions mapping back into richer local workflow states
-  orphan-state UI; current repair path removes stale linked rows instead
-
-Maintenance Testing Notes
-- Minimal component test coverage now exists for MaintenanceSection modal Jira-link
-  behavior using Vitest + Testing Library:
-  app/admin/components/MaintenanceSection.test.tsx
-
-Priority Order
-- Highest priority improvements should deepen maintenance operations, not just add
-  more charts or visual polish.
-- If choosing between analytics and workflow depth, prefer workflow depth first.
-
-1. Asset detail page
-Status
-- Implemented in first-pass form.
-What now exists
-- dedicated route: app/admin/assets/[machineKey]/page.tsx
-- shared loader hook: app/admin/hooks/useAdminAssetDetail.ts
-- asset-level view of:
-  Jira breakdown tickets
-  repair costs tied to tickets
-  manual costs
-  planned maintenance
-  completed maintenance
-  asset metadata
-- entry points from existing admin views:
-  costs
-  inventory
-  statistics
-Follow-up improvements for this page
-- localize the newly added asset-detail strings properly in Lithuanian
-- consider adding direct edit actions from the asset page instead of only read-first views
-- consider linking from maintenance lists/calendar directly into the same asset detail page
-- if users still need audit-style chronology, consider a dedicated asset activity log
-  instead of reintroducing a duplicate "recent activity" panel beside the ticket list
-- decide whether the asset page should eventually own reusable asset-level actions
-  like edit metadata, add manual cost, or create maintenance directly in place
-
-2. Maintenance workflow states
-Why
-- This was partially completed already.
-What now exists
-- planned
-- in progress
-- waiting for parts
-- completed
-- cancelled
-What still needs attention
-- Review whether the current modal/footer should expose more status transitions again
-  in a better UX, or whether status changes should stay intentionally minimal.
-- Decide how each local status should map to Jira issue status, comment, label, or
-  custom field behavior long term.
-- Review whether statistics and asset views should expose richer status breakdowns.
-
-3. Preventive maintenance templates
-Why
-- Current planning is item-based. Reusable templates are needed for real PM programs.
-What to add
-- reusable PM templates
-- recurrence rules: weekly, monthly, custom
-- checklist steps
-- estimated labor
-- expected cost
-Likely implementation direction
-- Add new DB model(s) for templates and generated maintenance items.
-- Keep generated items separate from templates.
-- Avoid baking recurrence logic directly into page components.
-
-4. Asset master data expansion
-Why
-- Current inventory data is useful but too thin for long-term asset management.
-What to add
-- internal asset ID
-- location
-- install date
-- warranty end date
-- vendor/service provider
-- criticality
-- notes/documents
-Likely implementation direction
-- Extend asset/equipment schema and admin equipment APIs.
-- Keep machineKey as the main join key unless a new stronger asset ID is introduced.
-
-5. Parts and spare inventory
-Why
-- This is one of the largest functional gaps compared with common CMMS products.
-What to add
-- part number
-- stock count
-- minimum stock
-- supplier
-- asset compatibility
-- parts used on maintenance/repair jobs
-Suggested scope
-- Start simple. First track parts and usage history before trying to build full
-  procurement or purchasing flows.
-
-6. Notifications and reminders
-Why
-- Users need operational prompts, not only dashboards.
-What to add
-- due soon / overdue maintenance alerts
-- reminders for incomplete asset details
-- reminders for missing inventory information
-What now exists
-- planned maintenance create/update/reminder email notifications through Resend
-- due-soon reminder cron route:
-  app/api/cron/planned-maintenance-due-soon/route.ts
-What still needs attention
-- decide whether asset-detail / inventory reminder notifications should be in-app,
-  email, or both
-- improve admin-visible error reporting if external email delivery fails
-- consider adding delivery/audit information if operators need traceability
-
-7. Statistics improvements
-Why
-- Statistics are useful, but not the highest-priority gap compared with workflow depth.
-What to do
-- Move remaining statistics derivations into a dedicated hook, likely useAdminStatistics.
-- Consider richer asset-level cost and downtime reporting only after workflow depth
-  improves.
-
-8. Activity log localization
-Why
-- Some activity labels are still hardcoded in English.
-What to do
-- Replace strings like Activity, Created, Updated, and Completed with translated keys.
-- Review the admin panel for any remaining fallback-key or hardcoded-text leaks.
-
-9. Admin page cleanup
-Why
-- app/admin/page.tsx is much smaller than before, but still owns some cross-section
-  derived state.
-What to do
-- Keep page.tsx mainly as a composition layer.
-- Move further section-specific derivations into hooks if they start growing again.
-
-10. Manual full refresh UX
-Why
-- Users can force a full Jira resync now, but the UI does not explain sync behavior.
-What to add
-- last sync timestamp
-- indication of cached vs refreshed state
-- visible sync progress/status when a full refresh runs
-
-11. Jira maintenance sync polish
-Why
-- Maintenance now writes through to Jira, but the integration is still intentionally
-  simple and should be hardened as a product feature.
-What to do
-- Store or expose clearer sync-state UI when Jira create/update/delete fails
-- Consider showing the Jira issue key directly in maintenance cards/modals
-- Decide whether repair should hard-delete stale local rows forever or move them into
-  a softer orphaned/archived state
-- Review whether more admin write routes should share a single centralized same-origin
-  helper/middleware pattern instead of route-by-route checks
-- Decide whether raw maintenance delete in Jira should remain allowed or whether the
-  app should prefer closing/cancelling work instead
-
-12. Next Session Quick Start
-If the next session is about planned maintenance, open these first:
-- app/admin/components/MaintenanceSection.tsx
-- app/admin/hooks/useAdminMaintenance.ts
-- app/api/admin/planned-maintenance/route.ts
-- app/api/admin/planned-maintenance/[id]/route.ts
-- lib/plannedMaintenanceMailer.ts
-- components/email-template.tsx
-- app/api/send/route.ts
-
-Useful reminders
-- app/api/send/route.ts is intentionally still present for manual Resend testing.
-- Real maintenance notifications do not use that route; they go through the shared
-  mailer and selected recipients.
-- If test sends suddenly fail again, check:
-  RESEND_API_KEY
-  RESEND_FROM
-  Resend domain verification state for the exact sender domain/subdomain
-- If future UI cleanup is needed, the maintenance modal has already been simplified
-  significantly this session, so inspect current behavior before re-adding buttons
-  or summary blocks that were intentionally removed.
-
-How Future Sessions Should Use This File
-- Read this file first when asked what to improve next in the admin panel.
-- Treat items 2 through 6 as more valuable than adding extra statistics or visuals.
-- Before implementing a larger item, inspect the related admin hook/component files
-  listed above instead of rebuilding logic from scratch.
+Recommended Next Fixes
+- Sanitize callbackUrl to internal relative admin paths only.
+- Remove name-based login from authorize(...) if email-only is the desired rule.
+- Add rate limiting or temporary lockout on repeated failed login attempts.

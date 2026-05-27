@@ -50,6 +50,21 @@
   color: var(--color-primary);
 }
 
+.ticket-modal__header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 10px;
+  color: var(--color-text-light);
+  font-size: 12px;
+}
+
+.ticket-modal__header-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .ticket-modal__header-actions {
   display: inline-flex;
   align-items: center;

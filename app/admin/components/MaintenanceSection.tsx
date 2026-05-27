@@ -1,6 +1,7 @@
 "use client";
 
 import Modal from "react-modal";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { PLANNED_MAINTENANCE_RECIPIENTS } from "@/lib/plannedMaintenanceRecipients";
 import {
   formatCurrency,
@@ -124,6 +125,7 @@ export default function MaintenanceSection({
   onSendPlannedMaintenanceReminder,
   onDeletePlannedMaintenance,
 }: MaintenanceSectionProps) {
+  useBodyScrollLock(isMaintenanceModalOpen);
   const [maintenanceDueDateDate = "", maintenanceDueTime = "09:00"] =
     maintenanceDueDate.split("T");
   const timeOptions = Array.from({ length: 36 }, (_, index) => {
