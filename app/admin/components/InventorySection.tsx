@@ -7,41 +7,43 @@ import type { AdminTranslate, EquipmentDraft, MachineDirectoryItem } from "../ad
 type InventorySectionProps = {
   t: AdminTranslate;
   inventoryQuery: string;
+  inventoryCategory: string;
+  inventorySubCategory: string;
+  inventoryCategoryOptions: string[];
+  inventorySubCategoryOptions: string[];
   inventoryLoading: boolean;
   inventoryError: string;
   filteredMachineDirectory: MachineDirectoryItem[];
   inventoryDrafts: Record<string, EquipmentDraft>;
-  inventorySavingKey: string | null;
   onInventoryQueryChange: (value: string) => void;
+  onInventoryCategoryChange: (value: string) => void;
+  onInventorySubCategoryChange: (value: string) => void;
   onRefreshInventory: () => void;
-  onSetInventoryDraftField: (
-    machineKey: string,
-    field: keyof EquipmentDraft,
-    value: string
-  ) => void;
-  onSaveInventoryMachine: (machineKey: string) => void;
 };
 
 export default function InventorySection({
   t,
   inventoryQuery,
+  inventoryCategory,
+  inventorySubCategory,
+  inventoryCategoryOptions,
+  inventorySubCategoryOptions,
   inventoryLoading,
   inventoryError,
   filteredMachineDirectory,
   inventoryDrafts,
-  inventorySavingKey,
   onInventoryQueryChange,
+  onInventoryCategoryChange,
+  onInventorySubCategoryChange,
   onRefreshInventory,
-  onSetInventoryDraftField,
-  onSaveInventoryMachine,
 }: InventorySectionProps) {
   return (
     <>
       <div className="admin-card">
         <h1 className="admin-title">{t("admin.inventoryTitle")}</h1>
         <p className="admin-subtitle">{t("admin.inventorySubtitle")}</p>
-        <div className="admin-filters">
-          <label className="admin-inventory-search">
+        <div className="admin-filters admin-filters--inventory">
+          <label className="admin-inventory-search admin-filter admin-filter--search">
             <div className="admin-label">{t("admin.searchMachines")}</div>
             <input
               type="text"
@@ -51,7 +53,37 @@ export default function InventorySection({
               placeholder={t("admin.searchMachinesPlaceholder")}
             />
           </label>
-          <div className="admin-filters-actions admin-filters-actions--inline">
+          <label className="admin-filter">
+            <div className="admin-label">{t("home.category")}</div>
+            <select
+              className="admin-input"
+              value={inventoryCategory}
+              onChange={(event) => onInventoryCategoryChange(event.target.value)}
+            >
+              <option value="">{t("common.all")}</option>
+              {inventoryCategoryOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="admin-filter">
+            <div className="admin-label">{t("home.subcategory")}</div>
+            <select
+              className="admin-input"
+              value={inventorySubCategory}
+              onChange={(event) => onInventorySubCategoryChange(event.target.value)}
+            >
+              <option value="">{t("common.all")}</option>
+              {inventorySubCategoryOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="admin-filters-actions admin-filters-actions--inventory">
             <button
               type="button"
               className="admin-reset-button"
@@ -87,7 +119,6 @@ export default function InventorySection({
               serialNumber: "",
               manufacturer: "",
             };
-            const isSaving = inventorySavingKey === machine.machineKey;
 
             return (
               <div key={machine.machineKey} className="admin-inventory-row">
@@ -96,73 +127,33 @@ export default function InventorySection({
                   <div className="admin-ticket-summary">{machine.subcategory}</div>
                   <Link
                     href={getAdminAssetHref(machine.machineKey)}
-                    className="admin-inline-link"
+                    className="admin-inline-link admin-inline-link--inventory"
                   >
                     {t("admin.openAssetDetails")}
                   </Link>
                 </div>
                 <label className="admin-inventory-field">
                   <div className="admin-inventory-field__label">{t("admin.model")}</div>
-                  <input
-                    type="text"
-                    className="admin-input"
-                    value={draft.model}
-                    onChange={(event) =>
-                      onSetInventoryDraftField(
-                        machine.machineKey,
-                        "model",
-                        event.target.value
-                      )
-                    }
-                  />
+                  <div className="admin-input admin-inventory-field__value" aria-readonly="true">
+                    {draft.model.trim() || "-"}
+                  </div>
                 </label>
                 <label className="admin-inventory-field">
                   <div className="admin-inventory-field__label">
                     {t("admin.serialNumber")}
                   </div>
-                  <input
-                    type="text"
-                    className="admin-input"
-                    value={draft.serialNumber}
-                    onChange={(event) =>
-                      onSetInventoryDraftField(
-                        machine.machineKey,
-                        "serialNumber",
-                        event.target.value
-                      )
-                    }
-                  />
+                  <div className="admin-input admin-inventory-field__value" aria-readonly="true">
+                    {draft.serialNumber.trim() || "-"}
+                  </div>
                 </label>
                 <label className="admin-inventory-field">
                   <div className="admin-inventory-field__label">
                     {t("admin.manufacturer")}
                   </div>
-                  <input
-                    type="text"
-                    className="admin-input"
-                    value={draft.manufacturer}
-                    onChange={(event) =>
-                      onSetInventoryDraftField(
-                        machine.machineKey,
-                        "manufacturer",
-                        event.target.value
-                      )
-                    }
-                  />
+                  <div className="admin-input admin-inventory-field__value" aria-readonly="true">
+                    {draft.manufacturer.trim() || "-"}
+                  </div>
                 </label>
-                <button
-                  type="button"
-                  className="admin-reset-button"
-                  onClick={() => onSaveInventoryMachine(machine.machineKey)}
-                  disabled={
-                    isSaving ||
-                    !draft.model.trim() ||
-                    !draft.serialNumber.trim() ||
-                    !draft.manufacturer.trim()
-                  }
-                >
-                  {isSaving ? t("admin.saving") : t("common.save")}
-                </button>
               </div>
             );
           })}

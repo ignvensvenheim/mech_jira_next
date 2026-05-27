@@ -185,7 +185,6 @@ export default function CostsSection({
         />
 
         {error && !ticketsLoading && <div className="page__error">{String(error)}</div>}
-        {ticketsLoading && <div className="page__loading">{t("common.loading")}</div>}
         {hasMachineSelection && (
           <div className="page__content-actions">
             <Link href={getAdminAssetHref(selectedMachineKey)} className="page__action-link">
