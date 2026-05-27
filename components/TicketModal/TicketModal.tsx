@@ -9,6 +9,7 @@ import type { Issue } from "@/lib/types";
 import { getStatusClassName } from "@/helpers/getStatusClassName";
 import { fmtDuration } from "@/helpers/fmtDuration";
 import { relativeDate } from "@/helpers/relativeDate";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 
 Modal.setAppElement("body");
 
@@ -20,6 +21,7 @@ type Props = {
 
 export default function TicketModal({ isOpen, onClose, issue }: Props) {
   const { locale, t } = useI18n();
+  useBodyScrollLock(isOpen);
   const [detailIssue, setDetailIssue] = React.useState<NormalizedIssue | null>(
     issue
   );
@@ -72,8 +74,6 @@ export default function TicketModal({ isOpen, onClose, issue }: Props) {
       onRequestClose={onClose}
       className="ticket-modal"
       overlayClassName="ticket-modal__overlay"
-      bodyOpenClassName="ticket-modal__body--open"
-      htmlOpenClassName="ticket-modal__html--open"
     >
       {detailIssue && (
         <>

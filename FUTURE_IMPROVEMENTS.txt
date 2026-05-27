@@ -162,6 +162,8 @@ Useful Reminders
 - Cost-section search depends on:
   app/api/jira/search/route.ts
   lib/jira.ts
+- Shared modal scroll locking now goes through:
+  hooks/useBodyScrollLock.ts
 - If maintenance email delivery fails again, check:
   RESEND_API_KEY
   RESEND_FROM

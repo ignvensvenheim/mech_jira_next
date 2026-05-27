@@ -11,6 +11,7 @@ import { getCurrentLocalDateOnly } from "@/lib/dateOnly";
 import { normalizeIssue } from "@/lib/normalizeIssue";
 import { getStatusClassName } from "@/helpers/getStatusClassName";
 import { relativeDate } from "@/helpers/relativeDate";
+import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import "./adminTicketModal.css";
 
 Modal.setAppElement("body");
@@ -81,6 +82,7 @@ export default function AdminTicketModal({
   onDataChanged,
 }: Props) {
   const { locale, t } = useI18n();
+  useBodyScrollLock(isOpen);
   const [detailIssue, setDetailIssue] = React.useState<NormalizedIssue | null>(issue);
   const [loadingDetail, setLoadingDetail] = React.useState(false);
   const [loadingAdminData, setLoadingAdminData] = React.useState(false);
@@ -444,8 +446,6 @@ export default function AdminTicketModal({
       onRequestClose={onClose}
       className="ticket-modal admin-ticket-modal"
       overlayClassName="ticket-modal__overlay"
-      bodyOpenClassName="ticket-modal__body--open"
-      htmlOpenClassName="ticket-modal__html--open"
     >
       <div className="ticket-modal__header">
         <div className="ticket-modal__title-wrap">
