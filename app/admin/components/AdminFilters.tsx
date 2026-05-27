@@ -8,6 +8,7 @@ type AdminFiltersProps = {
   subCategory: string;
   dateFrom: string;
   dateTo: string;
+  searchText?: string;
   subCategoryOptions: string[];
   activeDatePreset: DatePreset;
   resetDisabled: boolean;
@@ -15,6 +16,7 @@ type AdminFiltersProps = {
   onSubCategoryChange: (value: string) => void;
   onDateFromChange: (value: string) => void;
   onDateToChange: (value: string) => void;
+  onSearchChange?: (value: string) => void;
   onApplyAllTickets: () => void;
   onApplyLastSevenDays: () => void;
   onApplyThisMonth: () => void;
@@ -30,6 +32,7 @@ export default function AdminFilters({
   subCategory,
   dateFrom,
   dateTo,
+  searchText = "",
   subCategoryOptions,
   activeDatePreset,
   resetDisabled,
@@ -37,6 +40,7 @@ export default function AdminFilters({
   onSubCategoryChange,
   onDateFromChange,
   onDateToChange,
+  onSearchChange,
   onApplyAllTickets,
   onApplyLastSevenDays,
   onApplyThisMonth,
@@ -48,6 +52,19 @@ export default function AdminFilters({
 }: AdminFiltersProps) {
   return (
     <div className={`admin-filters ${className}`.trim()}>
+      {onSearchChange ? (
+        <label className="admin-filter admin-filter--search">
+          <div className="admin-label">{t("home.search")}</div>
+          <input
+            type="search"
+            className="admin-input"
+            value={searchText}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder={t("home.searchPlaceholder")}
+          />
+        </label>
+      ) : null}
+
       <label className="admin-filter">
         <div className="admin-label">{t("home.category")}</div>
         <select

@@ -61,6 +61,8 @@ function AdminPageContent() {
     setCostsDateFrom,
     costsDateTo,
     setCostsDateTo,
+    costsSearchText,
+    setCostsSearchText,
     statisticsDateFrom,
     setStatisticsDateFrom,
     statisticsDateTo,
@@ -101,6 +103,27 @@ function AdminPageContent() {
       return matchCategory && matchSub && matchDate;
     });
   }, [allIssues, viewCategory, viewDateFrom, viewDateTo, viewSubCategory]);
+  const costsFilteredIssues = useMemo(() => {
+    const query = costsSearchText.trim().toLowerCase();
+    if (!query) return filteredIssues;
+
+    return filteredIssues.filter((issue) => {
+      const { category, subcategory } = getIssueCategoryAndSubcategory(issue);
+      const searchSource = [
+        issue.key,
+        category,
+        subcategory,
+        issue.descriptionText ?? "",
+        issue.summary,
+        issue.creator?.name ?? "",
+        issue.reporter?.name ?? "",
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return searchSource.includes(query);
+    });
+  }, [costsSearchText, filteredIssues]);
 
   const assetData = useAdminAssetData({
     sessionResolved,
@@ -439,15 +462,16 @@ function AdminPageContent() {
     () => [...filteredIssues].sort((a, b) => (b.timeSpentSeconds ?? 0) - (a.timeSpentSeconds ?? 0)).slice(0, 5),
     [filteredIssues]
   );
-  const costsTotalPages = Math.max(1, Math.ceil(filteredIssues.length / ticketsPerPage));
+  const costsResultCount = costsFilteredIssues.length;
+  const costsTotalPages = Math.max(1, Math.ceil(costsResultCount / ticketsPerPage));
   const costsPaginationItems = useMemo<Array<number | string>>(() => {
     if (costsTotalPages <= 6) return Array.from({ length: costsTotalPages }, (_, i) => i + 1);
     return [1, 2, 3, 4, 5, "ellipsis", costsTotalPages];
   }, [costsTotalPages]);
   const paginatedCostsIssues = useMemo(() => {
     const start = (costsCurrentPage - 1) * ticketsPerPage;
-    return filteredIssues.slice(start, start + ticketsPerPage);
-  }, [costsCurrentPage, filteredIssues]);
+    return costsFilteredIssues.slice(start, start + ticketsPerPage);
+  }, [costsCurrentPage, costsFilteredIssues]);
 
   useEffect(() => {
     if (costsCurrentPage > costsTotalPages) {
@@ -493,6 +517,7 @@ function AdminPageContent() {
                   costsSubCategory={costsSubCategory}
                   costsDateFrom={costsDateFrom}
                   costsDateTo={costsDateTo}
+                  costsSearchText={costsSearchText}
                   costsSubCategoryOptions={costsSubCategoryOptions}
                   costsActiveDatePreset={costsActiveDatePreset}
                   ticketsLoading={ticketsLoading}
@@ -517,10 +542,8 @@ function AdminPageContent() {
                   editAmount={editAmount}
                   editComment={editComment}
                   ticketCostsLoading={ticketCostsLoading}
-                  filteredIssues={filteredIssues}
+                  filteredIssues={costsFilteredIssues}
                   paginatedCostsIssues={paginatedCostsIssues}
-                  ticketDrafts={ticketDrafts}
-                  savingTicketKey={savingTicketKey}
                   costsTotalPages={costsTotalPages}
                   costsCurrentPage={costsCurrentPage}
                   costsPaginationItems={costsPaginationItems}
@@ -528,6 +551,7 @@ function AdminPageContent() {
                   onSubCategoryChange={setCostsSubCategory}
                   onDateFromChange={setCostsDateFrom}
                   onDateToChange={setCostsDateTo}
+                  onSearchChange={setCostsSearchText}
                   onApplyAllTickets={applyAllTickets}
                   onApplyLastSevenDays={applyLastSevenDays}
                   onApplyThisMonth={applyThisMonth}
@@ -550,8 +574,6 @@ function AdminPageContent() {
                   onStartEditManualCostEntry={startEditManualCostEntry}
                   onDeleteManualCostEntry={(entryId) => void deleteManualCostEntry(entryId)}
                   onSetSelectedIssue={setSelectedIssue}
-                  onSetTicketDraftField={setTicketDraftField}
-                  onSaveTicketFixCost={(issueKey) => void saveTicketFixCost(issueKey)}
                   onSetCostsCurrentPage={setCostsCurrentPage}
                 />
               )}

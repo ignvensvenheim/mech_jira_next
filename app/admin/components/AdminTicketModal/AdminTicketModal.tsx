@@ -101,6 +101,7 @@ export default function AdminTicketModal({
   const [editDate, setEditDate] = React.useState("");
   const [editAmount, setEditAmount] = React.useState("");
   const [editComment, setEditComment] = React.useState("");
+  const [showAdditionalAssetCosts, setShowAdditionalAssetCosts] = React.useState(false);
 
   const refreshParent = React.useCallback(() => {
     onDataChanged?.();
@@ -128,6 +129,7 @@ export default function AdminTicketModal({
       setEntryAmount("");
       setEntryComment("");
       setEditingEntryId(null);
+      setShowAdditionalAssetCosts(false);
       setAttachments([]);
 
       try {
@@ -172,6 +174,9 @@ export default function AdminTicketModal({
               const json = await parseJson<MachineDataResponse>(res);
               if (!isCancelled) {
                 setMachineData(json);
+                if ((json.entries?.length ?? 0) > 0) {
+                  setShowAdditionalAssetCosts(true);
+                }
               }
             })
           );
@@ -264,6 +269,8 @@ export default function AdminTicketModal({
   const manualTotal = manualEntries.reduce((sum, entry) => sum + entry.amount, 0);
   const ticketFixCostTotal = ticketCost?.amount ?? 0;
   const overallCostTotal = manualTotal + ticketFixCostTotal;
+  const shouldShowAdditionalAssetCosts =
+    showAdditionalAssetCosts || manualEntries.length > 0 || editingEntryId !== null;
 
   const saveTicketCost = async () => {
     if (!issue?.key || !machineKey || !ticketDate) return;
@@ -437,11 +444,27 @@ export default function AdminTicketModal({
       onRequestClose={onClose}
       className="ticket-modal admin-ticket-modal"
       overlayClassName="ticket-modal__overlay"
+      bodyOpenClassName="ticket-modal__body--open"
+      htmlOpenClassName="ticket-modal__html--open"
     >
       <div className="ticket-modal__header">
         <div className="ticket-modal__title-wrap">
           <p className="ticket-modal__key">{detailIssue.key}</p>
           <h2 className="ticket-modal__title">{detailIssue.summary}</h2>
+          <div className="admin-ticket-modal__header-meta">
+            <div className="admin-ticket-modal__header-meta-item">
+              <span className="detailed-ticket__label">{t("common.created")}</span>
+              <span>{relativeDate(detailIssue.created, locale)}</span>
+            </div>
+            <div className="admin-ticket-modal__header-meta-item">
+              <span className="detailed-ticket__label">{t("common.updated")}</span>
+              <span>{relativeDate(detailIssue.updated || detailIssue.created, locale)}</span>
+            </div>
+            <div className="admin-ticket-modal__header-meta-item">
+              <span className="detailed-ticket__label">{t("common.timeSpent")}</span>
+              <span>{formatMinutes(detailIssue.timeSpentSeconds, locale)}</span>
+            </div>
+          </div>
         </div>
         <div className="ticket-modal__header-actions">
           <span className={getStatusClassName(detailIssue.statusCategory)}>
@@ -480,6 +503,12 @@ export default function AdminTicketModal({
                     </strong>
                   </div>
                   <div className="admin-ticket-modal__summary-card">
+                    <span className="detailed-ticket__label">{t("admin.directTicketCost")}</span>
+                    <strong className="admin-ticket-modal__summary-value">
+                      {formatCurrency(ticketFixCostTotal, locale)}
+                    </strong>
+                  </div>
+                  <div className="admin-ticket-modal__summary-card">
                     <span className="detailed-ticket__label">{t("admin.totalCost")}</span>
                     <strong className="admin-ticket-modal__summary-value">
                       {formatCurrency(overallCostTotal, locale)}
@@ -489,244 +518,250 @@ export default function AdminTicketModal({
 
                 <div className="admin-ticket-modal__panels">
                   <div className="admin-ticket-modal__panel">
-                    <div className="admin-ticket-modal__panel-header">
-                      <div>
-                        <div className="admin-chart-title">{t("admin.ticketFixCost")}</div>
-                        <p className="admin-ticket-modal__panel-copy">
-                          {t("admin.ticketFixCostHelp")}
-                        </p>
+                    <div className="admin-ticket-modal__cost-groups">
+                      <div className="admin-ticket-modal__cost-group">
+                        <div className="admin-ticket-modal__cost-group-header">
+                          <div>
+                            <div className="admin-chart-title">{t("admin.directTicketCost")}</div>
+                            <p className="admin-ticket-modal__panel-copy">
+                              {t("admin.ticketFixCostHelp")}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="admin-ticket-modal__ticket-form">
+                          <label className="admin-ticket-modal__field">
+                            <span className="detailed-ticket__label">{t("common.date")}</span>
+                            <input
+                              type="date"
+                              className="admin-input"
+                              value={ticketDate}
+                              onChange={(e) => setTicketDate(e.target.value)}
+                            />
+                          </label>
+                          <label className="admin-ticket-modal__field">
+                            <span className="detailed-ticket__label">{t("common.amount")}</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className="admin-input"
+                              value={ticketAmount}
+                              onChange={(e) => setTicketAmount(e.target.value)}
+                              placeholder={t("admin.fixCostEur")}
+                            />
+                          </label>
+                          <label className="admin-ticket-modal__field">
+                            <span className="detailed-ticket__label">{t("common.comment")}</span>
+                            <input
+                              type="text"
+                              className="admin-input"
+                              value={ticketComment}
+                              onChange={(e) => setTicketComment(e.target.value)}
+                              placeholder={t("admin.fixCommentOptional")}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            className="admin-reset-button"
+                            onClick={() => {
+                              void saveTicketCost();
+                            }}
+                            disabled={
+                              savingTicketCost ||
+                              !machineKey ||
+                              !ticketDate ||
+                              (ticketAmount.trim() !== "" && Number(ticketAmount) < 0)
+                            }
+                          >
+                            {savingTicketCost ? t("admin.saving") : t("common.save")}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="admin-ticket-modal__ticket-form">
-                      <label className="admin-ticket-modal__field">
-                        <span className="detailed-ticket__label">{t("common.date")}</span>
-                        <input
-                          type="date"
-                          className="admin-input"
-                          value={ticketDate}
-                          onChange={(e) => setTicketDate(e.target.value)}
-                        />
-                      </label>
-                      <label className="admin-ticket-modal__field">
-                        <span className="detailed-ticket__label">{t("common.amount")}</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          className="admin-input"
-                          value={ticketAmount}
-                          onChange={(e) => setTicketAmount(e.target.value)}
-                          placeholder={t("admin.fixCostEur")}
-                        />
-                      </label>
-                      <label className="admin-ticket-modal__field">
-                        <span className="detailed-ticket__label">{t("common.comment")}</span>
-                        <input
-                          type="text"
-                          className="admin-input"
-                          value={ticketComment}
-                          onChange={(e) => setTicketComment(e.target.value)}
-                          placeholder={t("admin.fixCommentOptional")}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className="admin-reset-button"
-                        onClick={() => {
-                          void saveTicketCost();
-                        }}
-                        disabled={
-                          savingTicketCost ||
-                          !machineKey ||
-                          !ticketDate ||
-                          (ticketAmount.trim() !== "" && Number(ticketAmount) < 0)
-                        }
-                      >
-                        {savingTicketCost ? t("admin.saving") : t("common.save")}
-                      </button>
-                    </div>
-                  </div>
 
-                  <div className="admin-ticket-modal__panel">
-                    <div className="admin-ticket-modal__panel-header">
-                      <div>
-                        <div className="admin-chart-title">{t("admin.manualCostEntries")}</div>
-                        <p className="admin-ticket-modal__panel-copy">
-                          {t("admin.manualCostEntriesHelp")}
-                        </p>
+                      <div className="admin-ticket-modal__cost-toggle">
+                        <label className="admin-ticket-modal__checkbox">
+                          <input
+                            type="checkbox"
+                            checked={shouldShowAdditionalAssetCosts}
+                            onChange={(event) =>
+                              setShowAdditionalAssetCosts(event.target.checked)
+                            }
+                          />
+                          <span>{t("admin.addAdditionalAssetCost")}</span>
+                        </label>
                       </div>
-                    </div>
 
-                    <div className="admin-ticket-modal__ticket-form">
-                      <label className="admin-ticket-modal__field">
-                        <span className="detailed-ticket__label">{t("common.date")}</span>
-                        <input
-                          type="date"
-                          className="admin-input"
-                          value={entryDate}
-                          onChange={(e) => setEntryDate(e.target.value)}
-                        />
-                      </label>
-                      <label className="admin-ticket-modal__field">
-                        <span className="detailed-ticket__label">{t("common.amount")}</span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          className="admin-input"
-                          value={entryAmount}
-                          onChange={(e) => setEntryAmount(e.target.value)}
-                          placeholder={t("admin.amountEur")}
-                        />
-                      </label>
-                      <label className="admin-ticket-modal__field">
-                        <span className="detailed-ticket__label">{t("common.comment")}</span>
-                        <input
-                          type="text"
-                          className="admin-input"
-                          value={entryComment}
-                          onChange={(e) => setEntryComment(e.target.value)}
-                          placeholder={t("admin.commentPlaceholder")}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className="admin-reset-button"
-                        onClick={() => {
-                          void addManualEntry();
-                        }}
-                        disabled={
-                          savingEntryId === "new" ||
-                          !machineKey ||
-                          !entryDate ||
-                          !entryComment.trim() ||
-                          Number(entryAmount) <= 0
-                        }
-                      >
-                        {savingEntryId === "new" ? t("admin.saving") : t("admin.addEntry")}
-                      </button>
-                    </div>
-
-                    {manualEntries.length > 0 ? (
-                      <div className="admin-ticket-modal__entries">
-                        {manualEntries.map((entry) =>
-                          editingEntryId === entry.id ? (
-                            <div
-                              key={entry.id}
-                              className="admin-ticket-modal__entry admin-ticket-modal__entry--edit"
-                            >
-                              <label className="admin-ticket-modal__field">
-                                <span className="detailed-ticket__label">{t("common.date")}</span>
-                                <input
-                                  type="date"
-                                  className="admin-input"
-                                  value={editDate}
-                                  onChange={(e) => setEditDate(e.target.value)}
-                                />
-                              </label>
-                              <label className="admin-ticket-modal__field">
-                                <span className="detailed-ticket__label">{t("common.amount")}</span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  className="admin-input"
-                                  value={editAmount}
-                                  onChange={(e) => setEditAmount(e.target.value)}
-                                />
-                              </label>
-                              <label className="admin-ticket-modal__field">
-                                <span className="detailed-ticket__label">{t("common.comment")}</span>
-                                <input
-                                  type="text"
-                                  className="admin-input"
-                                  value={editComment}
-                                  onChange={(e) => setEditComment(e.target.value)}
-                                />
-                              </label>
-                              <div className="admin-manual-actions">
-                                <button
-                                  type="button"
-                                  className="admin-reset-button"
-                                  onClick={() => {
-                                    void saveEditEntry(entry.id);
-                                  }}
-                                  disabled={
-                                    savingEntryId === entry.id ||
-                                    !editDate ||
-                                    !editComment.trim() ||
-                                    Number(editAmount) <= 0
-                                  }
-                                >
-                                  {t("common.save")}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="admin-reset-button"
-                                  onClick={cancelEditEntry}
-                                >
-                                  {t("common.cancel")}
-                                </button>
+                      {shouldShowAdditionalAssetCosts ? (
+                        <div className="admin-ticket-modal__cost-group">
+                          <div className="admin-ticket-modal__cost-group-header">
+                            <div>
+                              <div className="admin-chart-title">
+                                {t("admin.additionalAssetCosts")}
                               </div>
+                              <p className="admin-ticket-modal__panel-copy">
+                                {t("admin.additionalAssetCostsHelp")}
+                              </p>
+                            </div>
+                            <div className="admin-ticket-modal__cost-total">
+                              <span className="detailed-ticket__label">
+                                {t("admin.additionalAssetCostsTotal")}
+                              </span>
+                              <strong>{formatCurrency(manualTotal, locale)}</strong>
+                            </div>
+                          </div>
+
+                          <div className="admin-ticket-modal__ticket-form">
+                            <label className="admin-ticket-modal__field">
+                              <span className="detailed-ticket__label">{t("common.date")}</span>
+                              <input
+                                type="date"
+                                className="admin-input"
+                                value={entryDate}
+                                onChange={(e) => setEntryDate(e.target.value)}
+                              />
+                            </label>
+                            <label className="admin-ticket-modal__field">
+                              <span className="detailed-ticket__label">{t("common.amount")}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                className="admin-input"
+                                value={entryAmount}
+                                onChange={(e) => setEntryAmount(e.target.value)}
+                                placeholder={t("admin.amountEur")}
+                              />
+                            </label>
+                            <label className="admin-ticket-modal__field">
+                              <span className="detailed-ticket__label">{t("common.comment")}</span>
+                              <input
+                                type="text"
+                                className="admin-input"
+                                value={entryComment}
+                                onChange={(e) => setEntryComment(e.target.value)}
+                                placeholder={t("admin.commentPlaceholder")}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              className="admin-reset-button"
+                              onClick={() => {
+                                void addManualEntry();
+                              }}
+                              disabled={
+                                savingEntryId === "new" ||
+                                !machineKey ||
+                                !entryDate ||
+                                !entryComment.trim() ||
+                                Number(entryAmount) <= 0
+                              }
+                            >
+                              {savingEntryId === "new" ? t("admin.saving") : t("admin.addEntry")}
+                            </button>
+                          </div>
+
+                          {manualEntries.length > 0 ? (
+                            <div className="admin-ticket-modal__entries">
+                              {manualEntries.map((entry) =>
+                                editingEntryId === entry.id ? (
+                                  <div
+                                    key={entry.id}
+                                    className="admin-ticket-modal__entry admin-ticket-modal__entry--edit"
+                                  >
+                                    <label className="admin-ticket-modal__field">
+                                      <span className="detailed-ticket__label">{t("common.date")}</span>
+                                      <input
+                                        type="date"
+                                        className="admin-input"
+                                        value={editDate}
+                                        onChange={(e) => setEditDate(e.target.value)}
+                                      />
+                                    </label>
+                                    <label className="admin-ticket-modal__field">
+                                      <span className="detailed-ticket__label">{t("common.amount")}</span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        className="admin-input"
+                                        value={editAmount}
+                                        onChange={(e) => setEditAmount(e.target.value)}
+                                      />
+                                    </label>
+                                    <label className="admin-ticket-modal__field">
+                                      <span className="detailed-ticket__label">{t("common.comment")}</span>
+                                      <input
+                                        type="text"
+                                        className="admin-input"
+                                        value={editComment}
+                                        onChange={(e) => setEditComment(e.target.value)}
+                                      />
+                                    </label>
+                                    <div className="admin-manual-actions">
+                                      <button
+                                        type="button"
+                                        className="admin-reset-button"
+                                        onClick={() => {
+                                          void saveEditEntry(entry.id);
+                                        }}
+                                        disabled={
+                                          savingEntryId === entry.id ||
+                                          !editDate ||
+                                          !editComment.trim() ||
+                                          Number(editAmount) <= 0
+                                        }
+                                      >
+                                        {t("common.save")}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="admin-reset-button"
+                                        onClick={cancelEditEntry}
+                                      >
+                                        {t("common.cancel")}
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div key={entry.id} className="admin-ticket-modal__entry">
+                                    <div className="admin-ticket-modal__entry-main">
+                                      <span className="admin-ticket-modal__entry-amount">
+                                        {formatCurrency(entry.amount, locale)}
+                                      </span>
+                                      <span className="admin-ticket-modal__entry-comment">
+                                        {entry.comment}
+                                      </span>
+                                    </div>
+                                    <span className="admin-ticket-modal__entry-date">{entry.date}</span>
+                                    <div className="admin-manual-actions">
+                                      <button
+                                        type="button"
+                                        className="admin-reset-button"
+                                        onClick={() => startEditEntry(entry)}
+                                      >
+                                        {t("common.edit")}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="admin-reset-button"
+                                        onClick={() => {
+                                          void deleteEntry(entry.id);
+                                        }}
+                                        disabled={savingEntryId === entry.id}
+                                      >
+                                        {t("common.delete")}
+                                      </button>
+                                    </div>
+                                  </div>
+                                )
+                              )}
                             </div>
                           ) : (
-                            <div key={entry.id} className="admin-ticket-modal__entry">
-                              <div className="admin-ticket-modal__entry-main">
-                                <span className="admin-ticket-modal__entry-amount">
-                                  {formatCurrency(entry.amount, locale)}
-                                </span>
-                                <span className="admin-ticket-modal__entry-comment">
-                                  {entry.comment}
-                                </span>
-                              </div>
-                              <span className="admin-ticket-modal__entry-date">{entry.date}</span>
-                              <div className="admin-manual-actions">
-                                <button
-                                  type="button"
-                                  className="admin-reset-button"
-                                  onClick={() => startEditEntry(entry)}
-                                >
-                                  {t("common.edit")}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="admin-reset-button"
-                                  onClick={() => {
-                                    void deleteEntry(entry.id);
-                                  }}
-                                  disabled={savingEntryId === entry.id}
-                                >
-                                  {t("common.delete")}
-                                </button>
-                              </div>
-                            </div>
-                          )
-                        )}
-                      </div>
-                    ) : (
-                      <p className="detailed-ticket__empty">{t("admin.noManualEntriesYet")}</p>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              <section className="detailed-ticket__section detailed-ticket__section--compact">
-                <div className="detailed-ticket__meta-grid">
-                  <div className="detailed-ticket__meta-item">
-                    <span className="detailed-ticket__label">{t("common.created")}</span>
-                    <span>{relativeDate(detailIssue.created, locale)}</span>
-                  </div>
-                  <div className="detailed-ticket__meta-item">
-                    <span className="detailed-ticket__label">{t("common.updated")}</span>
-                    <span>{relativeDate(detailIssue.updated || detailIssue.created, locale)}</span>
-                  </div>
-                  <div className="detailed-ticket__meta-item">
-                    <span className="detailed-ticket__label">{t("common.timeSpent")}</span>
-                    <span>{formatMinutes(detailIssue.timeSpentSeconds, locale)}</span>
-                  </div>
-                  <div className="detailed-ticket__meta-item">
-                    <span className="detailed-ticket__label">{t("common.priority")}</span>
-                    <span>{detailIssue.priority || "-"}</span>
+                            <p className="detailed-ticket__empty">{t("admin.noManualEntriesYet")}</p>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
               </section>

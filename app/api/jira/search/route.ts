@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
     "priority",
     "assignee",
     "reporter",
+    "creator",
     "created",
     "updated",
     "resolved",

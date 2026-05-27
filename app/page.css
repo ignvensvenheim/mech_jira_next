@@ -569,6 +569,10 @@
   min-width: 0;
 }
 
+.admin-filters--costs .admin-filter--search {
+  grid-column: 1 / -1;
+}
+
 .admin-label {
   font-size: 12px;
   color: var(--color-muted);
@@ -1649,9 +1653,17 @@
   cursor: pointer;
 }
 
+
 .admin-ticket-open:hover .admin-ticket-key,
 .admin-ticket-open:hover .admin-ticket-summary {
   text-decoration: underline;
+}
+
+.admin-costs-ticket-list {
+  padding: 0 2px;
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .admin-asset-header {

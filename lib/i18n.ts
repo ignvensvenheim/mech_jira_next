@@ -282,12 +282,14 @@ export const dictionaries = {
       roleAdmin: "Admin",
       newPasswordOptional: "New password (optional)",
       manualEntriesTotal: "Manual entries total",
-      ticketFixCost: "Ticket fix cost",
+      directTicketCost: "Direct ticket cost",
+      addAdditionalAssetCost: "Add additional asset cost",
+      additionalAssetCosts: "Additional asset costs",
+      additionalAssetCostsHelp:
+        "Use these entries for extra machine costs that should still count toward this ticket total.",
+      additionalAssetCostsTotal: "Additional asset costs total",
       totalCost: "Total cost",
-      ticketFixCostHelp:
-        "Add or update the direct repair cost for this ticket.",
-      manualCostEntriesHelp:
-        "Use manual entries for extra costs not covered by worklogs.",
+      ticketFixCostHelp: "Add or update the main repair cost.",
       ticketTimeSpent: "Ticket time spent",
       inventoryDetails: "Inventory Details",
       subcategory: "Subcategory",
@@ -564,12 +566,14 @@ export const dictionaries = {
       roleAdmin: "Administratorius",
       newPasswordOptional: "Naujas slaptažodis (nebūtina)",
       manualEntriesTotal: "Rankinių įrašų suma",
-      ticketFixCost: "Užklausos remonto kaina",
+      directTicketCost: "Tiesioginė užklausos kaina",
+      addAdditionalAssetCost: "Pridėti papildomą įrenginio kaštą",
+      additionalAssetCosts: "Papildomi įrenginio kaštai",
+      additionalAssetCostsHelp:
+        "Naudokite šiuos įrašus papildomiems įrenginio kaštams, kurie vis tiek turi būti įtraukti į šios užklausos sumą.",
+      additionalAssetCostsTotal: "Papildomų įrenginio kaštų suma",
       totalCost: "Bendra kaina",
-      ticketFixCostHelp:
-        "Pridėkite arba atnaujinkite tiesioginę šios užklausos remonto kainą.",
-      manualCostEntriesHelp:
-        "Naudokite rankinius įrašus papildomiems kaštams, kurių nepadengia darbo žurnalai.",
+      ticketFixCostHelp: "Pridėkite arba atnaujinkite pagrindinę remonto kainą.",
       ticketTimeSpent: "Užklausos sugaištas laikas",
       inventoryDetails: "Inventoriaus informacija",
       subcategory: "Subkategorija",

@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { getCurrentLocalDateOnly, getIssueAssetParts } from "../adminShared";
+import { TicketCard } from "@/components/TicketCard/TicketCard";
 import {
   formatCurrency,
   getAdminAssetHref,
   type AdminTranslate,
   type DatePreset,
   type ManualCostEntry,
-  type TicketFixDraft,
 } from "../adminShared";
 import type { NormalizedIssue } from "@/lib/jira";
 import AdminFilters from "./AdminFilters";
@@ -20,6 +19,7 @@ type CostsSectionProps = {
   costsSubCategory: string;
   costsDateFrom: string;
   costsDateTo: string;
+  costsSearchText: string;
   costsSubCategoryOptions: string[];
   costsActiveDatePreset: DatePreset;
   ticketsLoading: boolean;
@@ -46,8 +46,6 @@ type CostsSectionProps = {
   ticketCostsLoading: boolean;
   filteredIssues: NormalizedIssue[];
   paginatedCostsIssues: NormalizedIssue[];
-  ticketDrafts: Record<string, TicketFixDraft>;
-  savingTicketKey: string | null;
   costsTotalPages: number;
   costsCurrentPage: number;
   costsPaginationItems: Array<number | string>;
@@ -55,6 +53,7 @@ type CostsSectionProps = {
   onSubCategoryChange: (value: string) => void;
   onDateFromChange: (value: string) => void;
   onDateToChange: (value: string) => void;
+  onSearchChange: (value: string) => void;
   onApplyAllTickets: () => void;
   onApplyLastSevenDays: () => void;
   onApplyThisMonth: () => void;
@@ -77,12 +76,6 @@ type CostsSectionProps = {
   onStartEditManualCostEntry: (entry: ManualCostEntry) => void;
   onDeleteManualCostEntry: (entryId: string) => void;
   onSetSelectedIssue: (issue: NormalizedIssue) => void;
-  onSetTicketDraftField: (
-    issueKey: string,
-    field: keyof TicketFixDraft,
-    value: string
-  ) => void;
-  onSaveTicketFixCost: (issueKey: string) => void;
   onSetCostsCurrentPage: (value: number | ((prev: number) => number)) => void;
 };
 
@@ -93,6 +86,7 @@ export default function CostsSection({
   costsSubCategory,
   costsDateFrom,
   costsDateTo,
+  costsSearchText,
   costsSubCategoryOptions,
   costsActiveDatePreset,
   ticketsLoading,
@@ -119,8 +113,6 @@ export default function CostsSection({
   ticketCostsLoading,
   filteredIssues,
   paginatedCostsIssues,
-  ticketDrafts,
-  savingTicketKey,
   costsTotalPages,
   costsCurrentPage,
   costsPaginationItems,
@@ -128,6 +120,7 @@ export default function CostsSection({
   onSubCategoryChange,
   onDateFromChange,
   onDateToChange,
+  onSearchChange,
   onApplyAllTickets,
   onApplyLastSevenDays,
   onApplyThisMonth,
@@ -150,8 +143,6 @@ export default function CostsSection({
   onStartEditManualCostEntry,
   onDeleteManualCostEntry,
   onSetSelectedIssue,
-  onSetTicketDraftField,
-  onSaveTicketFixCost,
   onSetCostsCurrentPage,
 }: CostsSectionProps) {
   return (
@@ -161,13 +152,21 @@ export default function CostsSection({
         <p className="admin-subtitle">{t("admin.timeAndCostSubtitle")}</p>
 
         <AdminFilters
+          className="admin-filters--costs"
           category={costsCategory}
           subCategory={costsSubCategory}
           dateFrom={costsDateFrom}
           dateTo={costsDateTo}
+          searchText={costsSearchText}
           subCategoryOptions={costsSubCategoryOptions}
           activeDatePreset={costsActiveDatePreset}
-          resetDisabled={!costsCategory && !costsSubCategory && !costsDateFrom && !costsDateTo}
+          resetDisabled={
+            !costsCategory &&
+            !costsSubCategory &&
+            !costsDateFrom &&
+            !costsDateTo &&
+            !costsSearchText.trim()
+          }
           onCategoryChange={(value) => {
             onCategoryChange(value);
             onSubCategoryChange("");
@@ -175,6 +174,7 @@ export default function CostsSection({
           onSubCategoryChange={onSubCategoryChange}
           onDateFromChange={onDateFromChange}
           onDateToChange={onDateToChange}
+          onSearchChange={onSearchChange}
           onApplyAllTickets={onApplyAllTickets}
           onApplyLastSevenDays={onApplyLastSevenDays}
           onApplyThisMonth={onApplyThisMonth}
@@ -386,70 +386,18 @@ export default function CostsSection({
                   {filteredIssues.length === 0 && (
                     <div className="admin-chart-empty">{t("admin.noTicketsForFilters")}</div>
                   )}
-                  {paginatedCostsIssues.map((issue) => {
-                    const draft = ticketDrafts[issue.key] || {
-                      date: getCurrentLocalDateOnly(),
-                      amount: "",
-                      comment: "",
-                    };
-                    const issueMachineKey = getIssueAssetParts(issue).machineKey;
-
-                    return (
-                      <div key={issue.key} className="admin-ticket-row">
-                        <button
-                          type="button"
-                          className="admin-ticket-open"
-                          onClick={() => onSetSelectedIssue(issue)}
-                        >
-                          <div className="admin-ticket-meta">
-                            <div className="admin-ticket-key">{issue.key}</div>
-                            <div className="admin-ticket-summary">{issue.summary}</div>
-                          </div>
-                        </button>
-                        <input
-                          type="date"
-                          className="admin-input"
-                          value={draft.date}
-                          onChange={(event) =>
-                            onSetTicketDraftField(issue.key, "date", event.target.value)
-                          }
+                  {paginatedCostsIssues.length > 0 && (
+                    <div className="admin-costs-ticket-list">
+                      {paginatedCostsIssues.map((issue) => (
+                        <TicketCard
+                          key={issue.id}
+                          issue={issue}
+                          onOpen={onSetSelectedIssue}
+                          view="list"
                         />
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          className="admin-input"
-                          value={draft.amount}
-                          onChange={(event) =>
-                            onSetTicketDraftField(issue.key, "amount", event.target.value)
-                          }
-                          placeholder={t("admin.fixCostEur")}
-                        />
-                        <input
-                          type="text"
-                          className="admin-input"
-                          value={draft.comment}
-                          onChange={(event) =>
-                            onSetTicketDraftField(issue.key, "comment", event.target.value)
-                          }
-                          placeholder={t("admin.fixCommentOptional")}
-                        />
-                        <button
-                          type="button"
-                          className="admin-reset-button"
-                          onClick={() => onSaveTicketFixCost(issue.key)}
-                          disabled={
-                            savingTicketKey === issue.key ||
-                            !issueMachineKey ||
-                            !draft.date ||
-                            (draft.amount.trim() !== "" && Number(draft.amount) < 0)
-                          }
-                        >
-                          {savingTicketKey === issue.key ? t("admin.saving") : t("common.save")}
-                        </button>
-                      </div>
-                    );
-                  })}
+                      ))}
+                    </div>
+                  )}
                   {costsTotalPages > 1 && (
                     <div className="page__pagination">
                       <button
