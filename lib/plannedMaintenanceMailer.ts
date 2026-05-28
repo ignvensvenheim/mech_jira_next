@@ -13,6 +13,7 @@ type PlannedMaintenanceMailArgs = {
   machineLabel: string;
   title: string;
   dueDate: string;
+  availability: string | null;
   note: string | null;
   createdByLabel: string | null;
   status: "planned" | "inProgress" | "waitingForParts" | "completed" | "cancelled";
@@ -47,9 +48,9 @@ function getMailCopy(
       ? {
           planned: "Suplanuota",
           inProgress: "Vykdoma",
-          waitingForParts: "Laukiama dalių",
+          waitingForParts: "Laukiama daliu",
           completed: "Atlikta",
-          cancelled: "Atšaukta",
+          cancelled: "Atsaukta",
         }
       : {
           planned: "Planned",
@@ -62,31 +63,32 @@ function getMailCopy(
   if (locale === "lt") {
     const subjectPrefix =
       action === "created"
-        ? "Nauja planinė priežiūra"
+        ? "Nauja planine prieziura"
         : action === "updated"
-          ? "Atnaujinta planinė priežiūra"
-          : "Planinės priežiūros priminimas";
+          ? "Atnaujinta planine prieziura"
+          : "Planines prieziuros priminimas";
     return {
       subjectPrefix,
       greeting: "Sveiki,",
       introLine:
         action === "reminder"
-          ? "Primename apie artėjančią planinės priežiūros užduotį."
-          : "Jūs buvote pasirinkti gauti šios planinės priežiūros pranešimus.",
-      summaryLabel: "Planinė priežiūra",
-      detailsLabel: "Priežiūros informacija",
+          ? "Primename apie artejancia planines prieziuros uzduoti."
+          : "Jus buvote pasirinkti gauti sios planines prieziuros pranesimus.",
+      summaryLabel: "Planine prieziura",
+      detailsLabel: "Prieziuros informacija",
       footerLine:
-        "Šis laiškas buvo išsiųstas automatiškai iš priežiūros administravimo skydelio.",
+        "Sis laiskas buvo issiustas automatiskai is prieziuros administravimo skydelio.",
       fieldLabels: {
-        asset: "Įrenginys",
-        title: "Priežiūros pavadinimas",
+        asset: "Irenginys",
+        title: "Prieziuros pavadinimas",
         dueDate: "Atlikti iki",
-        status: "Būsena",
-        note: "Aprašymas",
+        availability: "Laikas",
+        status: "Busena",
+        note: "Aprasymas",
       },
       statusLabel: statusLabels[status],
       textClosing:
-        "Šis laiškas buvo išsiųstas automatiškai iš priežiūros administravimo skydelio.",
+        "Sis laiskas buvo issiustas automatiskai is prieziuros administravimo skydelio.",
     };
   }
 
@@ -111,6 +113,7 @@ function getMailCopy(
       asset: "Asset",
       title: "Maintenance title",
       dueDate: "Due date",
+      availability: "Time",
       status: "Status",
       note: "Description",
     },
@@ -142,7 +145,7 @@ export async function sendPlannedMaintenanceNotificationEmail(
     ("createdBy" in copy.fieldLabels && typeof copy.fieldLabels.createdBy === "string"
       ? copy.fieldLabels.createdBy
       : locale === "lt"
-        ? "Sukūrė"
+        ? "Sukure"
         : "Created by");
   const subject = `${copy.subjectPrefix}: ${args.machineLabel} | ${args.title}`;
   const text = [
@@ -153,6 +156,7 @@ export async function sendPlannedMaintenanceNotificationEmail(
     `${copy.fieldLabels.asset}: ${args.machineLabel}`,
     `${copy.fieldLabels.title}: ${args.title}`,
     `${copy.fieldLabels.dueDate}: ${args.dueDate}`,
+    `${copy.fieldLabels.availability}: ${args.availability?.trim() || "-"}`,
     `${copy.fieldLabels.status}: ${copy.statusLabel}`,
     `${createdByFieldLabel}: ${args.createdByLabel?.trim() || "-"}`,
     `${copy.fieldLabels.note}: ${args.note?.trim() || "-"}`,
@@ -181,6 +185,7 @@ export async function sendPlannedMaintenanceNotificationEmail(
         machineLabel: args.machineLabel,
         title: args.title,
         dueDate: args.dueDate,
+        availability: args.availability,
         statusLabel: copy.statusLabel,
         createdByLabel: args.createdByLabel?.trim() || "-",
         note: args.note,

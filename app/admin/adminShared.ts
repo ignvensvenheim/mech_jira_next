@@ -70,6 +70,8 @@ export type PlannedMaintenanceItem = {
   machineKey: string;
   title: string;
   dueDate: string;
+  availabilityStartTime: string | null;
+  availabilityEndTime: string | null;
   note: string | null;
   cost: number | null;
   jiraIssueId: string | null;
@@ -139,6 +141,12 @@ export type AdminFunction =
   | "statistics";
 
 export type DatePreset = "" | "all" | "last7" | "thisMonth" | "lastMonth" | "last6Months";
+
+function normalizeMaintenanceTimeValue(value: unknown) {
+  return typeof value === "string" && /^\d{2}:\d{2}$/.test(value.trim())
+    ? value.trim()
+    : null;
+}
 
 export function getLocaleTag(locale: string) {
   return locale === "lt" ? "lt-LT" : "en-US";
@@ -443,6 +451,8 @@ export function normalizePlannedMaintenanceItem(
 
   return {
     ...item,
+    availabilityStartTime: normalizeMaintenanceTimeValue(item.availabilityStartTime),
+    availabilityEndTime: normalizeMaintenanceTimeValue(item.availabilityEndTime),
     note: item.note ?? null,
     cost: typeof item.cost === "number" ? item.cost : item.cost === null ? null : null,
     jiraIssueId: item.jiraIssueId ?? null,
@@ -471,6 +481,17 @@ export function normalizePlannedMaintenanceItem(
     completedAt:
       status === "completed" ? item.completedAt ?? item.updatedAt ?? null : null,
   };
+}
+
+export function formatMaintenanceAvailabilityLabel(
+  startTime: string | null,
+  endTime: string | null
+) {
+  if (startTime && endTime) {
+    return `${startTime}-${endTime}`;
+  }
+
+  return startTime || "";
 }
 
 export function getMaintenanceWorkflowStatusLabel(

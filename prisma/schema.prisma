@@ -100,6 +100,8 @@ model PlannedMaintenance {
   machineKey   String
   title        String
   dueDate      DateTime
+  availabilityStartTime String?
+  availabilityEndTime String?
   note         String?
   cost         Float?
   jiraIssueId  String?

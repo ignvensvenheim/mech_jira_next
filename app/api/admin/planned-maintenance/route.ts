@@ -6,11 +6,9 @@ import { requireTrustedOrigin } from "@/lib/requireTrustedOrigin";
 import { ensureAssetExists, isConcreteMachineKey, parseMachineKey } from "@/lib/assets";
 import {
   formatMaintenanceDateTimeForLocale,
-  getDateOnlyFromMaintenanceDateTime,
   parseMaintenanceDateTime,
 } from "@/lib/dateOnly";
 import {
-  createJiraMaintenanceIssue,
   getExistingJiraIssueKeys,
 } from "@/lib/jiraServer";
 import { sendPlannedMaintenanceNotificationEmail } from "@/lib/plannedMaintenanceMailer";
@@ -24,6 +22,8 @@ type PlannedMaintenanceRow = {
   machineKey: string;
   title: string;
   dueDate: Date;
+  availabilityStartTime: string | null;
+  availabilityEndTime: string | null;
   note: string | null;
   cost: number | null;
   jiraIssueId: string | null;
@@ -68,10 +68,22 @@ function serializePlannedMaintenance(item: PlannedMaintenanceRow) {
         }
       : null,
     status,
+    availabilityStartTime: normalizeMaintenanceTimeValue(item.availabilityStartTime),
+    availabilityEndTime: normalizeMaintenanceTimeValue(item.availabilityEndTime),
     isCompleted: status === "completed",
     completedAt: status === "completed" ? item.completedAt : null,
     dueDate: item.dueDate.toISOString(),
   };
+}
+
+function normalizeMaintenanceTimeValue(value: unknown) {
+  return typeof value === "string" && /^\d{2}:\d{2}$/.test(value.trim())
+    ? value.trim()
+    : null;
+}
+
+function isValidMaintenanceTimeValue(value: string | null) {
+  return value === null || /^\d{2}:\d{2}$/.test(value);
 }
 
 function getMaintenanceStatusLabel(status: string) {
@@ -114,6 +126,17 @@ function formatMachineLabel(machineKey: string) {
   return machineKey;
 }
 
+function formatAvailabilityLabel(
+  startTime: string | null,
+  endTime: string | null
+) {
+  if (startTime && endTime) {
+    return `${startTime}-${endTime}`;
+  }
+
+  return startTime || null;
+}
+
 async function hasCostColumn() {
   const rows = await prisma.$queryRaw<Array<{ exists: boolean }>>`
     SELECT EXISTS (
@@ -125,6 +148,34 @@ async function hasCostColumn() {
   `;
 
   return rows[0]?.exists ?? false;
+}
+
+async function hasAvailabilityColumns() {
+  const rows = await prisma.$queryRaw<
+    Array<{
+      availabilityStartTime: boolean;
+      availabilityEndTime: boolean;
+    }>
+  >`
+    SELECT
+      EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'PlannedMaintenance'
+          AND column_name = 'availabilityStartTime'
+      ) AS "availabilityStartTime",
+      EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'PlannedMaintenance'
+          AND column_name = 'availabilityEndTime'
+      ) AS "availabilityEndTime"
+  `;
+
+  return rows[0] ?? {
+    availabilityStartTime: false,
+    availabilityEndTime: false,
+  };
 }
 
 async function hasJiraLinkColumns() {
@@ -204,6 +255,7 @@ async function hasCreatedByColumn() {
 
 function selectSql(
   withCost: boolean,
+  withAvailability: boolean,
   withJiraLink: boolean,
   withStatus: boolean,
   withNotificationRecipients: boolean,
@@ -216,6 +268,7 @@ function selectSql(
           pm."machineKey",
           pm."title",
           pm."dueDate",
+          ${withAvailability ? Prisma.sql`pm."availabilityStartTime", pm."availabilityEndTime",` : Prisma.sql`NULL::TEXT AS "availabilityStartTime", NULL::TEXT AS "availabilityEndTime",`}
           pm."note",
           pm."cost",
           ${withJiraLink ? Prisma.sql`pm."jiraIssueId", pm."jiraIssueKey", pm."jiraIssueUrl",` : Prisma.sql`NULL::TEXT AS "jiraIssueId", NULL::TEXT AS "jiraIssueKey", NULL::TEXT AS "jiraIssueUrl",`}
@@ -239,6 +292,7 @@ function selectSql(
           pm."machineKey",
           pm."title",
           pm."dueDate",
+          ${withAvailability ? Prisma.sql`pm."availabilityStartTime", pm."availabilityEndTime",` : Prisma.sql`NULL::TEXT AS "availabilityStartTime", NULL::TEXT AS "availabilityEndTime",`}
           pm."note",
           NULL::DOUBLE PRECISION AS "cost",
           ${withJiraLink ? Prisma.sql`pm."jiraIssueId", pm."jiraIssueKey", pm."jiraIssueUrl",` : Prisma.sql`NULL::TEXT AS "jiraIssueId", NULL::TEXT AS "jiraIssueKey", NULL::TEXT AS "jiraIssueUrl",`}
@@ -290,13 +344,17 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [withCost, jiraLinkColumns, withStatus, withNotificationRecipients, withCreatedBy] = await Promise.all([
+  const [withCost, availabilityColumns, jiraLinkColumns, withStatus, withNotificationRecipients, withCreatedBy] = await Promise.all([
     hasCostColumn(),
+    hasAvailabilityColumns(),
     hasJiraLinkColumns(),
     hasStatusColumn(),
     hasNotificationRecipientsColumn(),
     hasCreatedByColumn(),
   ]);
+  const withAvailability =
+    availabilityColumns.availabilityStartTime &&
+    availabilityColumns.availabilityEndTime;
   const withJiraLink =
     jiraLinkColumns.jiraIssueId &&
     jiraLinkColumns.jiraIssueKey &&
@@ -304,6 +362,7 @@ export async function GET() {
   const items = await prisma.$queryRaw<PlannedMaintenanceRow[]>(
     Prisma.sql`${selectSql(
       withCost,
+      withAvailability,
       withJiraLink,
       withStatus,
       withNotificationRecipients,
@@ -344,6 +403,10 @@ export async function POST(req: Request) {
   const machineKey = String(body?.machineKey || "").trim();
   const title = String(body?.title || "").trim();
   const dueDate = String(body?.dueDate || "").trim();
+  const availabilityStartTime = normalizeMaintenanceTimeValue(
+    body?.availabilityStartTime
+  );
+  const availabilityEndTime = normalizeMaintenanceTimeValue(body?.availabilityEndTime);
   const note = String(body?.note || "").trim();
   const notificationRecipients = normalizePlannedMaintenanceRecipients(
     body?.notificationRecipients
@@ -380,469 +443,80 @@ export async function POST(req: Request) {
   if (cost !== null && (!Number.isFinite(cost) || cost < 0)) {
     return NextResponse.json({ error: "cost must be >= 0" }, { status: 400 });
   }
+  if (
+    !isValidMaintenanceTimeValue(availabilityStartTime) ||
+    !isValidMaintenanceTimeValue(availabilityEndTime)
+  ) {
+    return NextResponse.json(
+      { error: "availability times are invalid" },
+      { status: 400 }
+    );
+  }
+  if (availabilityEndTime && !availabilityStartTime) {
+    return NextResponse.json(
+      { error: "availability end time requires a start time" },
+      { status: 400 }
+    );
+  }
+  if (
+    availabilityStartTime &&
+    availabilityEndTime &&
+    availabilityEndTime < availabilityStartTime
+  ) {
+    return NextResponse.json(
+      { error: "availability end time must be after start time" },
+      { status: 400 }
+    );
+  }
 
   try {
     await ensureAssetExists(prisma, machineKey, session.user.id);
-    const jiraIssue = await createJiraMaintenanceIssue({
-      machineKey,
-      title,
-      dueDate: getDateOnlyFromMaintenanceDateTime(dueDate),
-      note: note || null,
-      cost,
-      status,
+    const created = await prisma.plannedMaintenance.create({
+      data: {
+        id: crypto.randomUUID(),
+        machineKey,
+        title,
+        dueDate: parsedDueDate,
+        availabilityStartTime,
+        availabilityEndTime,
+        note: note || null,
+        cost,
+        jiraIssueId: null,
+        jiraIssueKey: null,
+        jiraIssueUrl: null,
+        notificationRecipientsJson,
+        status,
+        isCompleted,
+        completedAt,
+        createdById: session.user.id,
+      },
+      select: {
+        id: true,
+        machineKey: true,
+        title: true,
+        dueDate: true,
+        availabilityStartTime: true,
+        availabilityEndTime: true,
+        note: true,
+        cost: true,
+        jiraIssueId: true,
+        jiraIssueKey: true,
+        jiraIssueUrl: true,
+        notificationRecipientsJson: true,
+        status: true,
+        isCompleted: true,
+        completedAt: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
-    const [jiraLinkColumns, withStatus, withNotificationRecipients, withCreatedBy] = await Promise.all([
-      hasJiraLinkColumns(),
-      hasStatusColumn(),
-      hasNotificationRecipientsColumn(),
-      hasCreatedByColumn(),
-    ]);
-    const withJiraLink =
-      jiraLinkColumns.jiraIssueId &&
-      jiraLinkColumns.jiraIssueKey &&
-      jiraLinkColumns.jiraIssueUrl;
-    const withCost = await hasCostColumn();
-
-    const rows = await prisma.$queryRaw<PlannedMaintenanceRow[]>(
-      withCost && withJiraLink && withStatus && withNotificationRecipients
-        ? Prisma.sql`
-            INSERT INTO "PlannedMaintenance" (
-              "id",
-              "machineKey",
-              "title",
-              "dueDate",
-              "note",
-              "cost",
-              "jiraIssueId",
-              "jiraIssueKey",
-              "jiraIssueUrl",
-              "notificationRecipientsJson",
-              "status",
-              "isCompleted",
-              "completedAt",
-              "createdAt",
-              "updatedAt"
-            )
-            VALUES (
-              ${crypto.randomUUID()},
-              ${machineKey},
-              ${title},
-              ${parsedDueDate},
-              ${note || null},
-              ${cost},
-              ${jiraIssue.id || null},
-              ${jiraIssue.key},
-              ${jiraIssue.browseUrl},
-              ${notificationRecipientsJson},
-              ${status}::"MaintenanceWorkflowStatus",
-              ${isCompleted},
-              ${completedAt},
-              NOW(),
-              NOW()
-            )
-            RETURNING
-              "id",
-              "machineKey",
-              "title",
-              "dueDate",
-              "note",
-              "cost",
-              "jiraIssueId",
-              "jiraIssueKey",
-              "jiraIssueUrl",
-              "notificationRecipientsJson",
-              "status",
-              "isCompleted",
-              "completedAt",
-              "createdAt",
-              "updatedAt"
-          `
-        : withCost && withJiraLink && withNotificationRecipients
-          ? Prisma.sql`
-              INSERT INTO "PlannedMaintenance" (
-                "id",
-                "machineKey",
-                "title",
-                "dueDate",
-                "note",
-                "cost",
-                "jiraIssueId",
-                "jiraIssueKey",
-                "jiraIssueUrl",
-                "notificationRecipientsJson",
-                "isCompleted",
-                "completedAt",
-                "createdAt",
-                "updatedAt"
-              )
-              VALUES (
-                ${crypto.randomUUID()},
-                ${machineKey},
-                ${title},
-                ${parsedDueDate},
-                ${note || null},
-                ${cost},
-                ${jiraIssue.id || null},
-                ${jiraIssue.key},
-                ${jiraIssue.browseUrl},
-                ${notificationRecipientsJson},
-                ${isCompleted},
-                ${completedAt},
-                NOW(),
-                NOW()
-              )
-              RETURNING
-                "id",
-                "machineKey",
-                "title",
-                "dueDate",
-                "note",
-                "cost",
-                "jiraIssueId",
-                "jiraIssueKey",
-                "jiraIssueUrl",
-                "notificationRecipientsJson",
-                NULL::TEXT AS "status",
-                "isCompleted",
-                "completedAt",
-                "createdAt",
-                "updatedAt"
-            `
-        : withCost && withStatus && withNotificationRecipients
-          ? Prisma.sql`
-              INSERT INTO "PlannedMaintenance" (
-                "id",
-                "machineKey",
-                "title",
-                "dueDate",
-                "note",
-                "cost",
-                "notificationRecipientsJson",
-                "status",
-                "isCompleted",
-                "completedAt",
-                "createdAt",
-                "updatedAt"
-              )
-              VALUES (
-                ${crypto.randomUUID()},
-                ${machineKey},
-                ${title},
-                ${parsedDueDate},
-                ${note || null},
-                ${cost},
-                ${notificationRecipientsJson},
-                ${status}::"MaintenanceWorkflowStatus",
-                ${isCompleted},
-                ${completedAt},
-                NOW(),
-                NOW()
-              )
-              RETURNING
-                "id",
-                "machineKey",
-                "title",
-                "dueDate",
-                "note",
-                "cost",
-                NULL::TEXT AS "jiraIssueId",
-                NULL::TEXT AS "jiraIssueKey",
-                NULL::TEXT AS "jiraIssueUrl",
-                "notificationRecipientsJson",
-                "status",
-                "isCompleted",
-                "completedAt",
-                "createdAt",
-                "updatedAt"
-            `
-          : withCost && withNotificationRecipients
-            ? Prisma.sql`
-                INSERT INTO "PlannedMaintenance" (
-                  "id",
-                  "machineKey",
-                  "title",
-                  "dueDate",
-                  "note",
-                  "cost",
-                  "notificationRecipientsJson",
-                  "isCompleted",
-                  "completedAt",
-                  "createdAt",
-                  "updatedAt"
-                )
-                VALUES (
-                  ${crypto.randomUUID()},
-                  ${machineKey},
-                  ${title},
-                  ${parsedDueDate},
-                  ${note || null},
-                  ${cost},
-                  ${notificationRecipientsJson},
-                  ${isCompleted},
-                  ${completedAt},
-                  NOW(),
-                  NOW()
-                )
-                RETURNING
-                  "id",
-                  "machineKey",
-                  "title",
-                  "dueDate",
-                  "note",
-                  "cost",
-                  NULL::TEXT AS "jiraIssueId",
-                  NULL::TEXT AS "jiraIssueKey",
-                  NULL::TEXT AS "jiraIssueUrl",
-                  "notificationRecipientsJson",
-                  NULL::TEXT AS "status",
-                  "isCompleted",
-                  "completedAt",
-                  "createdAt",
-                  "updatedAt"
-              `
-          : withJiraLink && withStatus && withNotificationRecipients
-            ? Prisma.sql`
-                INSERT INTO "PlannedMaintenance" (
-                  "id",
-                  "machineKey",
-                  "title",
-                  "dueDate",
-                  "note",
-                  "jiraIssueId",
-                  "jiraIssueKey",
-                  "jiraIssueUrl",
-                  "notificationRecipientsJson",
-                  "status",
-                  "isCompleted",
-                  "completedAt",
-                  "createdAt",
-                  "updatedAt"
-                )
-                VALUES (
-                  ${crypto.randomUUID()},
-                  ${machineKey},
-                  ${title},
-                  ${parsedDueDate},
-                  ${note || null},
-                  ${jiraIssue.id || null},
-                  ${jiraIssue.key},
-                  ${jiraIssue.browseUrl},
-                  ${notificationRecipientsJson},
-                  ${status}::"MaintenanceWorkflowStatus",
-                  ${isCompleted},
-                  ${completedAt},
-                  NOW(),
-                  NOW()
-                )
-                RETURNING
-                  "id",
-                  "machineKey",
-                  "title",
-                  "dueDate",
-                  "note",
-                  NULL::DOUBLE PRECISION AS "cost",
-                  "jiraIssueId",
-                  "jiraIssueKey",
-                  "jiraIssueUrl",
-                  "notificationRecipientsJson",
-                  "status",
-                  "isCompleted",
-                  "completedAt",
-                  "createdAt",
-                  "updatedAt"
-              `
-            : withJiraLink && withNotificationRecipients
-              ? Prisma.sql`
-                  INSERT INTO "PlannedMaintenance" (
-                    "id",
-                    "machineKey",
-                    "title",
-                    "dueDate",
-                    "note",
-                    "jiraIssueId",
-                    "jiraIssueKey",
-                    "jiraIssueUrl",
-                    "notificationRecipientsJson",
-                    "isCompleted",
-                    "completedAt",
-                    "createdAt",
-                    "updatedAt"
-                  )
-                  VALUES (
-                    ${crypto.randomUUID()},
-                    ${machineKey},
-                    ${title},
-                    ${parsedDueDate},
-                    ${note || null},
-                    ${jiraIssue.id || null},
-                    ${jiraIssue.key},
-                    ${jiraIssue.browseUrl},
-                    ${notificationRecipientsJson},
-                    ${isCompleted},
-                    ${completedAt},
-                    NOW(),
-                    NOW()
-                  )
-                  RETURNING
-                    "id",
-                    "machineKey",
-                    "title",
-                    "dueDate",
-                    "note",
-                    NULL::DOUBLE PRECISION AS "cost",
-                    "jiraIssueId",
-                    "jiraIssueKey",
-                    "jiraIssueUrl",
-                    "notificationRecipientsJson",
-                    NULL::TEXT AS "status",
-                    "isCompleted",
-                    "completedAt",
-                    "createdAt",
-                    "updatedAt"
-                `
-            : withStatus && withNotificationRecipients
-              ? Prisma.sql`
-                  INSERT INTO "PlannedMaintenance" (
-                    "id",
-                    "machineKey",
-                    "title",
-                    "dueDate",
-                    "note",
-                    "notificationRecipientsJson",
-                    "status",
-                    "isCompleted",
-                    "completedAt",
-                    "createdAt",
-                    "updatedAt"
-                  )
-                  VALUES (
-                    ${crypto.randomUUID()},
-                    ${machineKey},
-                    ${title},
-                    ${parsedDueDate},
-                    ${note || null},
-                    ${notificationRecipientsJson},
-                    ${status}::"MaintenanceWorkflowStatus",
-                    ${isCompleted},
-                    ${completedAt},
-                    NOW(),
-                    NOW()
-                  )
-                  RETURNING
-                    "id",
-                    "machineKey",
-                    "title",
-                    "dueDate",
-                    "note",
-                    NULL::DOUBLE PRECISION AS "cost",
-                    NULL::TEXT AS "jiraIssueId",
-                    NULL::TEXT AS "jiraIssueKey",
-                    NULL::TEXT AS "jiraIssueUrl",
-                    "notificationRecipientsJson",
-                    "status",
-                    "isCompleted",
-                    "completedAt",
-                    "createdAt",
-                    "updatedAt"
-                `
-            : withNotificationRecipients
-              ? Prisma.sql`
-                  INSERT INTO "PlannedMaintenance" (
-                    "id",
-                    "machineKey",
-                    "title",
-                    "dueDate",
-                    "note",
-                    "notificationRecipientsJson",
-                    "isCompleted",
-                    "completedAt",
-                    "createdAt",
-                    "updatedAt"
-                  )
-                  VALUES (
-                    ${crypto.randomUUID()},
-                    ${machineKey},
-                    ${title},
-                    ${parsedDueDate},
-                    ${note || null},
-                    ${notificationRecipientsJson},
-                    ${isCompleted},
-                    ${completedAt},
-                    NOW(),
-                    NOW()
-                  )
-                  RETURNING
-                    "id",
-                    "machineKey",
-                    "title",
-                    "dueDate",
-                    "note",
-                    NULL::DOUBLE PRECISION AS "cost",
-                    NULL::TEXT AS "jiraIssueId",
-                    NULL::TEXT AS "jiraIssueKey",
-                    NULL::TEXT AS "jiraIssueUrl",
-                    "notificationRecipientsJson",
-                    NULL::TEXT AS "status",
-                    "isCompleted",
-                    "completedAt",
-                    "createdAt",
-                    "updatedAt"
-                `
-              : Prisma.sql`
-                  INSERT INTO "PlannedMaintenance" (
-                    "id",
-                    "machineKey",
-                    "title",
-                    "dueDate",
-                    "note",
-                    "isCompleted",
-                    "completedAt",
-                    "createdAt",
-                    "updatedAt"
-                  )
-                  VALUES (
-                    ${crypto.randomUUID()},
-                    ${machineKey},
-                    ${title},
-                    ${parsedDueDate},
-                    ${note || null},
-                    ${isCompleted},
-                    ${completedAt},
-                    NOW(),
-                    NOW()
-                  )
-                  RETURNING
-                    "id",
-                    "machineKey",
-                    "title",
-                    "dueDate",
-                    "note",
-                    NULL::DOUBLE PRECISION AS "cost",
-                    NULL::TEXT AS "jiraIssueId",
-                    NULL::TEXT AS "jiraIssueKey",
-                    NULL::TEXT AS "jiraIssueUrl",
-                    NULL::TEXT AS "status",
-                    "isCompleted",
-                    "completedAt",
-                    "createdAt",
-                    "updatedAt"
-              `
-    );
 
     const serialized = serializePlannedMaintenance({
-      ...rows[0],
-      createdById: withCreatedBy ? session.user.id : null,
-      createdByName: withCreatedBy ? session.user.name ?? null : null,
-      createdByEmail: withCreatedBy ? session.user.email ?? null : null,
+      ...created,
+      createdById: session.user.id,
+      createdByName: session.user.name ?? null,
+      createdByEmail: session.user.email ?? null,
     });
-
-    if (withCreatedBy) {
-      await prisma.$executeRaw`
-        UPDATE "PlannedMaintenance"
-        SET "createdById" = ${session.user.id}
-        WHERE "id" = ${rows[0].id}
-      `;
-    }
     const { sent, warning } = await sendPlannedMaintenanceNotificationEmail({
       recipients: serialized.notificationRecipients,
       machineLabel: formatMachineLabel(machineKey),
@@ -850,6 +524,10 @@ export async function POST(req: Request) {
       dueDate: formatMaintenanceDateTimeForLocale(
         serialized.dueDate,
         locale === "lt" ? "lt-LT" : "en-US"
+      ),
+      availability: formatAvailabilityLabel(
+        serialized.availabilityStartTime,
+        serialized.availabilityEndTime
       ),
       note: note || null,
       createdByLabel: serialized.createdBy?.name || serialized.createdBy?.email || null,
@@ -871,12 +549,12 @@ export async function POST(req: Request) {
       ...(warning ? { notificationWarning: warning } : {}),
     });
   } catch (error) {
-    console.error("Failed to create Jira maintenance issue", error);
+    console.error("Failed to create maintenance item", error);
     return NextResponse.json(
       {
-        error: "Failed to create maintenance issue",
+        error: "Failed to create maintenance item",
       },
-      { status: 502 }
+      { status: 500 }
     );
   }
 }

@@ -5,14 +5,11 @@ import { useBodyScrollLock } from "@/hooks/useBodyScrollLock";
 import { PLANNED_MAINTENANCE_RECIPIENTS } from "@/lib/plannedMaintenanceRecipients";
 import {
   formatCurrency,
+  formatMaintenanceAvailabilityLabel,
   formatDateTimeForLocale,
   getCurrentLocalDateOnly,
-  getMaintenanceDueLabel,
-  getMaintenanceItemStatus,
-  getMaintenanceWorkflowStatusLabel,
   type AdminTranslate,
   type MaintenanceLogEntry,
-  type MaintenanceStatus,
   type MaintenanceWorkflowStatus,
   type MachineDirectoryItem,
   type PlannedMaintenanceRecipient,
@@ -45,17 +42,17 @@ type MaintenanceSectionProps = {
   isMaintenanceModalOpen: boolean;
   isMaintenanceEditing: boolean;
   activeMaintenanceItem: PlannedMaintenanceItem | null;
-  activeMaintenanceStatus: MaintenanceStatus | null;
   currentUserLabel: string;
   machineDirectory: MachineDirectoryItem[];
   machineLabelByKey: Record<string, string>;
   maintenanceMachineKey: string;
   maintenanceTitle: string;
   maintenanceDueDate: string;
+  maintenanceAvailabilityStartTime: string;
+  maintenanceAvailabilityEndTime: string;
   maintenanceCost: string;
   maintenanceNote: string;
   maintenanceNotificationRecipients: PlannedMaintenanceRecipient[];
-  maintenanceStatus: MaintenanceWorkflowStatus;
   selectedMaintenanceDateLabel: string;
   maintenanceActionKey: string | null;
   onPreviousMonth: () => void;
@@ -67,10 +64,11 @@ type MaintenanceSectionProps = {
   onMaintenanceMachineKeyChange: (value: string) => void;
   onMaintenanceTitleChange: (value: string) => void;
   onMaintenanceDueDateChange: (value: string) => void;
+  onMaintenanceAvailabilityStartTimeChange: (value: string) => void;
+  onMaintenanceAvailabilityEndTimeChange: (value: string) => void;
   onMaintenanceCostChange: (value: string) => void;
   onMaintenanceNoteChange: (value: string) => void;
   onMaintenanceNotificationRecipientsChange: (value: PlannedMaintenanceRecipient[]) => void;
-  onMaintenanceStatusChange: (value: MaintenanceWorkflowStatus) => void;
   onSavePlannedMaintenance: () => void;
   onUpdatePlannedMaintenanceStatus: (id: string, status: MaintenanceWorkflowStatus) => void;
   onSendPlannedMaintenanceReminder: (id: string) => void;
@@ -94,17 +92,17 @@ export default function MaintenanceSection({
   isMaintenanceModalOpen,
   isMaintenanceEditing,
   activeMaintenanceItem,
-  activeMaintenanceStatus,
   currentUserLabel,
   machineDirectory,
   machineLabelByKey,
   maintenanceMachineKey,
   maintenanceTitle,
   maintenanceDueDate,
+  maintenanceAvailabilityStartTime,
+  maintenanceAvailabilityEndTime,
   maintenanceCost,
   maintenanceNote,
   maintenanceNotificationRecipients,
-  maintenanceStatus,
   selectedMaintenanceDateLabel,
   maintenanceActionKey,
   onPreviousMonth,
@@ -116,18 +114,17 @@ export default function MaintenanceSection({
   onMaintenanceMachineKeyChange,
   onMaintenanceTitleChange,
   onMaintenanceDueDateChange,
+  onMaintenanceAvailabilityStartTimeChange,
+  onMaintenanceAvailabilityEndTimeChange,
   onMaintenanceCostChange,
   onMaintenanceNoteChange,
   onMaintenanceNotificationRecipientsChange,
-  onMaintenanceStatusChange,
   onSavePlannedMaintenance,
   onUpdatePlannedMaintenanceStatus,
   onSendPlannedMaintenanceReminder,
   onDeletePlannedMaintenance,
 }: MaintenanceSectionProps) {
   useBodyScrollLock(isMaintenanceModalOpen);
-  const [maintenanceDueDateDate = "", maintenanceDueTime = "09:00"] =
-    maintenanceDueDate.split("T");
   const timeOptions = Array.from({ length: 36 }, (_, index) => {
     const slot = index + 12;
     const hours = String(Math.floor(slot / 2)).padStart(2, "0");
@@ -139,20 +136,11 @@ export default function MaintenanceSection({
   );
   const isSendingNotificationEmails =
     plannedMaintenanceSaving && maintenanceNotificationRecipients.length > 0;
-  const activeMaintenanceStatusLabel =
-    activeMaintenanceItem && activeMaintenanceStatus
-      ? activeMaintenanceStatus === "overdue" ||
-        activeMaintenanceStatus === "dueSoon" ||
-        activeMaintenanceStatus === "upcoming"
-        ? getMaintenanceDueLabel(activeMaintenanceItem.dueDate, t)
-        : getMaintenanceWorkflowStatusLabel(t, activeMaintenanceStatus)
-      : "";
   const activeMaintenanceCreatorLabel = activeMaintenanceItem
     ? activeMaintenanceItem.createdBy?.name ||
       activeMaintenanceItem.createdBy?.email ||
       t("common.unknown")
     : currentUserLabel || t("common.unknown");
-
   return (
     <>
       <div className="admin-panel">
@@ -200,27 +188,6 @@ export default function MaintenanceSection({
             </div>
           ) : (
             <>
-              <div className="admin-maintenance-calendar__legend">
-                {(
-                  [
-                    ["overdue", t("admin.overdueMaintenance")],
-                    ["dueSoon", t("admin.dueSoonMaintenance")],
-                    ["upcoming", t("admin.upcomingMaintenance")],
-                    ["inProgress", t("admin.maintenanceStatusInProgress")],
-                    ["waitingForParts", t("admin.maintenanceStatusWaitingForParts")],
-                    ["completed", t("admin.completedMaintenance")],
-                    ["cancelled", t("admin.maintenanceStatusCancelled")],
-                  ] as const
-                ).map(([status, label]) => (
-                  <div key={status} className="admin-maintenance-calendar__legend-item">
-                    <span
-                      className={`admin-maintenance-calendar__legend-dot admin-maintenance-calendar__legend-dot--${status}`}
-                    />
-                    <span>{label}</span>
-                  </div>
-                ))}
-              </div>
-
               {maintenanceCalendarMonthItemCount === 0 && (
                 <div className="admin-chart-empty">{t("admin.maintenanceCalendarEmpty")}</div>
               )}
@@ -255,14 +222,13 @@ export default function MaintenanceSection({
 
                       <div className="admin-maintenance-calendar__events">
                         {day.items.map((item) => {
-                          const status = getMaintenanceItemStatus(item);
                           const isSelectedEvent = editingMaintenanceId === item.id;
 
                           return (
                             <button
                               key={item.id}
                               type="button"
-                              className={`admin-maintenance-calendar__event admin-maintenance-calendar__event--${status}${
+                              className={`admin-maintenance-calendar__event${
                                 isSelectedEvent
                                   ? " admin-maintenance-calendar__event--selected"
                                   : ""
@@ -276,14 +242,21 @@ export default function MaintenanceSection({
                                 <div className="admin-maintenance-calendar__event-title">
                                   {item.title}
                                 </div>
-                                <span
-                                  className={`admin-maintenance-calendar__legend-dot admin-maintenance-calendar__event-dot admin-maintenance-calendar__legend-dot--${status}`}
-                                  aria-hidden="true"
-                                />
                               </div>
                               <div className="admin-maintenance-calendar__event-meta">
                                 {machineLabelByKey[item.machineKey] || item.machineKey}
                               </div>
+                              {formatMaintenanceAvailabilityLabel(
+                                item.availabilityStartTime,
+                                item.availabilityEndTime
+                              ) && (
+                                <div className="admin-maintenance-calendar__event-time">
+                                  {formatMaintenanceAvailabilityLabel(
+                                    item.availabilityStartTime,
+                                    item.availabilityEndTime
+                                  )}
+                                </div>
+                              )}
                             </button>
                           );
                         })}
@@ -342,13 +315,6 @@ export default function MaintenanceSection({
             </h2>
           </div>
           <div className="admin-maintenance-modal__header-actions">
-            {activeMaintenanceStatusLabel && (
-              <div
-                className={`status-pill admin-maintenance-plan__status status-pill--${activeMaintenanceStatus}`}
-              >
-                {activeMaintenanceStatusLabel}
-              </div>
-            )}
             {activeMaintenanceItem?.jiraIssueUrl && (
               <a
                 href={activeMaintenanceItem.jiraIssueUrl}
@@ -399,33 +365,12 @@ export default function MaintenanceSection({
             </label>
             <label className="admin-inventory-field">
               <div className="admin-inventory-field__label">{t("admin.maintenanceDueDate")}</div>
-              <div className="admin-maintenance-modal__date-time-inputs">
-                <input
-                  type="date"
-                  className="admin-input"
-                  value={maintenanceDueDateDate}
-                  onChange={(event) =>
-                    onMaintenanceDueDateChange(
-                      `${event.target.value}T${maintenanceDueTime || "09:00"}`
-                    )
-                  }
-                />
-                <select
-                  className="admin-input"
-                  value={maintenanceDueTime || "09:00"}
-                  onChange={(event) =>
-                    onMaintenanceDueDateChange(
-                      `${maintenanceDueDateDate || getCurrentLocalDateOnly()}T${event.target.value}`
-                    )
-                  }
-                >
-                  {timeOptions.map((timeValue) => (
-                    <option key={timeValue} value={timeValue}>
-                      {timeValue}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <input
+                type="date"
+                className="admin-input"
+                value={maintenanceDueDate}
+                onChange={(event) => onMaintenanceDueDateChange(event.target.value)}
+              />
             </label>
             <label className="admin-inventory-field">
               <div className="admin-inventory-field__label">{t("admin.maintenanceCost")}</div>
@@ -439,24 +384,59 @@ export default function MaintenanceSection({
                 placeholder={t("admin.maintenanceCostPlaceholder")}
               />
             </label>
-            <label className="admin-inventory-field">
-              <div className="admin-inventory-field__label">{t("common.status")}</div>
-              <select
-                className="admin-input"
-                value={maintenanceStatus}
-                onChange={(event) =>
-                  onMaintenanceStatusChange(event.target.value as MaintenanceWorkflowStatus)
-                }
-              >
-                <option value="planned">{t("admin.maintenanceStatusPlanned")}</option>
-                <option value="inProgress">{t("admin.maintenanceStatusInProgress")}</option>
-                <option value="waitingForParts">
-                  {t("admin.maintenanceStatusWaitingForParts")}
-                </option>
-                <option value="completed">{t("admin.maintenanceStatusCompleted")}</option>
-                <option value="cancelled">{t("admin.maintenanceStatusCancelled")}</option>
-              </select>
-            </label>
+            <div className="admin-inventory-field">
+              <div className="admin-inventory-field__label">
+                {t("admin.maintenanceAvailability")}
+              </div>
+              <div className="admin-maintenance-modal__date-time-inputs">
+                <select
+                  className="admin-input"
+                  value={maintenanceAvailabilityStartTime}
+                  onChange={(event) => {
+                    const nextStartTime = event.target.value;
+                    onMaintenanceAvailabilityStartTimeChange(nextStartTime);
+                    if (
+                      maintenanceAvailabilityEndTime &&
+                      nextStartTime &&
+                      maintenanceAvailabilityEndTime < nextStartTime
+                    ) {
+                      onMaintenanceAvailabilityEndTimeChange("");
+                    }
+                    if (!nextStartTime) {
+                      onMaintenanceAvailabilityEndTimeChange("");
+                    }
+                  }}
+                >
+                  <option value="">{t("admin.maintenanceAvailabilityStart")}</option>
+                  {timeOptions.map((timeValue) => (
+                    <option key={timeValue} value={timeValue}>
+                      {timeValue}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="admin-input"
+                  value={maintenanceAvailabilityEndTime}
+                  onChange={(event) =>
+                    onMaintenanceAvailabilityEndTimeChange(event.target.value)
+                  }
+                  disabled={!maintenanceAvailabilityStartTime}
+                >
+                  <option value="">{t("admin.maintenanceAvailabilityEnd")}</option>
+                  {timeOptions
+                    .filter(
+                      (timeValue) =>
+                        !maintenanceAvailabilityStartTime ||
+                        timeValue >= maintenanceAvailabilityStartTime
+                    )
+                    .map((timeValue) => (
+                      <option key={timeValue} value={timeValue}>
+                        {timeValue}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            </div>
             <div className="admin-inventory-field">
               <div className="admin-inventory-field__label">
                 {t("admin.maintenanceCreatedBy")}

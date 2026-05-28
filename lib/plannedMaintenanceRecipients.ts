@@ -5,6 +5,7 @@ export type PlannedMaintenanceRecipient = {
 
 export const PLANNED_MAINTENANCE_RECIPIENTS: PlannedMaintenanceRecipient[] = [
   { name: "Darius Kulda", email: "darkul@svenheim.lt" },
+  { name: "Linas Savulionis", email: "linsav@svenheim.lt" },
   { name: "Arūnas Malažinskas", email: "arumal@svenheim.lt" },
   { name: "Rolandas Vasiliauskas", email: "rolvas@svenheim.lt" },
   { name: "Kęstutis Levarauskas", email: "keslev@svenheim.lt" },

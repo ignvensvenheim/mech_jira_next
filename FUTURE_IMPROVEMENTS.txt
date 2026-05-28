@@ -81,18 +81,34 @@ Important Cost Model Note
   non-ticket asset costs should live on the asset/costs page, not inside the ticket modal
 
 Current Maintenance State
-- Planned maintenance is already fairly deep and Jira-synced.
+- Planned maintenance is now local-first in the admin panel.
 - Main maintenance files:
   app/admin/components/MaintenanceSection.tsx
   app/admin/hooks/useAdminMaintenance.ts
   app/api/admin/planned-maintenance/route.ts
   app/api/admin/planned-maintenance/[id]/route.ts
-- Current maintenance sync includes:
-  create in Jira + local DB
-  edit in UI + Jira
-  complete/reopen sync
-  delete in Jira + local cleanup
-  stale linked-row repair
+- Current maintenance behavior now includes:
+  create in local DB only
+  create works with or without notification recipients selected
+  edit in UI + local DB
+  complete/reopen in local DB
+  delete from local DB
+  legacy Jira-linked item handling is still guarded in edit/delete paths if old linked rows still exist
+  stale linked-row repair still exists on GET for old Jira-linked maintenance rows
+- Planned maintenance modal now uses:
+  date-only event selection
+  optional scheduled hours
+  start time only or start + end time
+- Scheduled hours are shown in:
+  calendar event card
+  maintenance notification emails
+- Visual state:
+  maintenance calendar cards now use a neutral green project-style background
+  status-specific dots / legends / colored status cues were intentionally removed
+- Current CRUD sanity check status:
+  create / edit / complete / delete paths were reviewed after the local-only maintenance change
+  no current blocking CRUD issue was found after the no-recipient create fix
+  current automated coverage is still light and mostly component-level, not full route integration coverage
 - Notifications use Resend.
 - Shared mailer:
   lib/plannedMaintenanceMailer.ts
