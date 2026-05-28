@@ -12,6 +12,7 @@ type PlannedMaintenanceEmailTemplateProps = {
     asset: string;
     title: string;
     dueDate: string;
+    availability: string;
     status: string;
     createdBy: string;
     note: string;
@@ -19,6 +20,7 @@ type PlannedMaintenanceEmailTemplateProps = {
   machineLabel: string;
   title: string;
   dueDate: string;
+  availability: string | null;
   statusLabel: string;
   createdByLabel: string;
   note: string | null;
@@ -36,6 +38,7 @@ export function PlannedMaintenanceEmailTemplate({
   machineLabel,
   title,
   dueDate,
+  availability,
   statusLabel,
   createdByLabel,
   note,
@@ -121,6 +124,7 @@ export function PlannedMaintenanceEmailTemplate({
                   [fieldLabels.asset, machineLabel],
                   [fieldLabels.title, title],
                   [fieldLabels.dueDate, dueDate],
+                  [fieldLabels.availability, availability?.trim() || "-"],
                   [fieldLabels.status, statusLabel],
                   [fieldLabels.createdBy, createdByLabel],
                   [fieldLabels.note, note?.trim() || "-"],

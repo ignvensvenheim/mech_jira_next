@@ -28,6 +28,8 @@ function serializePlannedMaintenance(item: {
   machineKey: string;
   title: string;
   dueDate: Date;
+  availabilityStartTime?: string | null;
+  availabilityEndTime?: string | null;
   note: string | null;
   notificationRecipientsJson?: string | null;
   status: string | null;
@@ -67,6 +69,8 @@ function serializePlannedMaintenance(item: {
       : null,
     status,
     cost: item.cost ?? null,
+    availabilityStartTime: item.availabilityStartTime ?? null,
+    availabilityEndTime: item.availabilityEndTime ?? null,
     jiraIssueId: item.jiraIssueId ?? null,
     jiraIssueKey: item.jiraIssueKey ?? null,
     jiraIssueUrl: item.jiraIssueUrl ?? null,
@@ -76,6 +80,16 @@ function serializePlannedMaintenance(item: {
   };
 }
 
+function normalizeMaintenanceTimeValue(value: unknown) {
+  return typeof value === "string" && /^\d{2}:\d{2}$/.test(value.trim())
+    ? value.trim()
+    : null;
+}
+
+function isValidMaintenanceTimeValue(value: string | null) {
+  return value === null || /^\d{2}:\d{2}$/.test(value);
+}
+
 function formatMachineLabel(machineKey: string) {
   const parsed = parseMachineKey(machineKey);
   if (parsed.category && parsed.subcategory) {
@@ -83,6 +97,17 @@ function formatMachineLabel(machineKey: string) {
   }
 
   return machineKey;
+}
+
+function formatAvailabilityLabel(
+  startTime: string | null,
+  endTime: string | null
+) {
+  if (startTime && endTime) {
+    return `${startTime}-${endTime}`;
+  }
+
+  return startTime || null;
 }
 
 function getMaintenanceStatusLabel(status: string) {
@@ -143,6 +168,34 @@ async function hasCostColumn() {
   `;
 
   return rows[0]?.exists ?? false;
+}
+
+async function hasAvailabilityColumns() {
+  const rows = await prisma.$queryRaw<
+    Array<{
+      availabilityStartTime: boolean;
+      availabilityEndTime: boolean;
+    }>
+  >`
+    SELECT
+      EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'PlannedMaintenance'
+          AND column_name = 'availabilityStartTime'
+      ) AS "availabilityStartTime",
+      EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'PlannedMaintenance'
+          AND column_name = 'availabilityEndTime'
+      ) AS "availabilityEndTime"
+  `;
+
+  return rows[0] ?? {
+    availabilityStartTime: false,
+    availabilityEndTime: false,
+  };
 }
 
 async function hasJiraLinkColumns() {
@@ -276,6 +329,10 @@ export async function PATCH(
   const locale = getRequestLocale(body?.locale);
   const action = String(body?.action || "").trim();
   const statusRaw = body?.status;
+  const availabilityStartTime = normalizeMaintenanceTimeValue(
+    body?.availabilityStartTime
+  );
+  const availabilityEndTime = normalizeMaintenanceTimeValue(body?.availabilityEndTime);
   const costRaw = body?.cost;
   const cost =
     costRaw === "" || costRaw === null || typeof costRaw === "undefined"
@@ -286,8 +343,9 @@ export async function PATCH(
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
-  const [withCost, jiraLinkColumns, withStatus, withNotificationRecipients, withCreatedBy] = await Promise.all([
+  const [withCost, availabilityColumns, jiraLinkColumns, withStatus, withNotificationRecipients, withCreatedBy] = await Promise.all([
     hasCostColumn(),
+    hasAvailabilityColumns(),
     hasJiraLinkColumns(),
     hasStatusColumn(),
     hasNotificationRecipientsColumn(),
@@ -306,12 +364,17 @@ export async function PATCH(
     jiraLinkColumns.jiraIssueId &&
     jiraLinkColumns.jiraIssueKey &&
     jiraLinkColumns.jiraIssueUrl;
+  const withAvailability =
+    availabilityColumns.availabilityStartTime &&
+    availabilityColumns.availabilityEndTime;
   const existing = await prisma.$queryRaw<
     Array<{
       id: string;
       machineKey: string;
       title: string;
       dueDate: Date;
+      availabilityStartTime: string | null;
+      availabilityEndTime: string | null;
       note: string | null;
       cost: number | null;
       notificationRecipientsJson: string | null;
@@ -330,6 +393,11 @@ export async function PATCH(
         pm."machineKey",
         pm."title",
         pm."dueDate",
+        ${
+          withAvailability
+            ? Prisma.sql`pm."availabilityStartTime", pm."availabilityEndTime",`
+            : Prisma.sql`NULL::TEXT AS "availabilityStartTime", NULL::TEXT AS "availabilityEndTime",`
+        }
         pm."note",
         ${
           withCost
@@ -367,6 +435,31 @@ export async function PATCH(
   const currentItem = existing[0];
   if (!currentItem) {
     return NextResponse.json({ error: "Maintenance item not found" }, { status: 404 });
+  }
+  if (
+    !isValidMaintenanceTimeValue(availabilityStartTime) ||
+    !isValidMaintenanceTimeValue(availabilityEndTime)
+  ) {
+    return NextResponse.json(
+      { error: "availability times are invalid" },
+      { status: 400 }
+    );
+  }
+  if (availabilityEndTime && !availabilityStartTime) {
+    return NextResponse.json(
+      { error: "availability end time requires a start time" },
+      { status: 400 }
+    );
+  }
+  if (
+    availabilityStartTime &&
+    availabilityEndTime &&
+    availabilityEndTime < availabilityStartTime
+  ) {
+    return NextResponse.json(
+      { error: "availability end time must be after start time" },
+      { status: 400 }
+    );
   }
 
   const shouldBackfillCreator = withCreatedBy && !currentItem.createdById;
@@ -406,6 +499,10 @@ export async function PATCH(
         currentItem.dueDate,
         locale === "lt" ? "lt-LT" : "en-US"
       ),
+      availability: formatAvailabilityLabel(
+        currentItem.availabilityStartTime ?? null,
+        currentItem.availabilityEndTime ?? null
+      ),
       note: currentItem.note,
       createdByLabel: serialized.createdBy?.name || serialized.createdBy?.email || null,
       status: currentStatus,
@@ -438,6 +535,10 @@ export async function PATCH(
       : currentStatus;
   const statusWasProvided = body && "status" in (body as object);
   const recipientsWereProvided = body && "notificationRecipients" in (body as object);
+  const availabilityWasProvided =
+    body &&
+    ("availabilityStartTime" in (body as object) ||
+      "availabilityEndTime" in (body as object));
   const data: {
     machineKey?: string;
     title?: string;
@@ -485,6 +586,12 @@ export async function PATCH(
     : normalizePlannedMaintenanceRecipients(
         JSON.parse(currentItem.notificationRecipientsJson || "[]")
       );
+  const nextAvailabilityStartTime = availabilityWasProvided
+    ? availabilityStartTime
+    : currentItem.availabilityStartTime ?? null;
+  const nextAvailabilityEndTime = availabilityWasProvided
+    ? availabilityEndTime
+    : currentItem.availabilityEndTime ?? null;
   const nextStatus = statusWasProvided ? requestedStatus : currentStatus;
 
   if (currentItem.jiraIssueKey) {
@@ -537,6 +644,10 @@ export async function PATCH(
   });
 
   let resolvedCost: number | null = null;
+  let resolvedAvailabilityStartTime: string | null =
+    currentItem.availabilityStartTime ?? null;
+  let resolvedAvailabilityEndTime: string | null =
+    currentItem.availabilityEndTime ?? null;
   let jiraIssueId: string | null = null;
   let jiraIssueKey: string | null = null;
   let jiraIssueUrl: string | null = null;
@@ -574,6 +685,36 @@ export async function PATCH(
     `;
     resolvedNotificationRecipientsJson = rows[0]?.notificationRecipientsJson ?? "[]";
   }
+  if (availabilityWasProvided && withAvailability) {
+    const rows = await prisma.$queryRaw<
+      Array<{
+        availabilityStartTime: string | null;
+        availabilityEndTime: string | null;
+      }>
+    >`
+      UPDATE "PlannedMaintenance"
+      SET
+        "availabilityStartTime" = ${availabilityStartTime},
+        "availabilityEndTime" = ${availabilityEndTime}
+      WHERE "id" = ${id}
+      RETURNING "availabilityStartTime", "availabilityEndTime"
+    `;
+    resolvedAvailabilityStartTime = rows[0]?.availabilityStartTime ?? null;
+    resolvedAvailabilityEndTime = rows[0]?.availabilityEndTime ?? null;
+  } else if (withAvailability) {
+    const rows = await prisma.$queryRaw<
+      Array<{
+        availabilityStartTime: string | null;
+        availabilityEndTime: string | null;
+      }>
+    >`
+      SELECT "availabilityStartTime", "availabilityEndTime"
+      FROM "PlannedMaintenance"
+      WHERE "id" = ${id}
+    `;
+    resolvedAvailabilityStartTime = rows[0]?.availabilityStartTime ?? null;
+    resolvedAvailabilityEndTime = rows[0]?.availabilityEndTime ?? null;
+  }
   if (withJiraLink) {
     const rows = await prisma.$queryRaw<
       Array<{
@@ -596,6 +737,8 @@ export async function PATCH(
     notificationRecipientsJson: resolvedNotificationRecipientsJson,
     status: resolvedStatus,
     cost: resolvedCost,
+    availabilityStartTime: resolvedAvailabilityStartTime,
+    availabilityEndTime: resolvedAvailabilityEndTime,
     jiraIssueId,
     jiraIssueKey,
     jiraIssueUrl,
@@ -610,6 +753,10 @@ export async function PATCH(
     dueDate: formatMaintenanceDateTimeForLocale(
       nextDueDate,
       locale === "lt" ? "lt-LT" : "en-US"
+    ),
+    availability: formatAvailabilityLabel(
+      serialized.availabilityStartTime,
+      serialized.availabilityEndTime
     ),
     note: nextNote,
     createdByLabel: serialized.createdBy?.name || serialized.createdBy?.email || null,

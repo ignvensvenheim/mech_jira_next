@@ -257,14 +257,16 @@ function AdminPageContent() {
     setMaintenanceTitle,
     maintenanceDueDate,
     setMaintenanceDueDate,
+    maintenanceAvailabilityStartTime,
+    setMaintenanceAvailabilityStartTime,
+    maintenanceAvailabilityEndTime,
+    setMaintenanceAvailabilityEndTime,
     maintenanceCost,
     setMaintenanceCost,
     maintenanceNote,
     setMaintenanceNote,
     maintenanceNotificationRecipients,
     setMaintenanceNotificationRecipients,
-    maintenanceStatus,
-    setMaintenanceStatus,
     maintenanceCalendarMonth,
     setMaintenanceCalendarMonth,
     isMaintenanceModalOpen,
@@ -276,7 +278,6 @@ function AdminPageContent() {
     selectedMaintenanceDateLabel,
     isMaintenanceEditing,
     activeMaintenanceItem,
-    activeMaintenanceStatus,
     maintenanceLogEntries,
     openCreateMaintenanceModal,
     openEditMaintenanceModal,
@@ -644,17 +645,17 @@ function AdminPageContent() {
                   isMaintenanceModalOpen={isMaintenanceModalOpen}
                   isMaintenanceEditing={isMaintenanceEditing}
                   activeMaintenanceItem={activeMaintenanceItem}
-                  activeMaintenanceStatus={activeMaintenanceStatus}
                   currentUserLabel={currentUserLabel}
                   machineDirectory={machineDirectory}
                   machineLabelByKey={machineLabelByKey}
                   maintenanceMachineKey={maintenanceMachineKey}
                   maintenanceTitle={maintenanceTitle}
                   maintenanceDueDate={maintenanceDueDate}
+                  maintenanceAvailabilityStartTime={maintenanceAvailabilityStartTime}
+                  maintenanceAvailabilityEndTime={maintenanceAvailabilityEndTime}
                   maintenanceCost={maintenanceCost}
                   maintenanceNote={maintenanceNote}
                   maintenanceNotificationRecipients={maintenanceNotificationRecipients}
-                  maintenanceStatus={maintenanceStatus}
                   selectedMaintenanceDateLabel={selectedMaintenanceDateLabel}
                   maintenanceActionKey={maintenanceActionKey}
                   onPreviousMonth={() =>
@@ -680,12 +681,17 @@ function AdminPageContent() {
                   onMaintenanceMachineKeyChange={setMaintenanceMachineKey}
                   onMaintenanceTitleChange={setMaintenanceTitle}
                   onMaintenanceDueDateChange={setMaintenanceDueDate}
+                  onMaintenanceAvailabilityStartTimeChange={
+                    setMaintenanceAvailabilityStartTime
+                  }
+                  onMaintenanceAvailabilityEndTimeChange={
+                    setMaintenanceAvailabilityEndTime
+                  }
                   onMaintenanceCostChange={setMaintenanceCost}
                   onMaintenanceNoteChange={setMaintenanceNote}
                   onMaintenanceNotificationRecipientsChange={
                     setMaintenanceNotificationRecipients
                   }
-                  onMaintenanceStatusChange={setMaintenanceStatus}
                   onSavePlannedMaintenance={() => void savePlannedMaintenance()}
                   onUpdatePlannedMaintenanceStatus={(id, status) =>
                     void updatePlannedMaintenanceStatus(id, status)

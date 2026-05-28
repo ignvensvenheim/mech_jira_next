@@ -34,6 +34,8 @@ const maintenanceItem: PlannedMaintenanceItem = {
   machineKey: "CUTTING::LINE-1",
   title: "Monthly inspection",
   dueDate: "2026-05-30T09:00:00.000Z",
+  availabilityStartTime: "08:00",
+  availabilityEndTime: "12:00",
   note: "Check belts",
   cost: 125,
   jiraIssueId: "10001",
@@ -86,11 +88,12 @@ const baseProps = {
   },
   maintenanceMachineKey: "CUTTING::LINE-1",
   maintenanceTitle: "Monthly inspection",
-  maintenanceDueDate: "2026-05-30T09:00",
+  maintenanceDueDate: "2026-05-30",
+  maintenanceAvailabilityStartTime: "08:00",
+  maintenanceAvailabilityEndTime: "12:00",
   maintenanceCost: "125",
   maintenanceNote: "Check belts",
   maintenanceNotificationRecipients: [] as PlannedMaintenanceRecipient[],
-  maintenanceStatus: "planned" as const,
   selectedMaintenanceDateLabel: "Saturday, May 30, 2026",
   maintenanceActionKey: null,
   onPreviousMonth: vi.fn(),
@@ -102,10 +105,11 @@ const baseProps = {
   onMaintenanceMachineKeyChange: vi.fn(),
   onMaintenanceTitleChange: vi.fn(),
   onMaintenanceDueDateChange: vi.fn(),
+  onMaintenanceAvailabilityStartTimeChange: vi.fn(),
+  onMaintenanceAvailabilityEndTimeChange: vi.fn(),
   onMaintenanceCostChange: vi.fn(),
   onMaintenanceNoteChange: vi.fn(),
   onMaintenanceNotificationRecipientsChange: vi.fn(),
-  onMaintenanceStatusChange: vi.fn(),
   onSavePlannedMaintenance: vi.fn(),
   onUpdatePlannedMaintenanceStatus: vi.fn(),
   onSendPlannedMaintenanceReminder: vi.fn(),
@@ -147,5 +151,11 @@ describe("MaintenanceSection", () => {
 
     expect(screen.getByText("admin.maintenanceCreatedBy")).toBeInTheDocument();
     expect(screen.getByText("Sven")).toBeInTheDocument();
+  });
+
+  it("shows the scheduled hours in the calendar card", () => {
+    render(<MaintenanceSection {...baseProps} />);
+
+    expect(screen.getByText("08:00-12:00")).toBeInTheDocument();
   });
 });

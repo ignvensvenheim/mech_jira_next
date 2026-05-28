@@ -23,6 +23,8 @@ type DueSoonMaintenanceRow = {
   machineKey: string;
   title: string;
   dueDate: Date;
+  availabilityStartTime: string | null;
+  availabilityEndTime: string | null;
   note: string | null;
   notificationRecipientsJson: string | null;
   status: string | null;
@@ -65,6 +67,45 @@ function formatMachineLabel(machineKey: string) {
   }
 
   return machineKey;
+}
+
+function formatAvailabilityLabel(
+  startTime: string | null,
+  endTime: string | null
+) {
+  if (startTime && endTime) {
+    return `${startTime}-${endTime}`;
+  }
+
+  return startTime || null;
+}
+
+async function hasAvailabilityColumns() {
+  const rows = await prisma.$queryRaw<
+    Array<{
+      availabilityStartTime: boolean;
+      availabilityEndTime: boolean;
+    }>
+  >`
+    SELECT
+      EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'PlannedMaintenance'
+          AND column_name = 'availabilityStartTime'
+      ) AS "availabilityStartTime",
+      EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'PlannedMaintenance'
+          AND column_name = 'availabilityEndTime'
+      ) AS "availabilityEndTime"
+  `;
+
+  return rows[0] ?? {
+    availabilityStartTime: false,
+    availabilityEndTime: false,
+  };
 }
 
 async function hasStatusColumn() {
@@ -135,6 +176,7 @@ async function hasCreatedByColumn() {
 }
 
 function selectSql(
+  withAvailability: boolean,
   withStatus: boolean,
   withNotificationRecipients: boolean,
   withDueSoonReminderColumns: boolean,
@@ -146,6 +188,11 @@ function selectSql(
       pm."machineKey",
       pm."title",
       pm."dueDate",
+      ${
+        withAvailability
+          ? Prisma.sql`pm."availabilityStartTime", pm."availabilityEndTime",`
+          : Prisma.sql`NULL::TEXT AS "availabilityStartTime", NULL::TEXT AS "availabilityEndTime",`
+      }
       pm."note",
       ${
         withNotificationRecipients
@@ -175,13 +222,17 @@ export async function GET(request: Request) {
     return auth.response;
   }
 
-  const [withStatus, withNotificationRecipients, dueSoonReminderColumns, withCreatedBy] =
+  const [availabilityColumns, withStatus, withNotificationRecipients, dueSoonReminderColumns, withCreatedBy] =
     await Promise.all([
+      hasAvailabilityColumns(),
       hasStatusColumn(),
       hasNotificationRecipientsColumn(),
       hasDueSoonReminderColumns(),
       hasCreatedByColumn(),
     ]);
+  const withAvailability =
+    availabilityColumns.availabilityStartTime &&
+    availabilityColumns.availabilityEndTime;
   const withDueSoonReminderColumns =
     dueSoonReminderColumns.dueSoonReminderSentAt &&
     dueSoonReminderColumns.dueSoonReminderSentForDate;
@@ -198,6 +249,7 @@ export async function GET(request: Request) {
 
   const rows = await prisma.$queryRaw<DueSoonMaintenanceRow[]>(
     Prisma.sql`${selectSql(
+      withAvailability,
       withStatus,
       withNotificationRecipients,
       withDueSoonReminderColumns,
@@ -242,6 +294,10 @@ export async function GET(request: Request) {
       machineLabel: formatMachineLabel(row.machineKey),
       title: row.title,
       dueDate: formatMaintenanceDateTimeForLocale(row.dueDate, "en-US"),
+      availability: formatAvailabilityLabel(
+        row.availabilityStartTime,
+        row.availabilityEndTime
+      ),
       note: row.note,
       createdByLabel: row.createdByName || row.createdByEmail || null,
       status: "planned",
