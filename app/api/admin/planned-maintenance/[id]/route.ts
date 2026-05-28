@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { requireTrustedOrigin } from "@/lib/requireTrustedOrigin";
 import { ensureAssetExists, isConcreteMachineKey, parseMachineKey } from "@/lib/assets";
 import {
-  formatMaintenanceDateTimeForLocale,
+  formatMaintenanceDateOnlyForLocale,
   getDateOnlyFromMaintenanceDateTime,
   parseMaintenanceDateTime,
 } from "@/lib/dateOnly";
@@ -461,7 +461,7 @@ export async function PATCH(
       recipients: currentRecipients,
       machineLabel: formatMachineLabel(currentItem.machineKey),
       title: currentItem.title,
-      dueDate: formatMaintenanceDateTimeForLocale(
+      dueDate: formatMaintenanceDateOnlyForLocale(
         currentItem.dueDate,
         locale === "lt" ? "lt-LT" : "en-US"
       ),
@@ -691,7 +691,7 @@ export async function PATCH(
     recipients: nextRecipients as PlannedMaintenanceRecipient[],
     machineLabel: formatMachineLabel(nextMachineKey),
     title: nextTitle,
-    dueDate: formatMaintenanceDateTimeForLocale(
+    dueDate: formatMaintenanceDateOnlyForLocale(
       nextDueDate,
       locale === "lt" ? "lt-LT" : "en-US"
     ),

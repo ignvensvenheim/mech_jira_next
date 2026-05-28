@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { requireTrustedOrigin } from "@/lib/requireTrustedOrigin";
 import { ensureAssetExists, isConcreteMachineKey, parseMachineKey } from "@/lib/assets";
 import {
-  formatMaintenanceDateTimeForLocale,
+  formatMaintenanceDateOnlyForLocale,
   parseMaintenanceDateTime,
 } from "@/lib/dateOnly";
 import {
@@ -515,7 +515,7 @@ export async function POST(req: Request) {
       recipients: serialized.notificationRecipients,
       machineLabel: formatMachineLabel(machineKey),
       title,
-      dueDate: formatMaintenanceDateTimeForLocale(
+      dueDate: formatMaintenanceDateOnlyForLocale(
         serialized.dueDate,
         locale === "lt" ? "lt-LT" : "en-US"
       ),
