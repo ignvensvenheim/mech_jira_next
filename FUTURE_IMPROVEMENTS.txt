@@ -108,6 +108,8 @@ Current Maintenance State
 - Current CRUD sanity check status:
   create / edit / complete / delete paths were reviewed after the local-only maintenance change
   no current blocking CRUD issue was found after the no-recipient create fix
+  initial planned-maintenance load after login was also hardened by replacing the brittle raw-SQL GET path with a normal Prisma findMany path
+  could not reproduce the earlier first-open 500 after that GET-route simplification
   current automated coverage is still light and mostly component-level, not full route integration coverage
 - Notifications use Resend.
 - Shared mailer:

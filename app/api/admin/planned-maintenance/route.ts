@@ -344,48 +344,62 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const [withCost, availabilityColumns, jiraLinkColumns, withStatus, withNotificationRecipients, withCreatedBy] = await Promise.all([
-    hasCostColumn(),
-    hasAvailabilityColumns(),
-    hasJiraLinkColumns(),
-    hasStatusColumn(),
-    hasNotificationRecipientsColumn(),
-    hasCreatedByColumn(),
-  ]);
-  const withAvailability =
-    availabilityColumns.availabilityStartTime &&
-    availabilityColumns.availabilityEndTime;
-  const withJiraLink =
-    jiraLinkColumns.jiraIssueId &&
-    jiraLinkColumns.jiraIssueKey &&
-    jiraLinkColumns.jiraIssueUrl;
-  const items = await prisma.$queryRaw<PlannedMaintenanceRow[]>(
-    Prisma.sql`${selectSql(
-      withCost,
-      withAvailability,
-      withJiraLink,
-      withStatus,
-      withNotificationRecipients,
-      withCreatedBy
-    )} ORDER BY ${
-      withStatus ? Prisma.sql`pm."status"` : Prisma.sql`pm."isCompleted"`
-    } ASC, pm."dueDate" ASC`
-  );
-  let deletedIds = new Set<string>();
+  try {
+    const items = await prisma.plannedMaintenance.findMany({
+      orderBy: [{ status: "asc" }, { dueDate: "asc" }],
+      select: {
+        id: true,
+        machineKey: true,
+        title: true,
+        dueDate: true,
+        availabilityStartTime: true,
+        availabilityEndTime: true,
+        note: true,
+        cost: true,
+        jiraIssueId: true,
+        jiraIssueKey: true,
+        jiraIssueUrl: true,
+        notificationRecipientsJson: true,
+        status: true,
+        isCompleted: true,
+        completedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        createdById: true,
+        createdBy: {
+          select: {
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
 
-  if (withJiraLink) {
+    const normalizedItems: PlannedMaintenanceRow[] = items.map((item) => ({
+      ...item,
+      createdByName: item.createdBy?.name ?? null,
+      createdByEmail: item.createdBy?.email ?? null,
+    }));
+
+    let deletedIds = new Set<string>();
     try {
-      deletedIds = await repairDeletedLinkedMaintenanceItems(items);
+      deletedIds = await repairDeletedLinkedMaintenanceItems(normalizedItems);
     } catch (error) {
       console.error("Failed to repair deleted Jira-linked maintenance items", error);
     }
-  }
 
-  return NextResponse.json({
-    items: items
-      .filter((item) => !deletedIds.has(item.id))
-      .map(serializePlannedMaintenance),
-  });
+    return NextResponse.json({
+      items: normalizedItems
+        .filter((item) => !deletedIds.has(item.id))
+        .map(serializePlannedMaintenance),
+    });
+  } catch (error) {
+    console.error("Failed to load planned maintenance items", error);
+    return NextResponse.json(
+      { error: "Failed to load planned maintenance items" },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: Request) {
