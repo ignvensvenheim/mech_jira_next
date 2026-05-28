@@ -16,7 +16,6 @@ type PlannedMaintenanceMailArgs = {
   availability: string | null;
   note: string | null;
   createdByLabel: string | null;
-  status: "planned" | "inProgress" | "waitingForParts" | "completed" | "cancelled";
   action: "created" | "updated" | "reminder";
   locale?: Locale;
 };
@@ -38,57 +37,35 @@ function resolveLocale(locale: string | undefined): Locale {
   return locale === "lt" ? "lt" : "en";
 }
 
-function getMailCopy(
-  locale: Locale,
-  action: "created" | "updated" | "reminder",
-  status: PlannedMaintenanceMailArgs["status"]
-) {
-  const statusLabels =
-    locale === "lt"
-      ? {
-          planned: "Suplanuota",
-          inProgress: "Vykdoma",
-          waitingForParts: "Laukiama daliu",
-          completed: "Atlikta",
-          cancelled: "Atsaukta",
-        }
-      : {
-          planned: "Planned",
-          inProgress: "In progress",
-          waitingForParts: "Waiting for parts",
-          completed: "Completed",
-          cancelled: "Cancelled",
-        };
-
+function getMailCopy(locale: Locale, action: "created" | "updated" | "reminder") {
   if (locale === "lt") {
     const subjectPrefix =
       action === "created"
-        ? "Nauja planine prieziura"
+        ? "Nauja planinė priežiūra"
         : action === "updated"
-          ? "Atnaujinta planine prieziura"
-          : "Planines prieziuros priminimas";
+          ? "Atnaujinta planinė priežiūra"
+          : "Planinės priežiūros priminimas";
     return {
       subjectPrefix,
       greeting: "Sveiki,",
       introLine:
         action === "reminder"
-          ? "Primename apie artejancia planines prieziuros uzduoti."
-          : "Jus buvote pasirinkti gauti sios planines prieziuros pranesimus.",
-      summaryLabel: "Planine prieziura",
-      detailsLabel: "Prieziuros informacija",
+          ? "Primename apie artėjančią planinės priežiūros užduotį."
+          : "Jūs buvote pasirinkti gauti šios planinės priežiūros pranešimus.",
+      summaryLabel: "Planinė priežiūra",
+      detailsLabel: "Priežiūros informacija",
       footerLine:
-        "Sis laiskas buvo issiustas automatiskai is prieziuros administravimo skydelio.",
+        "Šis laiškas buvo išsiųstas automatiškai iš priežiūros administravimo puslapio.",
       fieldLabels: {
-        asset: "Irenginys",
-        title: "Prieziuros pavadinimas",
-        dueDate: "Atlikti iki",
+        asset: "Įrenginys",
+        title: "Darbo informacija",
+        dueDate: "Atlikimo data",
         availability: "Laikas",
-        status: "Busena",
-        note: "Aprasymas",
+        createdBy: "Sukūrė",
+        note: "Aprašymas",
       },
-      statusLabel: statusLabels[status],
       textClosing:
-        "Sis laiskas buvo issiustas automatiskai is prieziuros administravimo skydelio.",
+        "Šis laiškas buvo išsiųstas automatiškai iš priežiūros administravimo puslapio.",
     };
   }
 
@@ -107,17 +84,15 @@ function getMailCopy(
         : "You were selected to receive notifications for this planned maintenance item.",
     summaryLabel: "Planned Maintenance",
     detailsLabel: "Maintenance details",
-    footerLine:
-      "This message was sent automatically from the maintenance admin panel.",
+    footerLine: "This message was sent automatically from the maintenance admin panel.",
     fieldLabels: {
       asset: "Asset",
       title: "Maintenance title",
       dueDate: "Due date",
       availability: "Time",
-      status: "Status",
+      createdBy: "Created by",
       note: "Description",
     },
-    statusLabel: statusLabels[status],
     textClosing: "This message was sent automatically from the maintenance admin panel.",
   };
 }
@@ -133,20 +108,13 @@ export async function sendPlannedMaintenanceNotificationEmail(
   if (!config) {
     return {
       sent: false,
-      warning:
-        "Email notifications were not sent because Resend is not configured.",
+      warning: "Email notifications were not sent because Resend is not configured.",
     };
   }
 
   const resend = new Resend(config.apiKey);
   const locale = resolveLocale(args.locale);
-  const copy = getMailCopy(locale, args.action, args.status);
-  const createdByFieldLabel =
-    ("createdBy" in copy.fieldLabels && typeof copy.fieldLabels.createdBy === "string"
-      ? copy.fieldLabels.createdBy
-      : locale === "lt"
-        ? "Sukure"
-        : "Created by");
+  const copy = getMailCopy(locale, args.action);
   const subject = `${copy.subjectPrefix}: ${args.machineLabel} | ${args.title}`;
   const text = [
     copy.greeting,
@@ -157,8 +125,7 @@ export async function sendPlannedMaintenanceNotificationEmail(
     `${copy.fieldLabels.title}: ${args.title}`,
     `${copy.fieldLabels.dueDate}: ${args.dueDate}`,
     `${copy.fieldLabels.availability}: ${args.availability?.trim() || "-"}`,
-    `${copy.fieldLabels.status}: ${copy.statusLabel}`,
-    `${createdByFieldLabel}: ${args.createdByLabel?.trim() || "-"}`,
+    `${copy.fieldLabels.createdBy}: ${args.createdByLabel?.trim() || "-"}`,
     `${copy.fieldLabels.note}: ${args.note?.trim() || "-"}`,
     ``,
     copy.textClosing,
@@ -178,15 +145,11 @@ export async function sendPlannedMaintenanceNotificationEmail(
         summaryLabel: copy.summaryLabel,
         detailsLabel: copy.detailsLabel,
         footerLine: copy.footerLine,
-        fieldLabels: {
-          ...copy.fieldLabels,
-          createdBy: createdByFieldLabel,
-        },
+        fieldLabels: copy.fieldLabels,
         machineLabel: args.machineLabel,
         title: args.title,
         dueDate: args.dueDate,
         availability: args.availability,
-        statusLabel: copy.statusLabel,
         createdByLabel: args.createdByLabel?.trim() || "-",
         note: args.note,
       }),

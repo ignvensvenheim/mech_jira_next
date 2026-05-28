@@ -17,7 +17,6 @@ import {
   getCurrentLocalDateOnly,
   getIssueCategoryAndSubcategory,
   getRepairCostTotalsByMachine,
-  isMaintenanceClosedStatus,
   parseMachineKey,
   summarizeIssuesByAsset,
   type AssetStatisticsRow,
@@ -284,7 +283,6 @@ function AdminPageContent() {
     closeMaintenanceModal,
     selectMaintenanceDate,
     savePlannedMaintenance,
-    updatePlannedMaintenanceStatus,
     sendPlannedMaintenanceReminder,
     deletePlannedMaintenance,
   } = maintenance;
@@ -369,11 +367,7 @@ function AdminPageContent() {
     [maintenanceCostsByMachineKey]
   );
   const statisticsMaintenanceCompletedCount = useMemo(
-    () => plannedMaintenanceItems.filter((item) => item.status === "completed").length,
-    [plannedMaintenanceItems]
-  );
-  const statisticsMaintenanceActiveCount = useMemo(
-    () => plannedMaintenanceItems.filter((item) => !isMaintenanceClosedStatus(item.status)).length,
+    () => plannedMaintenanceItems.filter((item) => item.isCompleted).length,
     [plannedMaintenanceItems]
   );
   const assetStatistics = useMemo<AssetStatisticsRow[]>(() => {
@@ -693,9 +687,6 @@ function AdminPageContent() {
                     setMaintenanceNotificationRecipients
                   }
                   onSavePlannedMaintenance={() => void savePlannedMaintenance()}
-                  onUpdatePlannedMaintenanceStatus={(id, status) =>
-                    void updatePlannedMaintenanceStatus(id, status)
-                  }
                   onSendPlannedMaintenanceReminder={(id) =>
                     void sendPlannedMaintenanceReminder(id)
                   }
@@ -718,7 +709,6 @@ function AdminPageContent() {
                   statisticsTotalTimeSeconds={statisticsTotalTimeSeconds}
                   statisticsTrackedCost={statisticsTrackedCost}
                   plannedMaintenanceItemsLength={plannedMaintenanceItems.length}
-                  statisticsMaintenanceActiveCount={statisticsMaintenanceActiveCount}
                   statisticsMaintenanceCompletedCount={statisticsMaintenanceCompletedCount}
                   statisticsMaintenanceCost={statisticsMaintenanceCost}
                   ticketsByCategory={ticketsByCategory}

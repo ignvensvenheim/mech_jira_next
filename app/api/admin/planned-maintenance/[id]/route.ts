@@ -10,7 +10,6 @@ import {
   parseMaintenanceDateTime,
 } from "@/lib/dateOnly";
 import {
-  addJiraMaintenanceComment,
   deleteJiraIssue,
   updateJiraMaintenanceIssue,
 } from "@/lib/jiraServer";
@@ -108,21 +107,6 @@ function formatAvailabilityLabel(
   }
 
   return startTime || null;
-}
-
-function getMaintenanceStatusLabel(status: string) {
-  switch (status) {
-    case "inProgress":
-      return "In progress";
-    case "waitingForParts":
-      return "Waiting for parts";
-    case "completed":
-      return "Completed";
-    case "cancelled":
-      return "Cancelled";
-    default:
-      return "Planned";
-  }
 }
 
 function getRequestLocale(value: unknown): Locale {
@@ -286,23 +270,6 @@ function normalizeMaintenanceStatus(status: unknown, fallbackIsCompleted: boolea
   }
 }
 
-function getMaintenanceStatusComment(status: string) {
-  switch (status) {
-    case "planned":
-      return "Maintenance moved back to planned in the admin calendar.";
-    case "inProgress":
-      return "Maintenance marked in progress in the admin calendar.";
-    case "waitingForParts":
-      return "Maintenance marked waiting for parts in the admin calendar.";
-    case "completed":
-      return "Maintenance marked completed in the admin calendar.";
-    case "cancelled":
-      return "Maintenance cancelled in the admin calendar.";
-    default:
-      return "Maintenance status updated in the admin calendar.";
-  }
-}
-
 export async function PATCH(
   req: Request,
   context: { params: Promise<{ id: string }> }
@@ -328,7 +295,6 @@ export async function PATCH(
   );
   const locale = getRequestLocale(body?.locale);
   const action = String(body?.action || "").trim();
-  const statusRaw = body?.status;
   const availabilityStartTime = normalizeMaintenanceTimeValue(
     body?.availabilityStartTime
   );
@@ -505,7 +471,6 @@ export async function PATCH(
       ),
       note: currentItem.note,
       createdByLabel: serialized.createdBy?.name || serialized.createdBy?.email || null,
-      status: currentStatus,
       action: "reminder",
       locale,
     });
@@ -529,11 +494,6 @@ export async function PATCH(
     currentItem.status,
     currentItem.isCompleted
   );
-  const requestedStatus =
-    typeof statusRaw === "string" || statusRaw == null
-      ? normalizeMaintenanceStatus(statusRaw, currentItem.isCompleted)
-      : currentStatus;
-  const statusWasProvided = body && "status" in (body as object);
   const recipientsWereProvided = body && "notificationRecipients" in (body as object);
   const availabilityWasProvided =
     body &&
@@ -544,9 +504,6 @@ export async function PATCH(
     title?: string;
     dueDate?: Date;
     note?: string | null;
-    status?: "planned" | "inProgress" | "waitingForParts" | "completed" | "cancelled";
-    isCompleted?: boolean;
-    completedAt?: Date | null;
   } = {};
 
   if (machineKey) {
@@ -568,13 +525,6 @@ export async function PATCH(
     data.dueDate = parsedDueDate;
   }
   if (body && "note" in (body as object)) data.note = note || null;
-  if (statusWasProvided) {
-    if (withStatus) {
-      data.status = requestedStatus;
-    }
-    data.isCompleted = requestedStatus === "completed";
-    data.completedAt = requestedStatus === "completed" ? new Date() : null;
-  }
 
   const nextMachineKey = machineKey || currentItem.machineKey;
   const nextTitle = title || currentItem.title;
@@ -592,8 +542,6 @@ export async function PATCH(
   const nextAvailabilityEndTime = availabilityWasProvided
     ? availabilityEndTime
     : currentItem.availabilityEndTime ?? null;
-  const nextStatus = statusWasProvided ? requestedStatus : currentStatus;
-
   if (currentItem.jiraIssueKey) {
     try {
       await updateJiraMaintenanceIssue({
@@ -603,15 +551,8 @@ export async function PATCH(
         dueDate: getDateOnlyFromMaintenanceDateTime(nextDueDate),
         note: nextNote,
         cost: body && "cost" in (body as object) ? cost : currentItem.cost,
-        status: nextStatus,
+        status: currentStatus,
       });
-
-      if (statusWasProvided && nextStatus !== currentStatus) {
-        await addJiraMaintenanceComment({
-          issueKey: currentItem.jiraIssueKey,
-          text: getMaintenanceStatusComment(nextStatus),
-        });
-      }
     } catch (error) {
       console.error("Failed to update linked Jira maintenance issue", error);
       return NextResponse.json(
@@ -760,7 +701,6 @@ export async function PATCH(
     ),
     note: nextNote,
     createdByLabel: serialized.createdBy?.name || serialized.createdBy?.email || null,
-    status: nextStatus,
     action: "updated",
     locale,
   });

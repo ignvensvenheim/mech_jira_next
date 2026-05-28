@@ -10,7 +10,6 @@ import {
   getCurrentLocalDateOnly,
   type AdminTranslate,
   type MaintenanceLogEntry,
-  type MaintenanceWorkflowStatus,
   type MachineDirectoryItem,
   type PlannedMaintenanceRecipient,
   type PlannedMaintenanceItem,
@@ -70,7 +69,6 @@ type MaintenanceSectionProps = {
   onMaintenanceNoteChange: (value: string) => void;
   onMaintenanceNotificationRecipientsChange: (value: PlannedMaintenanceRecipient[]) => void;
   onSavePlannedMaintenance: () => void;
-  onUpdatePlannedMaintenanceStatus: (id: string, status: MaintenanceWorkflowStatus) => void;
   onSendPlannedMaintenanceReminder: (id: string) => void;
   onDeletePlannedMaintenance: (id: string) => void;
 };
@@ -120,7 +118,6 @@ export default function MaintenanceSection({
   onMaintenanceNoteChange,
   onMaintenanceNotificationRecipientsChange,
   onSavePlannedMaintenance,
-  onUpdatePlannedMaintenanceStatus,
   onSendPlannedMaintenanceReminder,
   onDeletePlannedMaintenance,
 }: MaintenanceSectionProps) {
@@ -530,21 +527,6 @@ export default function MaintenanceSection({
                   ? t("common.save")
                   : t("admin.addMaintenancePlan")}
             </button>
-            {activeMaintenanceItem && (
-              <button
-                type="button"
-                className="admin-reset-button"
-                onClick={() =>
-                  onUpdatePlannedMaintenanceStatus(activeMaintenanceItem.id, "completed")
-                }
-                disabled={
-                  plannedMaintenanceSaving ||
-                  maintenanceActionKey === `${activeMaintenanceItem.id}:completed`
-                }
-              >
-                {t("admin.markCompleted")}
-              </button>
-            )}
             {activeMaintenanceItem && (
               <button
                 type="button"

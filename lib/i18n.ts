@@ -438,7 +438,7 @@ export const dictionaries = {
       plannedMaintenanceSubtitle:
         "Suplanuokite įrenginių priežiūros datas ir stebėkite, kas vėluoja arba artėja.",
       registerMaintenanceTicket: "Registruoti priežiūros užklausą",
-      maintenanceTitle: "Priežiūros pavadinimas",
+      maintenanceTitle: "Darbo informacija",
       maintenanceTitlePlaceholder: "Pvz. Mėnesinė patikra",
       maintenanceDueDate: "Data",
       maintenanceAvailability: "Numatytos valandos",
@@ -583,7 +583,8 @@ export const dictionaries = {
         "Naudokite šiuos įrašus papildomiems įrenginio kaštams, kurie vis tiek turi būti įtraukti į šios užklausos sumą.",
       additionalAssetCostsTotal: "Papildomų įrenginio kaštų suma",
       totalCost: "Bendra kaina",
-      ticketFixCostHelp: "Pridėkite arba atnaujinkite pagrindinę remonto kainą.",
+      ticketFixCostHelp:
+        "Pridėkite arba atnaujinkite pagrindinę remonto kainą.",
       ticketTimeSpent: "Užklausos sugaištas laikas",
       inventoryDetails: "Inventoriaus informacija",
       subcategory: "Subkategorija",

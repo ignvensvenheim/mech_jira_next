@@ -91,7 +91,6 @@ Current Maintenance State
   create in local DB only
   create works with or without notification recipients selected
   edit in UI + local DB
-  complete/reopen in local DB
   delete from local DB
   legacy Jira-linked item handling is still guarded in edit/delete paths if old linked rows still exist
   stale linked-row repair still exists on GET for old Jira-linked maintenance rows
@@ -102,9 +101,21 @@ Current Maintenance State
 - Scheduled hours are shown in:
   calendar event card
   maintenance notification emails
+- Maintenance status behavior was removed from the active product flow:
+  no modal status action
+  no status row in maintenance emails
+  no status-based reminder filtering
+  no status-based maintenance stats split
+  no status-based asset-detail maintenance split
+  legacy DB/API compatibility still exists for old status fields, but UI behavior is now date/scheduled-hours based
 - Visual state:
   maintenance calendar cards now use a neutral green project-style background
   status-specific dots / legends / colored status cues were intentionally removed
+- Maintenance email template notes:
+  Outlook left padding was increased slightly for better readability
+  Lithuanian copy now uses proper LT characters
+  LT email label changed from "Atlikti iki" to "Atlikimo data"
+  "Sukūrė" prefers full user name when available
 - Current CRUD sanity check status:
   create / edit / complete / delete paths were reviewed after the local-only maintenance change
   no current blocking CRUD issue was found after the no-recipient create fix
