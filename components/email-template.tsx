@@ -58,7 +58,7 @@ export function PlannedMaintenanceEmailTemplate({
     >
       <tbody>
         <tr>
-          <td style={{ padding: "24px 12px 24px 28px" }}>
+          <td style={{ padding: "12px 12px 24px 28px" }}>
             <table
               role="presentation"
               width="100%"
@@ -79,7 +79,8 @@ export function PlannedMaintenanceEmailTemplate({
                 <tr>
                   <td
                     style={{
-                      padding: "24px 28px 24px 36px",
+                      padding: "12px 28px 14px 36px",
+                      backgroundColor: "#0f766e",
                       background:
                         "linear-gradient(135deg, #0f766e 0%, #155e75 55%, #1d4ed8 100%)",
                       color: "#ffffff",
@@ -91,7 +92,7 @@ export function PlannedMaintenanceEmailTemplate({
                         letterSpacing: "0.08em",
                         textTransform: "uppercase",
                         opacity: 0.82,
-                        marginBottom: "10px",
+                        marginBottom: "6px",
                       }}
                     >
                       {summaryLabel}
@@ -100,7 +101,7 @@ export function PlannedMaintenanceEmailTemplate({
                   </td>
                 </tr>
                 <tr>
-                  <td style={{ padding: "28px 28px 28px 36px" }}>
+                  <td style={{ padding: "22px 28px 28px 36px" }}>
                     <p style={{ margin: "0 0 14px", fontSize: "15px" }}>{greeting}</p>
                     <p style={{ margin: "0 0 22px", color: "#475569" }}>{introLine}</p>
 
