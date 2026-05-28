@@ -123,3 +123,21 @@ export function formatMaintenanceDateTimeForLocale(
     timeZone: "UTC",
   }).format(date);
 }
+
+export function formatMaintenanceDateOnlyForLocale(
+  value: Date | string,
+  locale: string
+) {
+  const date =
+    typeof value === "string" ? parseMaintenanceDateTime(value) : value;
+  if (!date || Number.isNaN(date.getTime())) {
+    return typeof value === "string" ? value : "";
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}

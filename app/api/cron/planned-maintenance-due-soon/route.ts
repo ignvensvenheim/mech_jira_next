@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   dateOnlyToDayKey,
   formatDateOnly,
-  formatMaintenanceDateTimeForLocale,
+  formatMaintenanceDateOnlyForLocale,
   getCurrentLocalDayKey,
 } from "@/lib/dateOnly";
 import { parseMachineKey } from "@/lib/assets";
@@ -275,7 +275,7 @@ export async function GET(request: Request) {
       recipients,
       machineLabel: formatMachineLabel(row.machineKey),
       title: row.title,
-      dueDate: formatMaintenanceDateTimeForLocale(row.dueDate, "en-US"),
+      dueDate: formatMaintenanceDateOnlyForLocale(row.dueDate, "en-US"),
       availability: formatAvailabilityLabel(
         row.availabilityStartTime,
         row.availabilityEndTime
