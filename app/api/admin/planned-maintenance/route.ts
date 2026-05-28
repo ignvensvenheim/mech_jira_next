@@ -86,21 +86,6 @@ function isValidMaintenanceTimeValue(value: string | null) {
   return value === null || /^\d{2}:\d{2}$/.test(value);
 }
 
-function getMaintenanceStatusLabel(status: string) {
-  switch (status) {
-    case "inProgress":
-      return "In progress";
-    case "waitingForParts":
-      return "Waiting for parts";
-    case "completed":
-      return "Completed";
-    case "cancelled":
-      return "Cancelled";
-    default:
-      return "Planned";
-  }
-}
-
 function getRequestLocale(value: unknown): Locale {
   return value === "lt" ? "lt" : "en";
 }
@@ -346,7 +331,7 @@ export async function GET() {
 
   try {
     const items = await prisma.plannedMaintenance.findMany({
-      orderBy: [{ status: "asc" }, { dueDate: "asc" }],
+      orderBy: [{ dueDate: "asc" }],
       select: {
         id: true,
         machineKey: true,
@@ -426,15 +411,11 @@ export async function POST(req: Request) {
     body?.notificationRecipients
   );
   const locale = getRequestLocale(body?.locale);
-  const statusRaw = String(body?.status || "").trim();
   const costRaw = body?.cost;
   const cost =
     costRaw === "" || costRaw === null || typeof costRaw === "undefined"
       ? null
       : Number(costRaw);
-  const status = normalizeMaintenanceStatus(statusRaw || null, false);
-  const isCompleted = status === "completed";
-  const completedAt = isCompleted ? new Date() : null;
   const notificationRecipientsJson = JSON.stringify(notificationRecipients);
 
   if (!machineKey || !title || !dueDate) {
@@ -499,9 +480,8 @@ export async function POST(req: Request) {
         jiraIssueKey: null,
         jiraIssueUrl: null,
         notificationRecipientsJson,
-        status,
-        isCompleted,
-        completedAt,
+        isCompleted: false,
+        completedAt: null,
         createdById: session.user.id,
       },
       select: {
@@ -545,7 +525,6 @@ export async function POST(req: Request) {
       ),
       note: note || null,
       createdByLabel: serialized.createdBy?.name || serialized.createdBy?.email || null,
-      status,
       action: "created",
       locale,
     });

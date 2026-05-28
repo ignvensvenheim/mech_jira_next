@@ -6,8 +6,6 @@ import {
   getDateOnlyFromMaintenanceDateTime,
   getLocaleTag,
   getMaintenanceItemStatus,
-  getMaintenanceWorkflowStatusLabel,
-  isMaintenanceClosedStatus,
   normalizePlannedMaintenanceItem,
   parseDateOnly,
   parseJson,
@@ -16,8 +14,6 @@ import {
   type AdminTranslate,
   type EquipmentDetailsResponse,
   type MaintenanceLogEntry,
-  type MaintenanceStatus,
-  type MaintenanceWorkflowStatus,
   type PlannedMaintenanceRecipient,
   type PlannedMaintenanceItem,
 } from "../adminShared";
@@ -292,43 +288,6 @@ export function useAdminMaintenance({
     }
   };
 
-  const updatePlannedMaintenanceStatus = async (
-    id: string,
-    status: MaintenanceWorkflowStatus
-  ) => {
-    setMaintenanceActionKey(`${id}:${status}`);
-    setPlannedMaintenanceError("");
-    setPlannedMaintenanceSuccess("");
-    try {
-      const res = await fetch(`/api/admin/planned-maintenance/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, locale }),
-      });
-      const payload = await parseJson<
-        PlannedMaintenanceItem & {
-          notificationWarning?: string;
-          notificationSuccess?: string;
-        }
-      >(res);
-      const saved = normalizePlannedMaintenanceItem(payload);
-      if (payload.notificationWarning) {
-        setPlannedMaintenanceError(payload.notificationWarning);
-      }
-      if (payload.notificationSuccess) {
-        setPlannedMaintenanceSuccess(payload.notificationSuccess);
-      }
-      setPlannedMaintenanceItems((prev) =>
-        sortPlannedMaintenanceItems(prev.map((item) => (item.id === id ? saved : item)))
-      );
-    } catch (e: unknown) {
-      setPlannedMaintenanceSuccess("");
-      setPlannedMaintenanceError(String((e as Error).message || e));
-    } finally {
-      setMaintenanceActionKey(null);
-    }
-  };
-
   const deletePlannedMaintenance = async (id: string) => {
     setMaintenanceActionKey(`${id}:delete`);
     setPlannedMaintenanceError("");
@@ -504,42 +463,22 @@ export function useAdminMaintenance({
     [editingMaintenanceId, plannedMaintenanceItems]
   );
 
-  const activeMaintenanceStatus = useMemo<MaintenanceStatus | null>(
-    () => (activeMaintenanceItem ? getMaintenanceItemStatus(activeMaintenanceItem) : null),
-    [activeMaintenanceItem]
-  );
-
   const maintenanceLogEntries = useMemo<MaintenanceLogEntry[]>(() => {
     return plannedMaintenanceItems
       .map((item) => {
         const machineLabel = machineLabelByKey[item.machineKey] || item.machineKey;
-        const completedTime = item.completedAt ? new Date(item.completedAt).getTime() : NaN;
         const updatedTime = new Date(item.updatedAt).getTime();
         const createdTime = new Date(item.createdAt).getTime();
-
-        if (item.status === "completed" && item.completedAt && !Number.isNaN(completedTime)) {
-          return {
-            id: `${item.id}:completed`,
-            category: machineLabel,
-            change: t("admin.changeCompleted"),
-            title: item.title,
-            timestamp: item.completedAt,
-            kind: "completed" as const,
-          };
-        }
 
         if (
           !Number.isNaN(updatedTime) &&
           !Number.isNaN(createdTime) &&
           Math.abs(updatedTime - createdTime) > 1000
         ) {
-          const changeLabel = isMaintenanceClosedStatus(item.status)
-            ? getMaintenanceWorkflowStatusLabel(t, item.status)
-            : t("admin.changeUpdated");
           return {
             id: `${item.id}:updated`,
             category: machineLabel,
-            change: changeLabel,
+            change: t("admin.changeUpdated"),
             title: item.title,
             timestamp: item.updatedAt,
             kind: "updated" as const,
@@ -596,14 +535,12 @@ export function useAdminMaintenance({
     selectedMaintenanceDateLabel,
     isMaintenanceEditing,
     activeMaintenanceItem,
-    activeMaintenanceStatus,
     maintenanceLogEntries,
     openCreateMaintenanceModal,
     openEditMaintenanceModal,
     closeMaintenanceModal,
     selectMaintenanceDate,
     savePlannedMaintenance,
-    updatePlannedMaintenanceStatus,
     sendPlannedMaintenanceReminder,
     deletePlannedMaintenance,
   };

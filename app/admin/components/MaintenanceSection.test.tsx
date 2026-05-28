@@ -42,7 +42,6 @@ const maintenanceItem: PlannedMaintenanceItem = {
   jiraIssueKey: "MECH-321",
   jiraIssueUrl: "https://svenheim.atlassian.net/browse/MECH-321",
   notificationRecipients: [],
-  status: "planned",
   isCompleted: false,
   completedAt: null,
   createdBy: {
@@ -80,7 +79,6 @@ const baseProps = {
   isMaintenanceModalOpen: true,
   isMaintenanceEditing: true,
   activeMaintenanceItem: maintenanceItem,
-  activeMaintenanceStatus: "upcoming" as const,
   currentUserLabel: "Sven",
   machineDirectory,
   machineLabelByKey: {
@@ -111,7 +109,6 @@ const baseProps = {
   onMaintenanceNoteChange: vi.fn(),
   onMaintenanceNotificationRecipientsChange: vi.fn(),
   onSavePlannedMaintenance: vi.fn(),
-  onUpdatePlannedMaintenanceStatus: vi.fn(),
   onSendPlannedMaintenanceReminder: vi.fn(),
   onDeletePlannedMaintenance: vi.fn(),
 };

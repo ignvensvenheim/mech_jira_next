@@ -17,8 +17,8 @@ import {
   formatMachineKeyDisplay,
   formatSeconds,
   getMaintenanceDueLabel,
+  getMaintenanceItemStatus,
   getMaintenanceWorkflowStatusLabel,
-  isMaintenanceClosedStatus,
   parseMachineKey,
   type EquipmentDetailsResponse,
 } from "../../adminShared";
@@ -116,18 +116,6 @@ function AssetDetailPageContent() {
   const assetMaintenanceItems = useMemo(
     () => plannedMaintenanceItems.filter((item) => item.machineKey === machineKey),
     [machineKey, plannedMaintenanceItems]
-  );
-  const plannedItems = useMemo(
-    () => assetMaintenanceItems.filter((item) => !isMaintenanceClosedStatus(item.status)),
-    [assetMaintenanceItems]
-  );
-  const completedItems = useMemo(
-    () => assetMaintenanceItems.filter((item) => item.status === "completed"),
-    [assetMaintenanceItems]
-  );
-  const cancelledItems = useMemo(
-    () => assetMaintenanceItems.filter((item) => item.status === "cancelled"),
-    [assetMaintenanceItems]
   );
   const maintenanceCostTotal = useMemo(
     () => assetMaintenanceItems.reduce((sum, item) => sum + (item.cost ?? 0), 0),
@@ -455,78 +443,23 @@ function AssetDetailPageContent() {
                   {plannedMaintenanceLoading && (
                     <div className="admin-chart-empty">{t("common.loading")}</div>
                   )}
-                  {!plannedMaintenanceLoading && plannedItems.length === 0 && (
+                  {!plannedMaintenanceLoading && assetMaintenanceItems.length === 0 && (
                     <div className="admin-chart-empty">
                       {t("admin.noPlannedMaintenanceForAsset")}
                     </div>
                   )}
-                  {!plannedMaintenanceLoading && plannedItems.length > 0 && (
+                  {!plannedMaintenanceLoading && assetMaintenanceItems.length > 0 && (
                     <div className="admin-asset-list">
-                      {plannedItems.map((item) => (
+                      {assetMaintenanceItems.map((item) => (
                         <div key={item.id} className="admin-asset-maintenance-row">
                           <div className="admin-asset-maintenance-row__main">
                             <div className="admin-asset-maintenance-row__title">{item.title}</div>
                             <div className="admin-asset-maintenance-row__meta">
-                              {getMaintenanceWorkflowStatusLabel(t, item.status)} |{" "}
-                              {getMaintenanceDueLabel(item.dueDate, t)}
-                            </div>
-                          </div>
-                          <div className="admin-asset-maintenance-row__cost">
-                            {item.cost == null ? "-" : formatCurrency(item.cost, locale)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="admin-panel">
-                  <div className="admin-chart-title">{t("admin.completedMaintenance")}</div>
-                  {plannedMaintenanceLoading && (
-                    <div className="admin-chart-empty">{t("common.loading")}</div>
-                  )}
-                  {!plannedMaintenanceLoading && completedItems.length === 0 && (
-                    <div className="admin-chart-empty">
-                      {t("admin.noCompletedMaintenanceForAsset")}
-                    </div>
-                  )}
-                  {!plannedMaintenanceLoading && completedItems.length > 0 && (
-                    <div className="admin-asset-list">
-                      {completedItems.map((item) => (
-                        <div key={item.id} className="admin-asset-maintenance-row">
-                          <div className="admin-asset-maintenance-row__main">
-                            <div className="admin-asset-maintenance-row__title">{item.title}</div>
-                            <div className="admin-asset-maintenance-row__meta">
-                              {item.completedAt
-                                ? formatDateTimeForLocale(item.completedAt, locale)
-                                : formatMaintenanceDueDateTimeForLocale(item.dueDate, locale)}
-                            </div>
-                          </div>
-                          <div className="admin-asset-maintenance-row__cost">
-                            {item.cost == null ? "-" : formatCurrency(item.cost, locale)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="admin-panel">
-                  <div className="admin-chart-title">{t("admin.maintenanceStatusCancelled")}</div>
-                  {plannedMaintenanceLoading && (
-                    <div className="admin-chart-empty">{t("common.loading")}</div>
-                  )}
-                  {!plannedMaintenanceLoading && cancelledItems.length === 0 && (
-                    <div className="admin-chart-empty">{t("admin.noCancelledMaintenanceForAsset")}</div>
-                  )}
-                  {!plannedMaintenanceLoading && cancelledItems.length > 0 && (
-                    <div className="admin-asset-list">
-                      {cancelledItems.map((item) => (
-                        <div key={item.id} className="admin-asset-maintenance-row">
-                          <div className="admin-asset-maintenance-row__main">
-                            <div className="admin-asset-maintenance-row__title">{item.title}</div>
-                            <div className="admin-asset-maintenance-row__meta">
-                              {formatDateTimeForLocale(item.updatedAt, locale)}
+                              {getMaintenanceWorkflowStatusLabel(
+                                t,
+                                getMaintenanceItemStatus(item)
+                              )}{" "}
+                              | {getMaintenanceDueLabel(item.dueDate, t)}
                             </div>
                           </div>
                           <div className="admin-asset-maintenance-row__cost">

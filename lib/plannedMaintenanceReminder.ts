@@ -19,10 +19,6 @@ export function isDueSoonDayKey(
   return dueDayKey >= todayDayKey && dueDayKey <= todayDayKey + windowDays;
 }
 
-export function isOpenMaintenanceStatus(status: string | null, isCompleted: boolean) {
-  if (status === "planned") return true;
-  if (status === "completed" || status === "cancelled") return false;
-  if (status === "inProgress" || status === "waitingForParts") return false;
-
+export function isMaintenanceReminderEligible(isCompleted: boolean) {
   return !isCompleted;
 }
