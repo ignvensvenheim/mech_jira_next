@@ -130,10 +130,33 @@ Current Maintenance State
 
 Current Auth/Security Notes
 - Login wording is email-only now.
+- Credentials auth now accepts email only:
+  no name-based lookup in authorize(...)
+  bootstrap admin matching also uses ADMIN_EMAIL only
+- Login callbackUrl is now sanitized to internal relative admin paths only:
+  allowed target shape = /admin...
+  fallback target = /admin
+- Failed login protection now exists in auth flow:
+  repeated failed attempts are tracked per user in DB
+  temporary lockout is enforced after threshold is reached
+  defaults are 5 failed attempts / 15 minute lockout
+  env overrides:
+    MAX_FAILED_LOGIN_ATTEMPTS
+    LOGIN_LOCKOUT_MINUTES
+- Auth lockout state now uses User fields:
+  failedLoginAttempts
+  lastFailedLoginAt
+  lockedUntil
 - Bootstrap admin login is setup-only and gated by:
   ALLOW_ADMIN_BOOTSTRAP=true
   zero existing users
 - Mutating admin APIs already enforce admin auth + same-origin checks.
+- Auth redirect helper:
+  lib/authRedirect.ts
+- Auth lockout helper:
+  lib/authSecurity.ts
+- If auth changes are deployed to a new DB/environment, remember the migration for:
+  prisma/migrations/0011_auth_login_protection
 
 Current Inventory / Asset Detail State
 - Inventory first view is read-only by design.
@@ -241,7 +264,7 @@ Quick Start By Topic
   app/api/admin/planned-maintenance/route.ts
   app/api/admin/planned-maintenance/[id]/route.ts
 
-Recommended Next Fixes
-- Sanitize callbackUrl to internal relative admin paths only.
-- Remove name-based login from authorize(...) if email-only is the desired rule.
-- Add rate limiting or temporary lockout on repeated failed login attempts.
+Recent Security Fixes Completed
+- Sanitized callbackUrl to internal relative admin paths only.
+- Removed name-based login from authorize(...); login is email-only now.
+- Added temporary lockout protection for repeated failed login attempts.
