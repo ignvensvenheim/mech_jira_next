@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { getAdminAssetHref } from "../adminShared";
-import type { AdminTranslate, EquipmentDraft, MachineDirectoryItem } from "../adminShared";
+import type {
+  AdminTranslate,
+  EquipmentDraft,
+  MachineDirectoryItem,
+} from "../adminShared";
 
 type InventorySectionProps = {
   t: AdminTranslate;
@@ -58,7 +62,9 @@ export default function InventorySection({
             <select
               className="admin-input"
               value={inventoryCategory}
-              onChange={(event) => onInventoryCategoryChange(event.target.value)}
+              onChange={(event) =>
+                onInventoryCategoryChange(event.target.value)
+              }
             >
               <option value="">{t("common.all")}</option>
               {inventoryCategoryOptions.map((option) => (
@@ -73,7 +79,9 @@ export default function InventorySection({
             <select
               className="admin-input"
               value={inventorySubCategory}
-              onChange={(event) => onInventorySubCategoryChange(event.target.value)}
+              onChange={(event) =>
+                onInventorySubCategoryChange(event.target.value)
+              }
             >
               <option value="">{t("common.all")}</option>
               {inventorySubCategoryOptions.map((option) => (
@@ -106,7 +114,9 @@ export default function InventorySection({
         {inventoryLoading && (
           <div className="admin-buffering">
             <div className="admin-buffering-spinner" />
-            <div className="admin-chart-empty">{t("admin.loadingMachines")}</div>
+            <div className="admin-chart-empty">
+              {t("admin.loadingMachines")}
+            </div>
           </div>
         )}
         {!inventoryLoading && filteredMachineDirectory.length === 0 && (
@@ -123,8 +133,9 @@ export default function InventorySection({
             return (
               <div key={machine.machineKey} className="admin-inventory-row">
                 <div className="admin-ticket-meta">
-                  <div className="admin-ticket-key">{machine.category}</div>
-                  <div className="admin-ticket-summary">{machine.subcategory}</div>
+                  <div className="admin-ticket-key">
+                    <span> {machine.category}</span> | {machine.subcategory}
+                  </div>
                   <Link
                     href={getAdminAssetHref(machine.machineKey)}
                     className="admin-inline-link admin-inline-link--inventory"
@@ -133,8 +144,13 @@ export default function InventorySection({
                   </Link>
                 </div>
                 <label className="admin-inventory-field">
-                  <div className="admin-inventory-field__label">{t("admin.model")}</div>
-                  <div className="admin-input admin-inventory-field__value" aria-readonly="true">
+                  <div className="admin-inventory-field__label">
+                    {t("admin.model")}
+                  </div>
+                  <div
+                    className="admin-input admin-inventory-field__value"
+                    aria-readonly="true"
+                  >
                     {draft.model.trim() || "-"}
                   </div>
                 </label>
@@ -142,7 +158,10 @@ export default function InventorySection({
                   <div className="admin-inventory-field__label">
                     {t("admin.serialNumber")}
                   </div>
-                  <div className="admin-input admin-inventory-field__value" aria-readonly="true">
+                  <div
+                    className="admin-input admin-inventory-field__value"
+                    aria-readonly="true"
+                  >
                     {draft.serialNumber.trim() || "-"}
                   </div>
                 </label>
@@ -150,7 +169,10 @@ export default function InventorySection({
                   <div className="admin-inventory-field__label">
                     {t("admin.manufacturer")}
                   </div>
-                  <div className="admin-input admin-inventory-field__value" aria-readonly="true">
+                  <div
+                    className="admin-input admin-inventory-field__value"
+                    aria-readonly="true"
+                  >
                     {draft.manufacturer.trim() || "-"}
                   </div>
                 </label>

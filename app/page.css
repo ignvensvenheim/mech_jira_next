@@ -90,7 +90,9 @@
   background: var(--color-card-bg);
   color: var(--color-muted);
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition:
+    background 0.12s,
+    color 0.12s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -487,7 +489,6 @@
   font-weight: 600;
   color: var(--color-primary);
 }
-
 
 .admin-function-grid {
   margin-top: 10px;
@@ -891,7 +892,9 @@
 
 .admin-inventory-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 100px;
+  grid-template-columns:
+    minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)
+    100px;
   gap: 10px;
   align-items: end;
   padding: 8px 10px;
@@ -1337,7 +1340,9 @@
   grid-template-rows: auto 1fr;
   gap: 10px;
   overflow: hidden;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .admin-maintenance-calendar__day--outside {
@@ -1370,7 +1375,8 @@
   color: var(--color-primary);
 }
 
-.admin-maintenance-calendar__day--outside .admin-maintenance-calendar__day-number {
+.admin-maintenance-calendar__day--outside
+  .admin-maintenance-calendar__day-number {
   color: rgba(44, 62, 80, 0.42);
 }
 
@@ -1400,7 +1406,9 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+  transition:
+    box-shadow 0.18s ease,
+    border-color 0.18s ease;
 }
 
 .admin-maintenance-calendar__event:focus-visible {
@@ -1597,11 +1605,11 @@
 }
 
 .admin-inventory-row .admin-ticket-key {
-  font-size: 13px;
-}
+  font-size: 15px;
 
-.admin-inventory-row .admin-ticket-summary {
-  font-size: 13px;
+  span {
+    color: var(--color-muted);
+  }
 }
 
 .admin-ticket-meta {
@@ -1616,7 +1624,6 @@
   text-align: left;
   cursor: pointer;
 }
-
 
 .admin-ticket-open:hover .admin-ticket-key,
 .admin-ticket-open:hover .admin-ticket-summary {
@@ -1734,6 +1741,23 @@
   gap: 8px;
 }
 
+.admin-asset-maintenance-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-asset-maintenance-group {
+  padding: 14px;
+  border: 1px solid rgba(44, 62, 80, 0.08);
+  border-radius: var(--border-radius);
+  background: #fff;
+}
+
+.admin-asset-maintenance-group .admin-chart-title {
+  margin-bottom: 10px;
+}
+
 .admin-asset-maintenance-row {
   display: flex;
   align-items: flex-start;
@@ -1781,6 +1805,12 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .admin-asset-maintenance-overview {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ticket-card.ticket-card--list.admin-asset-ticket-card {

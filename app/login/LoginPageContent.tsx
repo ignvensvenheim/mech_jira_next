@@ -7,12 +7,13 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
 import { useI18n } from "@/components/I18nProvider";
+import { sanitizeAdminCallbackUrl } from "@/lib/authRedirect";
 
 export default function LoginPageContent() {
   const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/admin";
+  const callbackUrl = sanitizeAdminCallbackUrl(searchParams.get("callbackUrl"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -63,11 +64,12 @@ export default function LoginPageContent() {
                 <label>
                   <div className="auth-label">{t("login.emailOrUsername")}</div>
                   <input
-                    type="text"
+                    type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder={t("login.emailPlaceholder")}
                     className="auth-input"
+                    autoComplete="email"
                   />
                 </label>
                 <label>
@@ -78,6 +80,7 @@ export default function LoginPageContent() {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder={t("login.passwordPlaceholder")}
                     className="auth-input"
+                    autoComplete="current-password"
                   />
                 </label>
                 {error && <div className="auth-error">{error}</div>}

@@ -261,6 +261,23 @@ export function getMaintenanceItemStatus(
   return "upcoming";
 }
 
+export function isMaintenanceCompletedForDisplay(
+  item: PlannedMaintenanceItem,
+  todayDayKey: number = getCurrentLocalDayKey()
+) {
+  if (item.isCompleted) return true;
+
+  const dueDayKey = dateOnlyToDayKey(getDateOnlyFromMaintenanceDateTime(item.dueDate));
+  return dueDayKey !== null && dueDayKey < todayDayKey;
+}
+
+export function isMaintenanceUpcomingForDisplay(
+  item: PlannedMaintenanceItem,
+  todayDayKey: number = getCurrentLocalDayKey()
+) {
+  return !isMaintenanceCompletedForDisplay(item, todayDayKey);
+}
+
 export function toDateOnlyFromParts(year: number, monthIndex: number, day: number) {
   return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(
     2,

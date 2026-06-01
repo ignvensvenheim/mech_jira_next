@@ -32,6 +32,7 @@ type StatisticsSectionProps = {
   statisticsTotalTimeSeconds: number;
   statisticsTrackedCost: number;
   plannedMaintenanceItemsLength: number;
+  statisticsMaintenanceUpcomingCount: number;
   statisticsMaintenanceCompletedCount: number;
   statisticsMaintenanceCost: number;
   ticketsByCategory: CategoryRow[];
@@ -71,6 +72,7 @@ export default function StatisticsSection({
   statisticsTotalTimeSeconds,
   statisticsTrackedCost,
   plannedMaintenanceItemsLength,
+  statisticsMaintenanceUpcomingCount,
   statisticsMaintenanceCompletedCount,
   statisticsMaintenanceCost,
   ticketsByCategory,
@@ -157,6 +159,10 @@ export default function StatisticsSection({
           <div className="admin-stat">
             <div className="admin-stat-label">{t("admin.maintenancePlans")}</div>
             <div className="admin-stat-value">{plannedMaintenanceItemsLength}</div>
+          </div>
+          <div className="admin-stat">
+            <div className="admin-stat-label">{t("admin.upcomingMaintenancePlans")}</div>
+            <div className="admin-stat-value">{statisticsMaintenanceUpcomingCount}</div>
           </div>
           <div className="admin-stat">
             <div className="admin-stat-label">{t("admin.completedMaintenancePlans")}</div>

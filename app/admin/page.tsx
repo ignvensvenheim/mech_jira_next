@@ -11,16 +11,18 @@ import InventorySection from "./components/InventorySection";
 import MaintenanceSection from "./components/MaintenanceSection";
 import StatisticsSection from "./components/StatisticsSection";
 import UsersManager from "./users/users-manager";
-import {
-  formatDisplayDate,
-  getDateRangeBounds,
-  getCurrentLocalDateOnly,
-  getIssueCategoryAndSubcategory,
-  getRepairCostTotalsByMachine,
-  parseMachineKey,
-  summarizeIssuesByAsset,
-  type AssetStatisticsRow,
-} from "./adminShared";
+  import {
+    formatDisplayDate,
+    getDateRangeBounds,
+    getCurrentLocalDateOnly,
+    getIssueCategoryAndSubcategory,
+    isMaintenanceCompletedForDisplay,
+    isMaintenanceUpcomingForDisplay,
+    getRepairCostTotalsByMachine,
+    parseMachineKey,
+    summarizeIssuesByAsset,
+    type AssetStatisticsRow,
+  } from "./adminShared";
 import { useAdminAssetData } from "./hooks/useAdminAssetData";
 import { useAdminFilters } from "./hooks/useAdminFilters";
 import { useAdminMaintenance } from "./hooks/useAdminMaintenance";
@@ -367,7 +369,17 @@ function AdminPageContent() {
     [maintenanceCostsByMachineKey]
   );
   const statisticsMaintenanceCompletedCount = useMemo(
-    () => plannedMaintenanceItems.filter((item) => item.isCompleted).length,
+    () =>
+      plannedMaintenanceItems.filter((item) =>
+        isMaintenanceCompletedForDisplay(item),
+      ).length,
+    [plannedMaintenanceItems]
+  );
+  const statisticsMaintenanceUpcomingCount = useMemo(
+    () =>
+      plannedMaintenanceItems.filter((item) =>
+        isMaintenanceUpcomingForDisplay(item),
+      ).length,
     [plannedMaintenanceItems]
   );
   const assetStatistics = useMemo<AssetStatisticsRow[]>(() => {
@@ -709,6 +721,7 @@ function AdminPageContent() {
                   statisticsTotalTimeSeconds={statisticsTotalTimeSeconds}
                   statisticsTrackedCost={statisticsTrackedCost}
                   plannedMaintenanceItemsLength={plannedMaintenanceItems.length}
+                  statisticsMaintenanceUpcomingCount={statisticsMaintenanceUpcomingCount}
                   statisticsMaintenanceCompletedCount={statisticsMaintenanceCompletedCount}
                   statisticsMaintenanceCost={statisticsMaintenanceCost}
                   ticketsByCategory={ticketsByCategory}

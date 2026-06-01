@@ -7,7 +7,7 @@
   --color-primary: rgb(62, 79, 92);
   --color-header-bg: #2c3e50;
   --color-text-light: #8a9ba8;
-
+  --color-muted: rgba(110, 110, 110, 0.8);
   --color-card-bg: rgba(254, 254, 254, 0.8);
   --color-card-bg-hover: white;
   --border-color: #5c5c5c25;
@@ -29,7 +29,14 @@ body {
   font-family: var(--font-poppins), sans-serif;
 }
 
-:where(button, .page__action-link, .auth-button, .sort-filter__admin-login, .export-button, .admin-maintenance-modal__link) {
+:where(
+  button,
+  .page__action-link,
+  .auth-button,
+  .sort-filter__admin-login,
+  .export-button,
+  .admin-maintenance-modal__link
+) {
   transition:
     background 0.12s,
     color 0.12s,
@@ -38,11 +45,25 @@ body {
     filter 0.12s;
 }
 
-:where(button, .page__action-link, .auth-button, .sort-filter__admin-login, .export-button, .admin-maintenance-modal__link):hover:not(:disabled) {
+:where(
+    button,
+    .page__action-link,
+    .auth-button,
+    .sort-filter__admin-login,
+    .export-button,
+    .admin-maintenance-modal__link
+  ):hover:not(:disabled) {
   box-shadow: var(--button-hover-shadow);
 }
 
-:where(button, .page__action-link, .auth-button, .sort-filter__admin-login, .export-button, .admin-maintenance-modal__link):active:not(:disabled) {
+:where(
+    button,
+    .page__action-link,
+    .auth-button,
+    .sort-filter__admin-login,
+    .export-button,
+    .admin-maintenance-modal__link
+  ):active:not(:disabled) {
   box-shadow: none;
 }
 

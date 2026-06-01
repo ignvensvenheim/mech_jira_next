@@ -67,7 +67,9 @@ type MaintenanceSectionProps = {
   onMaintenanceAvailabilityEndTimeChange: (value: string) => void;
   onMaintenanceCostChange: (value: string) => void;
   onMaintenanceNoteChange: (value: string) => void;
-  onMaintenanceNotificationRecipientsChange: (value: PlannedMaintenanceRecipient[]) => void;
+  onMaintenanceNotificationRecipientsChange: (
+    value: PlannedMaintenanceRecipient[],
+  ) => void;
   onSavePlannedMaintenance: () => void;
   onSendPlannedMaintenanceReminder: (id: string) => void;
   onDeletePlannedMaintenance: (id: string) => void;
@@ -129,7 +131,9 @@ export default function MaintenanceSection({
     return `${hours}:${minutes}`;
   });
   const selectedRecipientEmails = new Set(
-    maintenanceNotificationRecipients.map((recipient) => recipient.email.toLowerCase())
+    maintenanceNotificationRecipients.map((recipient) =>
+      recipient.email.toLowerCase(),
+    ),
   );
   const isSendingNotificationEmails =
     plannedMaintenanceSaving && maintenanceNotificationRecipients.length > 0;
@@ -144,20 +148,31 @@ export default function MaintenanceSection({
         <div className="admin-maintenance-calendar">
           <div className="admin-maintenance-calendar__toolbar">
             <div className="admin-maintenance-calendar__heading">
-              <div className="admin-chart-title">{t("admin.maintenanceCalendar")}</div>
               <div className="admin-maintenance-calendar__month">
                 {maintenanceCalendarLabel}
               </div>
             </div>
             <div className="admin-maintenance-calendar__toolbar-actions">
               <div className="admin-maintenance-calendar__nav">
-                <button type="button" className="admin-reset-button" onClick={onPreviousMonth}>
+                <button
+                  type="button"
+                  className="admin-reset-button"
+                  onClick={onPreviousMonth}
+                >
                   {t("common.prev")}
                 </button>
-                <button type="button" className="admin-reset-button" onClick={onThisMonth}>
+                <button
+                  type="button"
+                  className="admin-reset-button"
+                  onClick={onThisMonth}
+                >
                   {t("common.thisMonth")}
                 </button>
-                <button type="button" className="admin-reset-button" onClick={onNextMonth}>
+                <button
+                  type="button"
+                  className="admin-reset-button"
+                  onClick={onNextMonth}
+                >
                   {t("common.next")}
                 </button>
               </div>
@@ -165,7 +180,9 @@ export default function MaintenanceSection({
                 <button
                   type="button"
                   className="admin-reset-button"
-                  onClick={() => onOpenCreateMaintenanceModal(getCurrentLocalDateOnly())}
+                  onClick={() =>
+                    onOpenCreateMaintenanceModal(getCurrentLocalDateOnly())
+                  }
                 >
                   {t("admin.addMaintenancePlan")}
                 </button>
@@ -173,7 +190,9 @@ export default function MaintenanceSection({
             </div>
           </div>
 
-          {plannedMaintenanceError && <div className="page__error">{plannedMaintenanceError}</div>}
+          {plannedMaintenanceError && (
+            <div className="page__error">{plannedMaintenanceError}</div>
+          )}
           {plannedMaintenanceSuccess && (
             <div className="page__success">{plannedMaintenanceSuccess}</div>
           )}
@@ -186,12 +205,17 @@ export default function MaintenanceSection({
           ) : (
             <>
               {maintenanceCalendarMonthItemCount === 0 && (
-                <div className="admin-chart-empty">{t("admin.maintenanceCalendarEmpty")}</div>
+                <div className="admin-chart-empty">
+                  {t("admin.maintenanceCalendarEmpty")}
+                </div>
               )}
 
               <div className="admin-maintenance-calendar__weekday-row">
                 {maintenanceWeekdayLabels.map((label) => (
-                  <div key={label} className="admin-maintenance-calendar__weekday">
+                  <div
+                    key={label}
+                    className="admin-maintenance-calendar__weekday"
+                  >
                     {label}
                   </div>
                 ))}
@@ -205,9 +229,13 @@ export default function MaintenanceSection({
                     <div
                       key={day.dateKey}
                       className={`admin-maintenance-calendar__day${
-                        day.isCurrentMonth ? "" : " admin-maintenance-calendar__day--outside"
+                        day.isCurrentMonth
+                          ? ""
+                          : " admin-maintenance-calendar__day--outside"
                       }${day.isToday ? " admin-maintenance-calendar__day--today" : ""}${
-                        isSelectedDay ? " admin-maintenance-calendar__day--selected" : ""
+                        isSelectedDay
+                          ? " admin-maintenance-calendar__day--selected"
+                          : ""
                       }`}
                       aria-disabled={!day.isCurrentMonth}
                     >
@@ -219,7 +247,8 @@ export default function MaintenanceSection({
 
                       <div className="admin-maintenance-calendar__events">
                         {day.items.map((item) => {
-                          const isSelectedEvent = editingMaintenanceId === item.id;
+                          const isSelectedEvent =
+                            editingMaintenanceId === item.id;
 
                           return (
                             <button
@@ -241,16 +270,17 @@ export default function MaintenanceSection({
                                 </div>
                               </div>
                               <div className="admin-maintenance-calendar__event-meta">
-                                {machineLabelByKey[item.machineKey] || item.machineKey}
+                                {machineLabelByKey[item.machineKey] ||
+                                  item.machineKey}
                               </div>
                               {formatMaintenanceAvailabilityLabel(
                                 item.availabilityStartTime,
-                                item.availabilityEndTime
+                                item.availabilityEndTime,
                               ) && (
                                 <div className="admin-maintenance-calendar__event-time">
                                   {formatMaintenanceAvailabilityLabel(
                                     item.availabilityStartTime,
-                                    item.availabilityEndTime
+                                    item.availabilityEndTime,
                                   )}
                                 </div>
                               )}
@@ -263,7 +293,10 @@ export default function MaintenanceSection({
                 })}
               </div>
 
-              <div className="admin-maintenance-log" aria-label={t("admin.activity")}>
+              <div
+                className="admin-maintenance-log"
+                aria-label={t("admin.activity")}
+              >
                 <div className="admin-maintenance-log__header">
                   <div className="admin-chart-title">{t("admin.activity")}</div>
                 </div>
@@ -274,14 +307,29 @@ export default function MaintenanceSection({
                 ) : (
                   <div className="admin-maintenance-log__list">
                     {maintenanceLogEntries.map((entry) => (
-                      <div key={entry.id} className="admin-maintenance-log__item">
+                      <div
+                        key={entry.id}
+                        className="admin-maintenance-log__item"
+                      >
                         <span className="admin-maintenance-log__line">
-                          <span className="admin-maintenance-log__field">{entry.title}</span>
-                          <span className="admin-maintenance-log__separator">|</span>
-                          <span className="admin-maintenance-log__field">{entry.category}</span>
-                          <span className="admin-maintenance-log__separator">|</span>
-                          <span className="admin-maintenance-log__field">{entry.change}</span>
-                          <span className="admin-maintenance-log__separator">|</span>
+                          <span className="admin-maintenance-log__field">
+                            {entry.title}
+                          </span>
+                          <span className="admin-maintenance-log__separator">
+                            |
+                          </span>
+                          <span className="admin-maintenance-log__field">
+                            {entry.category}
+                          </span>
+                          <span className="admin-maintenance-log__separator">
+                            |
+                          </span>
+                          <span className="admin-maintenance-log__field">
+                            {entry.change}
+                          </span>
+                          <span className="admin-maintenance-log__separator">
+                            |
+                          </span>
                           <span className="admin-maintenance-log__time">
                             {formatDateTimeForLocale(entry.timestamp, locale)}
                           </span>
@@ -336,48 +384,65 @@ export default function MaintenanceSection({
         <div className="admin-maintenance-modal__body">
           <div className="admin-maintenance-modal__fields">
             <label className="admin-inventory-field">
-              <div className="admin-inventory-field__label">{t("admin.maintenanceAsset")}</div>
+              <div className="admin-inventory-field__label">
+                {t("admin.maintenanceAsset")}
+              </div>
               <select
                 className="admin-input"
                 value={maintenanceMachineKey}
-                onChange={(event) => onMaintenanceMachineKeyChange(event.target.value)}
+                onChange={(event) =>
+                  onMaintenanceMachineKeyChange(event.target.value)
+                }
               >
                 <option value="">{t("admin.maintenanceAsset")}</option>
                 {machineDirectory.map((machine) => (
                   <option key={machine.machineKey} value={machine.machineKey}>
-                    {machineLabelByKey[machine.machineKey] || machine.machineKey}
+                    {machineLabelByKey[machine.machineKey] ||
+                      machine.machineKey}
                   </option>
                 ))}
               </select>
             </label>
             <label className="admin-inventory-field">
-              <div className="admin-inventory-field__label">{t("admin.maintenanceTitle")}</div>
+              <div className="admin-inventory-field__label">
+                {t("admin.maintenanceTitle")}
+              </div>
               <input
                 type="text"
                 className="admin-input"
                 value={maintenanceTitle}
-                onChange={(event) => onMaintenanceTitleChange(event.target.value)}
+                onChange={(event) =>
+                  onMaintenanceTitleChange(event.target.value)
+                }
                 placeholder={t("admin.maintenanceTitlePlaceholder")}
               />
             </label>
             <label className="admin-inventory-field">
-              <div className="admin-inventory-field__label">{t("admin.maintenanceDueDate")}</div>
+              <div className="admin-inventory-field__label">
+                {t("admin.maintenanceDueDate")}
+              </div>
               <input
                 type="date"
                 className="admin-input"
                 value={maintenanceDueDate}
-                onChange={(event) => onMaintenanceDueDateChange(event.target.value)}
+                onChange={(event) =>
+                  onMaintenanceDueDateChange(event.target.value)
+                }
               />
             </label>
             <label className="admin-inventory-field">
-              <div className="admin-inventory-field__label">{t("admin.maintenanceCost")}</div>
+              <div className="admin-inventory-field__label">
+                {t("admin.maintenanceCost")}
+              </div>
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 className="admin-input"
                 value={maintenanceCost}
-                onChange={(event) => onMaintenanceCostChange(event.target.value)}
+                onChange={(event) =>
+                  onMaintenanceCostChange(event.target.value)
+                }
                 placeholder={t("admin.maintenanceCostPlaceholder")}
               />
             </label>
@@ -404,7 +469,9 @@ export default function MaintenanceSection({
                     }
                   }}
                 >
-                  <option value="">{t("admin.maintenanceAvailabilityStart")}</option>
+                  <option value="">
+                    {t("admin.maintenanceAvailabilityStart")}
+                  </option>
                   {timeOptions.map((timeValue) => (
                     <option key={timeValue} value={timeValue}>
                       {timeValue}
@@ -419,12 +486,14 @@ export default function MaintenanceSection({
                   }
                   disabled={!maintenanceAvailabilityStartTime}
                 >
-                  <option value="">{t("admin.maintenanceAvailabilityEnd")}</option>
+                  <option value="">
+                    {t("admin.maintenanceAvailabilityEnd")}
+                  </option>
                   {timeOptions
                     .filter(
                       (timeValue) =>
                         !maintenanceAvailabilityStartTime ||
-                        timeValue >= maintenanceAvailabilityStartTime
+                        timeValue >= maintenanceAvailabilityStartTime,
                     )
                     .map((timeValue) => (
                       <option key={timeValue} value={timeValue}>
@@ -443,11 +512,15 @@ export default function MaintenanceSection({
               </div>
             </div>
             <label className="admin-inventory-field admin-maintenance-modal__field--full">
-              <div className="admin-inventory-field__label">{t("admin.maintenanceNote")}</div>
+              <div className="admin-inventory-field__label">
+                {t("admin.maintenanceNote")}
+              </div>
               <textarea
                 className="admin-input admin-maintenance-modal__note"
                 value={maintenanceNote}
-                onChange={(event) => onMaintenanceNoteChange(event.target.value)}
+                onChange={(event) =>
+                  onMaintenanceNoteChange(event.target.value)
+                }
                 placeholder={t("admin.maintenanceNotePlaceholder")}
               />
             </label>
@@ -458,7 +531,7 @@ export default function MaintenanceSection({
               <div className="admin-maintenance-recipient-grid">
                 {PLANNED_MAINTENANCE_RECIPIENTS.map((recipient) => {
                   const isChecked = selectedRecipientEmails.has(
-                    recipient.email.toLowerCase()
+                    recipient.email.toLowerCase(),
                   );
 
                   return (
@@ -481,8 +554,9 @@ export default function MaintenanceSection({
                           onMaintenanceNotificationRecipientsChange(
                             maintenanceNotificationRecipients.filter(
                               (item) =>
-                                item.email.toLowerCase() !== recipient.email.toLowerCase()
-                            )
+                                item.email.toLowerCase() !==
+                                recipient.email.toLowerCase(),
+                            ),
                           );
                         }}
                       />
@@ -492,8 +566,14 @@ export default function MaintenanceSection({
                 })}
               </div>
               {isSendingNotificationEmails && (
-                <div className="admin-maintenance-recipient-status" role="status">
-                  <span className="admin-buffering-spinner" aria-hidden="true" />
+                <div
+                  className="admin-maintenance-recipient-status"
+                  role="status"
+                >
+                  <span
+                    className="admin-buffering-spinner"
+                    aria-hidden="true"
+                  />
                   <span>
                     {t("admin.maintenanceSendingNotifications", {
                       count: maintenanceNotificationRecipients.length,
