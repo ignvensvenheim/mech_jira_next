@@ -2,9 +2,15 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { UserRole } from "@prisma/client";
+import { UserRole, type User } from "@prisma/client";
 import authConfig from "@/auth.config";
 import { isSuperAdminIdentity } from "@/lib/superAdmin";
+import {
+  getCurrentFailedAttempts,
+  getLockoutExpiry,
+  isActiveLoginLockout,
+  MAX_FAILED_LOGIN_ATTEMPTS,
+} from "@/lib/authSecurity";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -17,19 +23,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         try {
-          const identifier = String(credentials?.email || "").trim();
+          const identifier = String(credentials?.email || "")
+            .trim()
+            .toLowerCase();
           const password = String(credentials?.password || "");
 
           if (!identifier || !password) return null;
 
-          const identifierLower = identifier.toLowerCase();
-          let user = await prisma.user.findFirst({
+          const now = new Date();
+          let user: User | null = await prisma.user.findUnique({
             where: {
-              OR: [
-                { email: identifierLower },
-                { name: identifier },
-                { name: identifierLower },
-              ],
+              email: identifier,
             },
           });
 
@@ -44,11 +48,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             const adminName = (process.env.ADMIN_NAME || "").trim();
             const adminPassword = process.env.ADMIN_PASSWORD || "";
 
-            const matchesBootstrapIdentity =
-              (adminEmail && identifierLower === adminEmail) ||
-              (adminName &&
-                (identifier === adminName ||
-                  identifierLower === adminName.toLowerCase()));
+            const matchesBootstrapIdentity = adminEmail && identifier === adminEmail;
 
             if (allowBootstrap && matchesBootstrapIdentity && password === adminPassword) {
               const userCount = await prisma.user.count();
@@ -67,13 +67,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                   email: bootstrapEmail,
                   name: adminName || "Admin",
                   passwordHash,
-                  role: "ADMIN",
+                  role: UserRole.ADMIN,
                 },
               });
             }
           }
 
           if (!user) return null;
+
+          if (isActiveLoginLockout(user.lockedUntil, now)) {
+            return null;
+          }
 
           if (isSuperAdminIdentity(user) && user.role !== UserRole.ADMIN) {
             user = await prisma.user.update({
@@ -83,7 +87,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
 
           const matches = await bcrypt.compare(password, user.passwordHash);
-          if (!matches) return null;
+          if (!matches) {
+            const currentFailedAttempts = getCurrentFailedAttempts(
+              user.failedLoginAttempts,
+              user.lastFailedLoginAt,
+              now,
+            );
+            const nextFailedAttempts = currentFailedAttempts + 1;
+            const shouldLock = nextFailedAttempts >= MAX_FAILED_LOGIN_ATTEMPTS;
+
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                failedLoginAttempts: shouldLock ? 0 : nextFailedAttempts,
+                lastFailedLoginAt: now,
+                lockedUntil: shouldLock ? getLockoutExpiry(now) : null,
+              },
+            });
+
+            return null;
+          }
+
+          if (user.failedLoginAttempts > 0 || user.lastFailedLoginAt || user.lockedUntil) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                failedLoginAttempts: 0,
+                lastFailedLoginAt: null,
+                lockedUntil: null,
+              },
+            });
+          }
 
           return {
             id: user.id,

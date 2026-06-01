@@ -64,7 +64,7 @@ Create `.env.local` for local dev and set:
 - `DATABASE_URL` - PostgreSQL connection string
 - `NEXTAUTH_SECRET` - secret for auth tokens
 - `NEXTAUTH_URL` - app URL (for local: `http://localhost:3000`)
-- `ADMIN_EMAIL` - initial admin login email/username value
+- `ADMIN_EMAIL` - initial admin login email
 - `ADMIN_PASSWORD` - initial admin login password
 - `JIRA_BASE` - Jira base URL
 - `JIRA_EMAIL` - Jira account email
@@ -81,6 +81,7 @@ Create `.env.local` for local dev and set:
 Notes:
 
 - The first admin user can be auto-created on first successful login if the DB has no matching user and credentials match `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
+- Login `callbackUrl` values are restricted to relative `/admin...` paths.
 - In production (Vercel), these must be added in Project Settings -> Environment Variables.
 
 ## Local Development
