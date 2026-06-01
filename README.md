@@ -43,6 +43,17 @@ Internal Next.js application for viewing Jira tickets, filtering them, exporting
 - Uses `useSearchParams` with Suspense boundary for App Router compatibility
 - Redirects back to requested admin path via `callbackUrl`
 
+### Jira sync/cache
+
+- Jira ticket list data is cached locally in the browser and hydrated on startup
+- Normal startup sync uses Jira `updated` deltas instead of refetching the full project every time
+- The app still keeps the full ticket list as its baseline dataset
+- A cache without a confirmed full baseline snapshot automatically falls back to a full Jira reseed
+- Active/unresolved tickets are refreshed more frequently than archival tickets
+- Recently updated tickets from roughly the last 14 days get more frequent refresh sweeps
+- Closed/resolved tickets older than the archive threshold are treated as archival data and refreshed rarely
+- A `Force full refresh` action clears the local Jira cache and reseeds from Jira
+
 ## Project Structure (important parts)
 
 - `app/page.tsx` - public dashboard
@@ -69,6 +80,8 @@ Create `.env.local` for local dev and set:
 - `JIRA_BASE` - Jira base URL
 - `JIRA_EMAIL` - Jira account email
 - `JIRA_API_TOKEN` - Jira API token
+- `NEXT_PUBLIC_JIRA_ARCHIVE_THRESHOLD_DAYS` - optional archive threshold for closed/resolved Jira tickets (default `90`)
+- `NEXT_PUBLIC_JIRA_RECENT_ACTIVITY_WINDOW_DAYS` - optional recent-activity refresh window in days (default `14`)
 - `SMTP_HOST` - SMTP server host for maintenance notifications
 - `SMTP_PORT` - SMTP server port
 - `SMTP_SECURE` - `true` for implicit TLS, otherwise `false`
@@ -82,6 +95,7 @@ Notes:
 
 - The first admin user can be auto-created on first successful login if the DB has no matching user and credentials match `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
 - Login `callbackUrl` values are restricted to relative `/admin...` paths.
+- If a browser still has an older partial Jira cache from before the baseline-snapshot change, use `Force full refresh` once to reseed the full list.
 - In production (Vercel), these must be added in Project Settings -> Environment Variables.
 
 ## Local Development
@@ -186,10 +200,14 @@ npm run start
 
 - Jira data is fetched server-side by `/api/jira/search`
 - Client hook (`useJiraSearch`) does:
-  - initial/full sync
-  - incremental sync with overlap watermark
+  - full baseline cache verification
+  - startup cache hydration
+  - incremental sync using Jira `updated`
+  - targeted active/recent sweeps
+  - rare archival refresh sweeps
+  - automatic fallback to a full reseed when the cache is missing a confirmed full snapshot
   - periodic polling (visible/hidden tab intervals)
-  - localStorage caching
+  - local browser cache persistence with sync metadata
 - Public UI disables Excel export while full ticket fetch is in progress
 
 ## Common Troubleshooting

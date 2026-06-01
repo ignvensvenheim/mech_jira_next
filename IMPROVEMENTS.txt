@@ -6,6 +6,36 @@ Purpose
 - Jira is still the operational source; admin adds machine metadata, repair costs,
   asset costs, maintenance planning, and reporting.
 
+Current Jira Loading State
+- Jira tickets now use local cached incremental sync instead of treating every load as a full reload.
+- Main client sync file:
+  hooks/useJiraSearch.ts
+- Shared Jira sync policy/helpers:
+  lib/jiraSync.ts
+- Cached Jira list data is stored locally in browser storage with sync metadata.
+- Startup behavior with an existing cache:
+  hydrate cached tickets immediately
+  request only tickets updated since the last successful sync
+- Full list behavior:
+  the app is still expected to keep/show the full ticket list
+  a cache without a confirmed full baseline snapshot now triggers a full reseed
+  full baseline reseed is also forced periodically so the local full list stays trustworthy
+- Active/recent refresh strategy:
+  unresolved/active tickets get targeted refresh sweeps more often
+  recently updated tickets from roughly the last 14 days get periodic recent-data sweeps
+- Archived ticket strategy:
+  done/resolved tickets older than the archive threshold are treated as archival
+  archival tickets are refreshed rarely instead of on every load
+  default archive threshold = 90 days
+- Archived ticket consistency rule:
+  any archived ticket updated later is picked up by incremental sync and merged back automatically
+  reopened archived tickets therefore return to active/recent flows without needing a full reset
+- Manual full resync:
+  public dashboard now exposes Force Full Refresh
+  this clears the local Jira cache envelope and reseeds from Jira
+- If a browser still has an older partial cache from before the baseline snapshot safeguard,
+  run Force Full Refresh once to rebuild the full local dataset
+
 Current Admin Map
 - Main admin page: app/admin/page.tsx
 - Shared admin helpers/types: app/admin/adminShared.ts
