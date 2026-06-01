@@ -4,6 +4,7 @@ import "../../../../components/TicketCard/ticketCard.css";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useI18n } from "@/components/I18nProvider";
+import { getCurrentLocalDayKey } from "@/lib/dateOnly";
 import AdminTicketModal from "../../components/AdminTicketModal/AdminTicketModal";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { useIssues } from "@/lib/IssuesContext";
@@ -16,10 +17,10 @@ import {
   formatMachineDirectoryLabel,
   formatMachineKeyDisplay,
   formatSeconds,
-  getMaintenanceDueLabel,
-  getMaintenanceItemStatus,
-  getMaintenanceWorkflowStatusLabel,
+  isMaintenanceCompletedForDisplay,
+  isMaintenanceUpcomingForDisplay,
   parseMachineKey,
+  sortPlannedMaintenanceItems,
   type EquipmentDetailsResponse,
 } from "../../adminShared";
 import { useAdminAssetDetail } from "../../hooks/useAdminAssetDetail";
@@ -70,7 +71,6 @@ function AssetDetailPageContent() {
 
   const {
     assetIssues,
-    manualEntries,
     equipmentDetails,
     ticketCostsByIssue,
     assetDataLoading,
@@ -92,7 +92,6 @@ function AssetDetailPageContent() {
     plannedMaintenanceLoading,
     plannedMaintenanceError,
     loadPlannedMaintenance,
-    maintenanceBadgeCount,
   } = useAdminMaintenance({
     sessionResolved,
     currentUserIsAdmin,
@@ -128,6 +127,27 @@ function AssetDetailPageContent() {
     () =>
       plannedMaintenanceItems.filter((item) => item.machineKey === machineKey),
     [machineKey, plannedMaintenanceItems],
+  );
+  const todayDayKey = useMemo(() => getCurrentLocalDayKey(), []);
+  const upcomingAssetMaintenanceItems = useMemo(
+    () =>
+      sortPlannedMaintenanceItems(
+        assetMaintenanceItems.filter((item) =>
+          isMaintenanceUpcomingForDisplay(item, todayDayKey),
+        ),
+      ),
+    [assetMaintenanceItems, todayDayKey],
+  );
+  const completedAssetMaintenanceItems = useMemo(
+    () =>
+      [...assetMaintenanceItems]
+        .filter((item) => isMaintenanceCompletedForDisplay(item, todayDayKey))
+        .sort((a, b) =>
+          String(b.completedAt || b.dueDate || "").localeCompare(
+            String(a.completedAt || a.dueDate || ""),
+          ),
+        ),
+    [assetMaintenanceItems, todayDayKey],
   );
   const maintenanceCostTotal = useMemo(
     () =>
@@ -426,6 +446,90 @@ function AssetDetailPageContent() {
           <div className="admin-asset-grid">
             <div className="admin-panel admin-asset-grid__full">
               <div className="admin-chart-title">
+                {t("admin.maintenanceOverview")}
+              </div>
+              {plannedMaintenanceLoading && (
+                <div className="admin-chart-empty">{t("common.loading")}</div>
+              )}
+              {!plannedMaintenanceLoading && (
+                <div className="admin-asset-maintenance-overview">
+                  <section className="admin-asset-maintenance-group">
+                    <div className="admin-chart-title">
+                      {t("admin.upcomingMaintenance")}
+                    </div>
+                    {upcomingAssetMaintenanceItems.length === 0 && (
+                      <div className="admin-chart-empty">
+                        {t("admin.noPlannedMaintenanceForAsset")}
+                      </div>
+                    )}
+                    {upcomingAssetMaintenanceItems.length > 0 && (
+                      <div className="admin-asset-list">
+                        {upcomingAssetMaintenanceItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className="admin-asset-maintenance-row"
+                          >
+                            <div className="admin-asset-maintenance-row__main">
+                              <div className="admin-asset-maintenance-row__title">
+                                {item.title}
+                              </div>
+                              <div className="admin-asset-maintenance-row__meta">
+                                {formatMaintenanceDueDateTimeForLocale(item.dueDate, locale)}
+                              </div>
+                            </div>
+                            <div className="admin-asset-maintenance-row__cost">
+                              {item.cost == null
+                                ? "-"
+                                : formatCurrency(item.cost, locale)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="admin-asset-maintenance-group">
+                    <div className="admin-chart-title">
+                      {t("admin.completedMaintenance")}
+                    </div>
+                    {completedAssetMaintenanceItems.length === 0 && (
+                      <div className="admin-chart-empty">
+                        {t("admin.noCompletedMaintenanceForAsset")}
+                      </div>
+                    )}
+                    {completedAssetMaintenanceItems.length > 0 && (
+                      <div className="admin-asset-list">
+                        {completedAssetMaintenanceItems.map((item) => (
+                          <div
+                            key={item.id}
+                            className="admin-asset-maintenance-row"
+                          >
+                            <div className="admin-asset-maintenance-row__main">
+                              <div className="admin-asset-maintenance-row__title">
+                                {item.title}
+                              </div>
+                              <div className="admin-asset-maintenance-row__meta">
+                                {item.isCompleted && item.completedAt
+                                  ? formatDateTimeForLocale(item.completedAt, locale)
+                                  : formatMaintenanceDueDateTimeForLocale(item.dueDate, locale)}
+                              </div>
+                            </div>
+                            <div className="admin-asset-maintenance-row__cost">
+                              {item.cost == null
+                                ? "-"
+                                : formatCurrency(item.cost, locale)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                </div>
+              )}
+            </div>
+
+            <div className="admin-panel admin-asset-grid__full">
+              <div className="admin-chart-title">
                 {t("admin.breakdownTickets")}
               </div>
               {(ticketsLoading || assetDataLoading) && (
@@ -468,82 +572,6 @@ function AssetDetailPageContent() {
                           )}
                         </div>
                       </button>
-                    ))}
-                  </div>
-                )}
-            </div>
-
-            <div className="admin-panel">
-              <div className="admin-chart-title">
-                {t("admin.manualCostEntries")}
-              </div>
-              {(ticketsLoading || assetDataLoading) && (
-                <div className="admin-chart-empty">{t("common.loading")}</div>
-              )}
-              {!ticketsLoading &&
-                !assetDataLoading &&
-                manualEntries.length === 0 && (
-                  <div className="admin-chart-empty">
-                    {t("admin.noManualEntriesYet")}
-                  </div>
-                )}
-              {!ticketsLoading &&
-                !assetDataLoading &&
-                manualEntries.length > 0 && (
-                  <div className="admin-asset-list">
-                    {manualEntries.map((entry) => (
-                      <div key={entry.id} className="admin-manual-row">
-                        <div>{entry.date}</div>
-                        <div>{formatCurrency(entry.amount, locale)}</div>
-                        <div>{entry.comment}</div>
-                        <div>
-                          {formatDateTimeForLocale(entry.createdAt, locale)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-            </div>
-
-            <div className="admin-panel">
-              <div className="admin-chart-title">
-                {t("admin.plannedMaintenance")}
-              </div>
-              {plannedMaintenanceLoading && (
-                <div className="admin-chart-empty">{t("common.loading")}</div>
-              )}
-              {!plannedMaintenanceLoading &&
-                assetMaintenanceItems.length === 0 && (
-                  <div className="admin-chart-empty">
-                    {t("admin.noPlannedMaintenanceForAsset")}
-                  </div>
-                )}
-              {!plannedMaintenanceLoading &&
-                assetMaintenanceItems.length > 0 && (
-                  <div className="admin-asset-list">
-                    {assetMaintenanceItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="admin-asset-maintenance-row"
-                      >
-                        <div className="admin-asset-maintenance-row__main">
-                          <div className="admin-asset-maintenance-row__title">
-                            {item.title}
-                          </div>
-                          <div className="admin-asset-maintenance-row__meta">
-                            {getMaintenanceWorkflowStatusLabel(
-                              t,
-                              getMaintenanceItemStatus(item),
-                            )}{" "}
-                            | {getMaintenanceDueLabel(item.dueDate, t)}
-                          </div>
-                        </div>
-                        <div className="admin-asset-maintenance-row__cost">
-                          {item.cost == null
-                            ? "-"
-                            : formatCurrency(item.cost, locale)}
-                        </div>
-                      </div>
                     ))}
                   </div>
                 )}

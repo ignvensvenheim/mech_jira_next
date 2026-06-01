@@ -1741,6 +1741,23 @@
   gap: 8px;
 }
 
+.admin-asset-maintenance-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-asset-maintenance-group {
+  padding: 14px;
+  border: 1px solid rgba(44, 62, 80, 0.08);
+  border-radius: var(--border-radius);
+  background: #fff;
+}
+
+.admin-asset-maintenance-group .admin-chart-title {
+  margin-bottom: 10px;
+}
+
 .admin-asset-maintenance-row {
   display: flex;
   align-items: flex-start;
@@ -1788,6 +1805,12 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .admin-asset-maintenance-overview {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ticket-card.ticket-card--list.admin-asset-ticket-card {

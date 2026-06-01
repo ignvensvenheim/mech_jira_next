@@ -106,8 +106,27 @@ Current Maintenance State
   no status row in maintenance emails
   no status-based reminder filtering
   no status-based maintenance stats split
-  no status-based asset-detail maintenance split
+  no status text in asset-detail planned-maintenance rows
   legacy DB/API compatibility still exists for old status fields, but UI behavior is now date/scheduled-hours based
+- Asset detail planned-maintenance section now shows two lists:
+  upcoming maintenance
+  completed maintenance
+- Asset detail maintenance lists are grouped under one parent section:
+  Maintenance Overview
+- Asset detail maintenance overview is full-width and uses two white sub-panels:
+  one for upcoming
+  one for completed
+- Asset detail completed maintenance list includes:
+  explicitly completed items
+  past-due items whose due date is before the current local day
+- Statistics maintenance summary now follows the same grouping logic as the planned calendar/asset split:
+  past-due items count as completed
+  non-completed current/future items count as upcoming
+- Statistics maintenance summary now includes:
+  total plans
+  upcoming plans
+  completed plans
+  maintenance cost
 - Visual state:
   maintenance calendar cards now use a neutral green project-style background
   status-specific dots / legends / colored status cues were intentionally removed
@@ -175,6 +194,8 @@ Current Inventory / Asset Detail State
   editing starts only after pressing Edit details
   edit state should keep the same layout and typography as read-only state
   main active-state visual cue is white background on editable fields
+  standalone manual cost entries list was removed; manual costs remain summarized in asset overview
+  breakdown tickets list is positioned below the cost and maintenance panels
 
 Highest-Value Next Work
 1. Cost workflow depth
