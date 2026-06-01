@@ -32,7 +32,9 @@ function AssetDetailPageContent() {
   const { locale, t } = useI18n();
   const { loadingInitial, fetchingAllTickets, error } = useJiraSearch();
   const { issues } = useIssues();
-  const [selectedIssue, setSelectedIssue] = useState<NormalizedIssue | null>(null);
+  const [selectedIssue, setSelectedIssue] = useState<NormalizedIssue | null>(
+    null,
+  );
 
   const rawMachineKey = Array.isArray(params.machineKey)
     ? params.machineKey[0]
@@ -45,23 +47,26 @@ function AssetDetailPageContent() {
     }
   }, [rawMachineKey]);
 
-  const parsedMachine = useMemo(() => parseMachineKey(machineKey), [machineKey]);
+  const parsedMachine = useMemo(
+    () => parseMachineKey(machineKey),
+    [machineKey],
+  );
   const fallbackMachineLabel = useMemo(
     () => formatMachineDirectoryLabel(parsedMachine) || machineKey,
-    [machineKey, parsedMachine]
+    [machineKey, parsedMachine],
   );
   const machineKeyDisplay = useMemo(
     () => formatMachineKeyDisplay(machineKey),
-    [machineKey]
+    [machineKey],
   );
 
-  const {
-    currentUserIsAdmin,
-    sessionResolved,
-  } = useAdminSession(searchParams);
+  const { currentUserIsAdmin, sessionResolved } = useAdminSession(searchParams);
 
   const ticketsLoading = loadingInitial || fetchingAllTickets;
-  const allIssues = useMemo(() => (issues ?? []) as NormalizedIssue[], [issues]);
+  const allIssues = useMemo(
+    () => (issues ?? []) as NormalizedIssue[],
+    [issues],
+  );
 
   const {
     assetIssues,
@@ -98,12 +103,18 @@ function AssetDetailPageContent() {
   });
 
   const machineCategory =
-    equipmentDetails?.category?.trim() || parsedMachine.category || t("common.unknown");
+    equipmentDetails?.category?.trim() ||
+    parsedMachine.category ||
+    t("common.unknown");
   const machineSubcategory =
-    equipmentDetails?.subcategory?.trim() || parsedMachine.subcategory || t("common.unknown");
+    equipmentDetails?.subcategory?.trim() ||
+    parsedMachine.subcategory ||
+    t("common.unknown");
   const [equipmentModelDraft, setEquipmentModelDraft] = useState("");
-  const [equipmentSerialNumberDraft, setEquipmentSerialNumberDraft] = useState("");
-  const [equipmentManufacturerDraft, setEquipmentManufacturerDraft] = useState("");
+  const [equipmentSerialNumberDraft, setEquipmentSerialNumberDraft] =
+    useState("");
+  const [equipmentManufacturerDraft, setEquipmentManufacturerDraft] =
+    useState("");
   const [equipmentEditing, setEquipmentEditing] = useState(false);
   const [equipmentSaving, setEquipmentSaving] = useState(false);
   const [equipmentSaveError, setEquipmentSaveError] = useState("");
@@ -114,23 +125,29 @@ function AssetDetailPageContent() {
     }) || machineKey;
 
   const assetMaintenanceItems = useMemo(
-    () => plannedMaintenanceItems.filter((item) => item.machineKey === machineKey),
-    [machineKey, plannedMaintenanceItems]
+    () =>
+      plannedMaintenanceItems.filter((item) => item.machineKey === machineKey),
+    [machineKey, plannedMaintenanceItems],
   );
   const maintenanceCostTotal = useMemo(
-    () => assetMaintenanceItems.reduce((sum, item) => sum + (item.cost ?? 0), 0),
-    [assetMaintenanceItems]
+    () =>
+      assetMaintenanceItems.reduce((sum, item) => sum + (item.cost ?? 0), 0),
+    [assetMaintenanceItems],
   );
   const loggedTimeTotal = useMemo(
-    () => assetIssues.reduce((sum, issue) => sum + (issue.timeSpentSeconds ?? 0), 0),
-    [assetIssues]
+    () =>
+      assetIssues.reduce(
+        (sum, issue) => sum + (issue.timeSpentSeconds ?? 0),
+        0,
+      ),
+    [assetIssues],
   );
   const sortedAssetIssues = useMemo(
     () =>
       [...assetIssues].sort((a, b) =>
-        String(b.created || "").localeCompare(String(a.created || ""))
+        String(b.created || "").localeCompare(String(a.created || "")),
       ),
-    [assetIssues]
+    [assetIssues],
   );
 
   const handleModalDataChanged = useCallback(() => {
@@ -163,8 +180,13 @@ function AssetDetailPageContent() {
         await fetch("/api/admin/equipment", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ machineKey, model, serialNumber, manufacturer }),
-        })
+          body: JSON.stringify({
+            machineKey,
+            model,
+            serialNumber,
+            manufacturer,
+          }),
+        }),
       );
       await reloadAssetData();
       setEquipmentEditing(false);
@@ -198,279 +220,335 @@ function AssetDetailPageContent() {
 
       {sessionResolved && currentUserIsAdmin && (
         <div className="admin-dashboard">
-              <div className="admin-card">
-                <div className="admin-asset-header">
-                  <div className="admin-asset-header__top">
-                    <div className="admin-asset-header__text">
-                      <h1 className="admin-title">{machineLabel}</h1>
-                      <p className="admin-subtitle">{t("admin.assetDetailSubtitle")}</p>
-                      <div className="admin-asset-header__meta">
-                        <span>{machineCategory}</span>
-                        <span className="admin-asset-header__separator">/</span>
-                        <span>{machineSubcategory}</span>
-                      </div>
-                    </div>
-                    <div className="page__content-actions">
-                      {equipmentEditing ? (
-                        <>
-                          <button
-                            type="button"
-                            className="admin-reset-button"
-                            onClick={() => {
-                              resetEquipmentDrafts();
-                              setEquipmentEditing(false);
-                              setEquipmentSaveError("");
-                            }}
-                            disabled={equipmentSaving}
-                          >
-                            {t("common.cancel")}
-                          </button>
-                          <button
-                            type="button"
-                            className="admin-reset-button"
-                            onClick={() => {
-                              void handleSaveEquipment();
-                            }}
-                            disabled={
-                              equipmentSaving ||
-                              !equipmentModelDraft.trim() ||
-                              !equipmentSerialNumberDraft.trim() ||
-                              !equipmentManufacturerDraft.trim()
-                            }
-                          >
-                            {equipmentSaving ? t("admin.saving") : t("admin.saveDetails")}
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          className="admin-reset-button"
-                          onClick={() => {
-                            resetEquipmentDrafts();
-                            setEquipmentEditing(true);
-                            setEquipmentSaveError("");
-                          }}
-                        >
-                          {t("admin.editDetails")}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="admin-asset-header__details">
-                    <div className="admin-asset-field">
-                      <span className="admin-asset-field__label">{t("admin.machineKey")}</span>
-                      <span className="admin-asset-field__value" title={machineKey}>
-                        {machineKeyDisplay}
-                      </span>
-                    </div>
-                    <div
-                      className={`admin-asset-field${
-                        equipmentEditing ? " admin-asset-field--editing" : ""
-                      }`}
-                    >
-                      <span className="admin-asset-field__label">{t("admin.model")}</span>
-                      {equipmentEditing ? (
-                        <input
-                          type="text"
-                          className="admin-asset-field__input"
-                          value={equipmentModelDraft}
-                          onChange={(event) => setEquipmentModelDraft(event.target.value)}
-                          placeholder={t("admin.model")}
-                        />
-                      ) : (
-                        <span className="admin-asset-field__value">
-                          {equipmentModelDraft.trim() || "-"}
-                        </span>
-                      )}
-                    </div>
-                    <div
-                      className={`admin-asset-field${
-                        equipmentEditing ? " admin-asset-field--editing" : ""
-                      }`}
-                    >
-                      <span className="admin-asset-field__label">{t("admin.serialNumber")}</span>
-                      {equipmentEditing ? (
-                        <input
-                          type="text"
-                          className="admin-asset-field__input"
-                          value={equipmentSerialNumberDraft}
-                          onChange={(event) =>
-                            setEquipmentSerialNumberDraft(event.target.value)
-                          }
-                          placeholder={t("admin.serialNumber")}
-                        />
-                      ) : (
-                        <span className="admin-asset-field__value">
-                          {equipmentSerialNumberDraft.trim() || "-"}
-                        </span>
-                      )}
-                    </div>
-                    <div
-                      className={`admin-asset-field${
-                        equipmentEditing ? " admin-asset-field--editing" : ""
-                      }`}
-                    >
-                      <span className="admin-asset-field__label">{t("admin.manufacturer")}</span>
-                      {equipmentEditing ? (
-                        <input
-                          type="text"
-                          className="admin-asset-field__input"
-                          value={equipmentManufacturerDraft}
-                          onChange={(event) =>
-                            setEquipmentManufacturerDraft(event.target.value)
-                          }
-                          placeholder={t("admin.manufacturer")}
-                        />
-                      ) : (
-                        <span className="admin-asset-field__value">
-                          {equipmentManufacturerDraft.trim() || "-"}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+          <div className="admin-card">
+            <div className="admin-asset-header">
+              <div className="admin-asset-header__top">
+                <div className="admin-asset-header__text">
+                  <h1 className="admin-title">{machineLabel}</h1>
+                  <p className="admin-subtitle">
+                    {t("admin.assetDetailSubtitle")}
+                  </p>
                 </div>
-                {(error || assetDataError || plannedMaintenanceError || equipmentSaveError) && (
-                  <div className="page__error">
-                    {String(
-                      error ||
-                        assetDataError ||
-                        plannedMaintenanceError ||
-                        equipmentSaveError
-                    )}
-                  </div>
+                <div className="page__content-actions">
+                  {equipmentEditing ? (
+                    <>
+                      <button
+                        type="button"
+                        className="admin-reset-button"
+                        onClick={() => {
+                          resetEquipmentDrafts();
+                          setEquipmentEditing(false);
+                          setEquipmentSaveError("");
+                        }}
+                        disabled={equipmentSaving}
+                      >
+                        {t("common.cancel")}
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-reset-button"
+                        onClick={() => {
+                          void handleSaveEquipment();
+                        }}
+                        disabled={
+                          equipmentSaving ||
+                          !equipmentModelDraft.trim() ||
+                          !equipmentSerialNumberDraft.trim() ||
+                          !equipmentManufacturerDraft.trim()
+                        }
+                      >
+                        {equipmentSaving
+                          ? t("admin.saving")
+                          : t("admin.saveDetails")}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="admin-reset-button"
+                      onClick={() => {
+                        resetEquipmentDrafts();
+                        setEquipmentEditing(true);
+                        setEquipmentSaveError("");
+                      }}
+                    >
+                      {t("admin.editDetails")}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="admin-asset-header__details">
+                <div className="admin-asset-field">
+                  <span className="admin-asset-field__label">
+                    {t("admin.machineKey")}
+                  </span>
+                  <span className="admin-asset-field__value" title={machineKey}>
+                    {machineKeyDisplay}
+                  </span>
+                </div>
+                <div
+                  className={`admin-asset-field${
+                    equipmentEditing ? " admin-asset-field--editing" : ""
+                  }`}
+                >
+                  <span className="admin-asset-field__label">
+                    {t("admin.model")}
+                  </span>
+                  {equipmentEditing ? (
+                    <input
+                      type="text"
+                      className="admin-asset-field__input"
+                      value={equipmentModelDraft}
+                      onChange={(event) =>
+                        setEquipmentModelDraft(event.target.value)
+                      }
+                      placeholder={t("admin.model")}
+                    />
+                  ) : (
+                    <span className="admin-asset-field__value">
+                      {equipmentModelDraft.trim() || "-"}
+                    </span>
+                  )}
+                </div>
+                <div
+                  className={`admin-asset-field${
+                    equipmentEditing ? " admin-asset-field--editing" : ""
+                  }`}
+                >
+                  <span className="admin-asset-field__label">
+                    {t("admin.serialNumber")}
+                  </span>
+                  {equipmentEditing ? (
+                    <input
+                      type="text"
+                      className="admin-asset-field__input"
+                      value={equipmentSerialNumberDraft}
+                      onChange={(event) =>
+                        setEquipmentSerialNumberDraft(event.target.value)
+                      }
+                      placeholder={t("admin.serialNumber")}
+                    />
+                  ) : (
+                    <span className="admin-asset-field__value">
+                      {equipmentSerialNumberDraft.trim() || "-"}
+                    </span>
+                  )}
+                </div>
+                <div
+                  className={`admin-asset-field${
+                    equipmentEditing ? " admin-asset-field--editing" : ""
+                  }`}
+                >
+                  <span className="admin-asset-field__label">
+                    {t("admin.manufacturer")}
+                  </span>
+                  {equipmentEditing ? (
+                    <input
+                      type="text"
+                      className="admin-asset-field__input"
+                      value={equipmentManufacturerDraft}
+                      onChange={(event) =>
+                        setEquipmentManufacturerDraft(event.target.value)
+                      }
+                      placeholder={t("admin.manufacturer")}
+                    />
+                  ) : (
+                    <span className="admin-asset-field__value">
+                      {equipmentManufacturerDraft.trim() || "-"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            {(error ||
+              assetDataError ||
+              plannedMaintenanceError ||
+              equipmentSaveError) && (
+              <div className="page__error">
+                {String(
+                  error ||
+                    assetDataError ||
+                    plannedMaintenanceError ||
+                    equipmentSaveError,
                 )}
               </div>
+            )}
+          </div>
 
-              <div className="admin-panel">
-                <div className="admin-chart-title">{t("admin.assetOverview")}</div>
-                <div className="admin-stats admin-stats--asset">
-                  <div className="admin-stat">
-                    <div className="admin-stat-label">{t("admin.tickets")}</div>
-                    <div className="admin-stat-value">{assetIssues.length}</div>
-                  </div>
-                  <div className="admin-stat">
-                    <div className="admin-stat-label">{t("admin.loggedTime")}</div>
-                    <div className="admin-stat-value">{formatSeconds(loggedTimeTotal, locale)}</div>
-                  </div>
-                  <div className="admin-stat">
-                    <div className="admin-stat-label">{t("admin.repairCostByMachine")}</div>
-                    <div className="admin-stat-value">
-                      {formatCurrency(repairCostTotal, locale)}
-                    </div>
-                  </div>
-                  <div className="admin-stat">
-                    <div className="admin-stat-label">{t("admin.manualEntriesTotal")}</div>
-                    <div className="admin-stat-value">
-                      {formatCurrency(manualCostTotal, locale)}
-                    </div>
-                  </div>
-                  <div className="admin-stat">
-                    <div className="admin-stat-label">{t("admin.maintenanceCostTotal")}</div>
-                    <div className="admin-stat-value">
-                      {formatCurrency(maintenanceCostTotal, locale)}
-                    </div>
-                  </div>
-                  <div className="admin-stat">
-                    <div className="admin-stat-label">{t("admin.maintenancePlans")}</div>
-                    <div className="admin-stat-value">{assetMaintenanceItems.length}</div>
-                  </div>
+          <div className="admin-panel">
+            <div className="admin-chart-title">{t("admin.assetOverview")}</div>
+            <div className="admin-stats admin-stats--asset">
+              <div className="admin-stat">
+                <div className="admin-stat-label">{t("admin.tickets")}</div>
+                <div className="admin-stat-value">{assetIssues.length}</div>
+              </div>
+              <div className="admin-stat">
+                <div className="admin-stat-label">{t("admin.loggedTime")}</div>
+                <div className="admin-stat-value">
+                  {formatSeconds(loggedTimeTotal, locale)}
                 </div>
               </div>
-
-              <div className="admin-asset-grid">
-                <div className="admin-panel admin-asset-grid__full">
-                  <div className="admin-chart-title">{t("admin.breakdownTickets")}</div>
-                  {(ticketsLoading || assetDataLoading) && (
-                    <div className="admin-chart-empty">{t("common.loading")}</div>
-                  )}
-                  {!ticketsLoading && !assetDataLoading && assetIssues.length === 0 && (
-                    <div className="admin-chart-empty">{t("admin.noAssetTickets")}</div>
-                  )}
-                  {!ticketsLoading && !assetDataLoading && assetIssues.length > 0 && (
-                    <div className="admin-asset-ticket-list">
-                      {sortedAssetIssues.map((issue) => (
-                        <button
-                          key={issue.key}
-                          type="button"
-                          className="ticket-card ticket-card--list admin-asset-ticket-card"
-                          onClick={() => setSelectedIssue(issue)}
-                        >
-                          <div className="ticket-card__list-field ticket-card__list-field--key">
-                            {issue.key}
-                          </div>
-                          <div className="ticket-card__list-field ticket-card__list-field--summary admin-asset-ticket__summary">
-                            {issue.summary}
-                          </div>
-                          <div className="ticket-card__list-field admin-asset-ticket-card__status">
-                            {issue.status || t("common.unknown")}
-                          </div>
-                          <div className="ticket-card__list-field admin-asset-ticket-card__time">
-                            {formatSeconds(issue.timeSpentSeconds ?? 0, locale)}
-                          </div>
-                          <div className="ticket-card__list-field admin-asset-ticket-card__cost">
-                            {formatCurrency(ticketCostsByIssue[issue.key]?.amount ?? 0, locale)}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+              <div className="admin-stat">
+                <div className="admin-stat-label">
+                  {t("admin.repairCostByMachine")}
                 </div>
-
-                <div className="admin-panel">
-                  <div className="admin-chart-title">{t("admin.manualCostEntries")}</div>
-                  {(ticketsLoading || assetDataLoading) && (
-                    <div className="admin-chart-empty">{t("common.loading")}</div>
-                  )}
-                  {!ticketsLoading && !assetDataLoading && manualEntries.length === 0 && (
-                    <div className="admin-chart-empty">{t("admin.noManualEntriesYet")}</div>
-                  )}
-                  {!ticketsLoading && !assetDataLoading && manualEntries.length > 0 && (
-                    <div className="admin-asset-list">
-                      {manualEntries.map((entry) => (
-                        <div key={entry.id} className="admin-manual-row">
-                          <div>{entry.date}</div>
-                          <div>{formatCurrency(entry.amount, locale)}</div>
-                          <div>{entry.comment}</div>
-                          <div>{formatDateTimeForLocale(entry.createdAt, locale)}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="admin-panel">
-                  <div className="admin-chart-title">{t("admin.plannedMaintenance")}</div>
-                  {plannedMaintenanceLoading && (
-                    <div className="admin-chart-empty">{t("common.loading")}</div>
-                  )}
-                  {!plannedMaintenanceLoading && assetMaintenanceItems.length === 0 && (
-                    <div className="admin-chart-empty">
-                      {t("admin.noPlannedMaintenanceForAsset")}
-                    </div>
-                  )}
-                  {!plannedMaintenanceLoading && assetMaintenanceItems.length > 0 && (
-                    <div className="admin-asset-list">
-                      {assetMaintenanceItems.map((item) => (
-                        <div key={item.id} className="admin-asset-maintenance-row">
-                          <div className="admin-asset-maintenance-row__main">
-                            <div className="admin-asset-maintenance-row__title">{item.title}</div>
-                            <div className="admin-asset-maintenance-row__meta">
-                              {getMaintenanceWorkflowStatusLabel(
-                                t,
-                                getMaintenanceItemStatus(item)
-                              )}{" "}
-                              | {getMaintenanceDueLabel(item.dueDate, t)}
-                            </div>
-                          </div>
-                          <div className="admin-asset-maintenance-row__cost">
-                            {item.cost == null ? "-" : formatCurrency(item.cost, locale)}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                <div className="admin-stat-value">
+                  {formatCurrency(repairCostTotal, locale)}
                 </div>
               </div>
+              <div className="admin-stat">
+                <div className="admin-stat-label">
+                  {t("admin.manualEntriesTotal")}
+                </div>
+                <div className="admin-stat-value">
+                  {formatCurrency(manualCostTotal, locale)}
+                </div>
+              </div>
+              <div className="admin-stat">
+                <div className="admin-stat-label">
+                  {t("admin.maintenanceCostTotal")}
+                </div>
+                <div className="admin-stat-value">
+                  {formatCurrency(maintenanceCostTotal, locale)}
+                </div>
+              </div>
+              <div className="admin-stat">
+                <div className="admin-stat-label">
+                  {t("admin.maintenancePlans")}
+                </div>
+                <div className="admin-stat-value">
+                  {assetMaintenanceItems.length}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="admin-asset-grid">
+            <div className="admin-panel admin-asset-grid__full">
+              <div className="admin-chart-title">
+                {t("admin.breakdownTickets")}
+              </div>
+              {(ticketsLoading || assetDataLoading) && (
+                <div className="admin-chart-empty">{t("common.loading")}</div>
+              )}
+              {!ticketsLoading &&
+                !assetDataLoading &&
+                assetIssues.length === 0 && (
+                  <div className="admin-chart-empty">
+                    {t("admin.noAssetTickets")}
+                  </div>
+                )}
+              {!ticketsLoading &&
+                !assetDataLoading &&
+                assetIssues.length > 0 && (
+                  <div className="admin-asset-ticket-list">
+                    {sortedAssetIssues.map((issue) => (
+                      <button
+                        key={issue.key}
+                        type="button"
+                        className="ticket-card ticket-card--list admin-asset-ticket-card"
+                        onClick={() => setSelectedIssue(issue)}
+                      >
+                        <div className="ticket-card__list-field ticket-card__list-field--key">
+                          {issue.key}
+                        </div>
+                        <div className="ticket-card__list-field ticket-card__list-field--summary admin-asset-ticket__summary">
+                          {issue.summary}
+                        </div>
+                        <div className="ticket-card__list-field admin-asset-ticket-card__status">
+                          {issue.status || t("common.unknown")}
+                        </div>
+                        <div className="ticket-card__list-field admin-asset-ticket-card__time">
+                          {formatSeconds(issue.timeSpentSeconds ?? 0, locale)}
+                        </div>
+                        <div className="ticket-card__list-field admin-asset-ticket-card__cost">
+                          {formatCurrency(
+                            ticketCostsByIssue[issue.key]?.amount ?? 0,
+                            locale,
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+            </div>
+
+            <div className="admin-panel">
+              <div className="admin-chart-title">
+                {t("admin.manualCostEntries")}
+              </div>
+              {(ticketsLoading || assetDataLoading) && (
+                <div className="admin-chart-empty">{t("common.loading")}</div>
+              )}
+              {!ticketsLoading &&
+                !assetDataLoading &&
+                manualEntries.length === 0 && (
+                  <div className="admin-chart-empty">
+                    {t("admin.noManualEntriesYet")}
+                  </div>
+                )}
+              {!ticketsLoading &&
+                !assetDataLoading &&
+                manualEntries.length > 0 && (
+                  <div className="admin-asset-list">
+                    {manualEntries.map((entry) => (
+                      <div key={entry.id} className="admin-manual-row">
+                        <div>{entry.date}</div>
+                        <div>{formatCurrency(entry.amount, locale)}</div>
+                        <div>{entry.comment}</div>
+                        <div>
+                          {formatDateTimeForLocale(entry.createdAt, locale)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+
+            <div className="admin-panel">
+              <div className="admin-chart-title">
+                {t("admin.plannedMaintenance")}
+              </div>
+              {plannedMaintenanceLoading && (
+                <div className="admin-chart-empty">{t("common.loading")}</div>
+              )}
+              {!plannedMaintenanceLoading &&
+                assetMaintenanceItems.length === 0 && (
+                  <div className="admin-chart-empty">
+                    {t("admin.noPlannedMaintenanceForAsset")}
+                  </div>
+                )}
+              {!plannedMaintenanceLoading &&
+                assetMaintenanceItems.length > 0 && (
+                  <div className="admin-asset-list">
+                    {assetMaintenanceItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="admin-asset-maintenance-row"
+                      >
+                        <div className="admin-asset-maintenance-row__main">
+                          <div className="admin-asset-maintenance-row__title">
+                            {item.title}
+                          </div>
+                          <div className="admin-asset-maintenance-row__meta">
+                            {getMaintenanceWorkflowStatusLabel(
+                              t,
+                              getMaintenanceItemStatus(item),
+                            )}{" "}
+                            | {getMaintenanceDueLabel(item.dueDate, t)}
+                          </div>
+                        </div>
+                        <div className="admin-asset-maintenance-row__cost">
+                          {item.cost == null
+                            ? "-"
+                            : formatCurrency(item.cost, locale)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+          </div>
         </div>
       )}
 
