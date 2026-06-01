@@ -17,15 +17,19 @@ export const PLANNED_MAINTENANCE_RECIPIENTS: PlannedMaintenanceRecipient[] = [
   { name: "Rimantas Aleknavičius", email: "rimale@svenheim.lt" },
   { name: "Stanislovas Paulauskas", email: "machinery@svenheim.lt" },
   { name: "Virginijus Čiras", email: "meistras3@svenheim.lt" },
+  { name: "Mindaugas Graževičius", email: "mingra@svenheim.lt" },
   { name: "Ignas Venckūnas", email: "ignas.venckunas@svenheim.lt" },
 ];
 
 const RECIPIENTS_BY_EMAIL = new Map(
-  PLANNED_MAINTENANCE_RECIPIENTS.map((recipient) => [recipient.email.toLowerCase(), recipient])
+  PLANNED_MAINTENANCE_RECIPIENTS.map((recipient) => [
+    recipient.email.toLowerCase(),
+    recipient,
+  ]),
 );
 
 export function normalizePlannedMaintenanceRecipients(
-  value: unknown
+  value: unknown,
 ): PlannedMaintenanceRecipient[] {
   if (!Array.isArray(value)) {
     return [];
