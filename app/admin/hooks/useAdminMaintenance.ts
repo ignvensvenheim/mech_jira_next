@@ -439,19 +439,11 @@ export function useAdminMaintenance({
     const parsedDate = parseDateOnly(selectedMaintenanceDate);
     if (!parsedDate) return selectedMaintenanceDate;
 
-    return new Intl.DateTimeFormat(getLocaleTag(locale), {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }).format(
-      new Date(
-        parsedDate.getUTCFullYear(),
-        parsedDate.getUTCMonth(),
-        parsedDate.getUTCDate()
-      )
-    );
-  }, [locale, selectedMaintenanceDate]);
+    return `${parsedDate.getUTCFullYear()}/${String(parsedDate.getUTCMonth() + 1).padStart(
+      2,
+      "0"
+    )}/${String(parsedDate.getUTCDate()).padStart(2, "0")}`;
+  }, [selectedMaintenanceDate]);
 
   const isMaintenanceEditing = Boolean(editingMaintenanceId);
 

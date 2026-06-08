@@ -126,7 +126,7 @@ export function formatMaintenanceDateTimeForLocale(
 
 export function formatMaintenanceDateOnlyForLocale(
   value: Date | string,
-  locale: string
+  _locale: string
 ) {
   const date =
     typeof value === "string" ? parseMaintenanceDateTime(value) : value;
@@ -134,10 +134,7 @@ export function formatMaintenanceDateOnlyForLocale(
     return typeof value === "string" ? value : "";
   }
 
-  return new Intl.DateTimeFormat(locale, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(date);
+  return `${date.getUTCFullYear()}/${padDatePart(date.getUTCMonth() + 1)}/${padDatePart(
+    date.getUTCDate()
+  )}`;
 }

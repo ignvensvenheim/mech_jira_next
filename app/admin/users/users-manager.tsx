@@ -3,6 +3,7 @@
 import "../../page.css";
 import { useEffect, useState } from "react";
 import { useI18n } from "@/components/I18nProvider";
+import { formatDateOnlyForLocale } from "../adminShared";
 
 type UserItem = {
   id: string;
@@ -30,7 +31,7 @@ export default function UsersManager({
   currentUserId: string;
   canManageUsers: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [users, setUsers] = useState<UserItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -396,7 +397,7 @@ export default function UsersManager({
                   <div>{user.email}</div>
                   <div>{user.name || "-"}</div>
                   <div>{user.role === "ADMIN" ? t("admin.roleAdmin") : t("admin.roleUser")}</div>
-                  <div>{new Date(user.createdAt).toLocaleDateString()}</div>
+                  <div>{formatDateOnlyForLocale(user.createdAt, locale)}</div>
                   <div className="admin-manual-actions">
                     <button
                       type="button"
