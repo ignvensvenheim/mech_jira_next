@@ -1,9 +1,8 @@
 import { getIssueAssetParts, parseMachineKey } from "@/lib/assets";
 import {
   dateOnlyToDayKey,
-  formatDateOnly,
+  formatMaintenanceDateOnlyForLocale,
   formatMaintenanceDateTimeInput,
-  formatMaintenanceDateTimeForLocale,
   getCurrentLocalDateOnly,
   getDateOnlyFromMaintenanceDateTime,
   getCurrentLocalDayKey,
@@ -373,7 +372,10 @@ export function formatDisplayDate(value: string) {
   if (!value) return "";
   const parsed = parseDateOnly(value);
   if (!parsed) return value;
-  return formatDateOnly(parsed);
+  return `${parsed.getUTCFullYear()}/${String(parsed.getUTCMonth() + 1).padStart(
+    2,
+    "0"
+  )}/${String(parsed.getUTCDate()).padStart(2, "0")}`;
 }
 
 export function getDateRangeBounds(from: string, to: string) {
@@ -389,17 +391,28 @@ export function getDateRangeBounds(from: string, to: string) {
 export function formatDateTimeForLocale(value: string, locale: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(getLocaleTag(locale), {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
+  const datePart = `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}/${String(date.getDate()).padStart(2, "0")}`;
+  const timePart = new Intl.DateTimeFormat(getLocaleTag(locale), {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: false,
   }).format(date);
+  return `${datePart} ${timePart}`;
+}
+
+export function formatDateOnlyForLocale(value: string, _locale: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, "0")}/${String(
+    date.getDate()
+  ).padStart(2, "0")}`;
 }
 
 export function formatMaintenanceDueDateTimeForLocale(value: string, locale: string) {
-  return formatMaintenanceDateTimeForLocale(value, getLocaleTag(locale));
+  return formatMaintenanceDateOnlyForLocale(value, getLocaleTag(locale));
 }
 
 export function getTicketCountLabel(t: AdminTranslate, count: number) {

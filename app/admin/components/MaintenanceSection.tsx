@@ -422,11 +422,16 @@ export default function MaintenanceSection({
                 {t("admin.maintenanceDueDate")}
               </div>
               <input
-                type="date"
+                type="text"
                 className="admin-input"
-                value={maintenanceDueDate}
+                inputMode="numeric"
+                pattern="\\d{4}/\\d{2}/\\d{2}"
+                placeholder="YYYY/MM/DD"
+                value={maintenanceDueDate.replace(/-/g, "/")}
                 onChange={(event) =>
-                  onMaintenanceDueDateChange(event.target.value)
+                  onMaintenanceDueDateChange(
+                    event.target.value.replace(/\./g, "/").replace(/\//g, "-")
+                  )
                 }
               />
             </label>
