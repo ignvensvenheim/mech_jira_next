@@ -1,6 +1,7 @@
 "use client";
 
 import "../../../../components/TicketCard/ticketCard.css";
+import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { useI18n } from "@/components/I18nProvider";
@@ -29,6 +30,7 @@ import { useAdminMaintenance } from "../../hooks/useAdminMaintenance";
 import { useAdminSession } from "../../hooks/useAdminSession";
 
 function AssetDetailPageContent() {
+  const breakdownTicketsPerPage = 10;
   const params = useParams<{ machineKey: string }>();
   const searchParams = useSearchParams();
   const { locale, t } = useI18n();
@@ -37,6 +39,7 @@ function AssetDetailPageContent() {
   const [selectedIssue, setSelectedIssue] = useState<NormalizedIssue | null>(
     null,
   );
+  const [breakdownCurrentPage, setBreakdownCurrentPage] = useState(1);
 
   const rawMachineKey = Array.isArray(params.machineKey)
     ? params.machineKey[0]
@@ -123,6 +126,11 @@ function AssetDetailPageContent() {
       category: machineCategory,
       subcategory: machineSubcategory,
     }) || machineKey;
+  const getMaintenanceDetailHref = useCallback(
+    (maintenanceId: string) =>
+      `/admin?view=maintenance&maintenanceId=${encodeURIComponent(maintenanceId)}`,
+    [],
+  );
 
   const assetMaintenanceItems = useMemo(
     () =>
@@ -170,6 +178,21 @@ function AssetDetailPageContent() {
       ),
     [assetIssues],
   );
+  const breakdownTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(sortedAssetIssues.length / breakdownTicketsPerPage)),
+    [sortedAssetIssues.length],
+  );
+  const breakdownPaginationItems = useMemo<Array<number | string>>(() => {
+    if (breakdownTotalPages <= 6) {
+      return Array.from({ length: breakdownTotalPages }, (_, index) => index + 1);
+    }
+
+    return [1, 2, 3, 4, 5, "ellipsis", breakdownTotalPages];
+  }, [breakdownTotalPages]);
+  const paginatedAssetIssues = useMemo(() => {
+    const start = (breakdownCurrentPage - 1) * breakdownTicketsPerPage;
+    return sortedAssetIssues.slice(start, start + breakdownTicketsPerPage);
+  }, [breakdownCurrentPage, sortedAssetIssues]);
 
   const handleModalDataChanged = useCallback(() => {
     void reloadAssetData();
@@ -181,6 +204,12 @@ function AssetDetailPageContent() {
     setEquipmentSerialNumberDraft(equipmentDetails?.serialNumber || "");
     setEquipmentManufacturerDraft(equipmentDetails?.manufacturer || "");
   }, [equipmentDetails]);
+
+  useEffect(() => {
+    if (breakdownCurrentPage > breakdownTotalPages) {
+      setBreakdownCurrentPage(breakdownTotalPages);
+    }
+  }, [breakdownCurrentPage, breakdownTotalPages]);
 
   const resetEquipmentDrafts = useCallback(() => {
     setEquipmentModelDraft(equipmentDetails?.model || "");
@@ -466,24 +495,18 @@ function AssetDetailPageContent() {
                     {upcomingAssetMaintenanceItems.length > 0 && (
                       <div className="admin-asset-list">
                         {upcomingAssetMaintenanceItems.map((item) => (
-                          <div
+                          <Link
                             key={item.id}
-                            className="admin-asset-maintenance-row"
+                            className="ticket-card ticket-card--list admin-asset-maintenance-card"
+                            href={getMaintenanceDetailHref(item.id)}
                           >
-                            <div className="admin-asset-maintenance-row__main">
-                              <div className="admin-asset-maintenance-row__title">
-                                {item.title}
-                              </div>
-                              <div className="admin-asset-maintenance-row__meta">
-                                {formatMaintenanceDueDateTimeForLocale(item.dueDate, locale)}
-                              </div>
+                            <div className="ticket-card__list-field ticket-card__list-field--summary admin-asset-maintenance-card__title">
+                              {item.title}
                             </div>
-                            <div className="admin-asset-maintenance-row__cost">
-                              {item.cost == null
-                                ? "-"
-                                : formatCurrency(item.cost, locale)}
+                            <div className="ticket-card__list-field admin-asset-maintenance-card__meta">
+                              {formatMaintenanceDueDateTimeForLocale(item.dueDate, locale)}
                             </div>
-                          </div>
+                          </Link>
                         ))}
                       </div>
                     )}
@@ -501,26 +524,20 @@ function AssetDetailPageContent() {
                     {completedAssetMaintenanceItems.length > 0 && (
                       <div className="admin-asset-list">
                         {completedAssetMaintenanceItems.map((item) => (
-                          <div
+                          <Link
                             key={item.id}
-                            className="admin-asset-maintenance-row"
+                            className="ticket-card ticket-card--list admin-asset-maintenance-card"
+                            href={getMaintenanceDetailHref(item.id)}
                           >
-                            <div className="admin-asset-maintenance-row__main">
-                              <div className="admin-asset-maintenance-row__title">
-                                {item.title}
-                              </div>
-                              <div className="admin-asset-maintenance-row__meta">
-                                {item.isCompleted && item.completedAt
-                                  ? formatDateOnlyForLocale(item.completedAt, locale)
-                                  : formatMaintenanceDueDateTimeForLocale(item.dueDate, locale)}
-                              </div>
+                            <div className="ticket-card__list-field ticket-card__list-field--summary admin-asset-maintenance-card__title">
+                              {item.title}
                             </div>
-                            <div className="admin-asset-maintenance-row__cost">
-                              {item.cost == null
-                                ? "-"
-                                : formatCurrency(item.cost, locale)}
+                            <div className="ticket-card__list-field admin-asset-maintenance-card__meta">
+                              {item.isCompleted && item.completedAt
+                                ? formatDateOnlyForLocale(item.completedAt, locale)
+                                : formatMaintenanceDueDateTimeForLocale(item.dueDate, locale)}
                             </div>
-                          </div>
+                          </Link>
                         ))}
                       </div>
                     )}
@@ -547,7 +564,7 @@ function AssetDetailPageContent() {
                 !assetDataLoading &&
                 assetIssues.length > 0 && (
                   <div className="admin-asset-ticket-list">
-                    {sortedAssetIssues.map((issue) => (
+                    {paginatedAssetIssues.map((issue) => (
                       <button
                         key={issue.key}
                         type="button"
@@ -574,6 +591,57 @@ function AssetDetailPageContent() {
                         </div>
                       </button>
                     ))}
+                    {breakdownTotalPages > 1 && (
+                      <div className="page__pagination">
+                        <button
+                          type="button"
+                          className="page__pagination-button"
+                          onClick={() =>
+                            setBreakdownCurrentPage((prev) => Math.max(1, prev - 1))
+                          }
+                          disabled={breakdownCurrentPage === 1}
+                        >
+                          &lt;
+                        </button>
+                        <div className="page__pagination-pages">
+                          {breakdownPaginationItems.map((item, index) =>
+                            typeof item === "number" ? (
+                              <button
+                                key={item}
+                                type="button"
+                                className={`page__pagination-button ${
+                                  breakdownCurrentPage === item
+                                    ? "page__pagination-button--active"
+                                    : ""
+                                }`}
+                                onClick={() => setBreakdownCurrentPage(item)}
+                              >
+                                {item}
+                              </button>
+                            ) : (
+                              <span
+                                key={`${item}-${index}`}
+                                className="page__pagination-ellipsis"
+                              >
+                                ...
+                              </span>
+                            ),
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          className="page__pagination-button"
+                          onClick={() =>
+                            setBreakdownCurrentPage((prev) =>
+                              Math.min(breakdownTotalPages, prev + 1),
+                            )
+                          }
+                          disabled={breakdownCurrentPage === breakdownTotalPages}
+                        >
+                          &gt;
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
             </div>
