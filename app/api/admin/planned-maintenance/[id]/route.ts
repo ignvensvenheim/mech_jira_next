@@ -3,7 +3,12 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { requireTrustedOrigin } from "@/lib/requireTrustedOrigin";
-import { ensureAssetExists, isConcreteMachineKey, parseMachineKey } from "@/lib/assets";
+import {
+  ensureAssetExists,
+  isConcreteMachineKey,
+  normalizeDeprecatedMachineKey,
+  parseMachineKey,
+} from "@/lib/assets";
 import {
   formatMaintenanceDateOnlyForLocale,
   getDateOnlyFromMaintenanceDateTime,
@@ -286,7 +291,9 @@ export async function PATCH(
 
   const { id } = await context.params;
   const body = await req.json().catch(() => null);
-  const machineKey = String(body?.machineKey || "").trim();
+  const machineKey = normalizeDeprecatedMachineKey(
+    String(body?.machineKey || "").trim()
+  );
   const title = String(body?.title || "").trim();
   const dueDate = String(body?.dueDate || "").trim();
   const note = String(body?.note || "").trim();
@@ -402,6 +409,11 @@ export async function PATCH(
   if (!currentItem) {
     return NextResponse.json({ error: "Maintenance item not found" }, { status: 404 });
   }
+  const normalizedCurrentMachineKey = normalizeDeprecatedMachineKey(
+    currentItem.machineKey
+  );
+  const shouldUpgradeCurrentMachineKey =
+    normalizedCurrentMachineKey !== currentItem.machineKey;
   if (
     !isValidMaintenanceTimeValue(availabilityStartTime) ||
     !isValidMaintenanceTimeValue(availabilityEndTime)
@@ -515,6 +527,9 @@ export async function PATCH(
     }
     await ensureAssetExists(prisma, machineKey, session.user.id);
     data.machineKey = machineKey;
+  } else if (shouldUpgradeCurrentMachineKey) {
+    await ensureAssetExists(prisma, normalizedCurrentMachineKey, session.user.id);
+    data.machineKey = normalizedCurrentMachineKey;
   }
   if (title) data.title = title;
   if (dueDate) {
@@ -526,7 +541,8 @@ export async function PATCH(
   }
   if (body && "note" in (body as object)) data.note = note || null;
 
-  const nextMachineKey = machineKey || currentItem.machineKey;
+  const nextMachineKey =
+    machineKey || normalizeDeprecatedMachineKey(currentItem.machineKey);
   const nextTitle = title || currentItem.title;
   const nextDueDate = dueDate || currentItem.dueDate.toISOString();
   const nextNote =

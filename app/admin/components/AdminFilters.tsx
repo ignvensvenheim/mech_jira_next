@@ -1,6 +1,6 @@
 "use client";
 
-import { DEPARTMENT_LINES, type DatePreset } from "../adminShared";
+import { VISIBLE_DEPARTMENT_LINES, type DatePreset } from "../adminShared";
 import type { AdminTranslate } from "../adminShared";
 
 type AdminFiltersProps = {
@@ -77,7 +77,7 @@ export default function AdminFilters({
           onChange={(event) => onCategoryChange(event.target.value)}
         >
           <option value="">{t("common.all")}</option>
-          {Object.keys(DEPARTMENT_LINES).map((dep) => (
+          {Object.keys(VISIBLE_DEPARTMENT_LINES).map((dep) => (
             <option key={dep} value={dep}>
               {dep}
             </option>
