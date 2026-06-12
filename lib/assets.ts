@@ -7,6 +7,11 @@ type AssetParts = {
   machineKey: string;
 };
 
+const DEPRECATED_MACHINE_KEY_MAP: Record<string, string> = {
+  "AB::UV linijos": "AB::UV apdailos linija",
+  "AB::CEFLA linijos": "AB::CEFLA daÅ¾ymo linija",
+};
+
 export function buildMachineKey(category: string, subcategory: string) {
   const nextCategory = category.trim();
   const nextSubcategory = subcategory.trim();
@@ -15,8 +20,13 @@ export function buildMachineKey(category: string, subcategory: string) {
     : "";
 }
 
+export function normalizeDeprecatedMachineKey(machineKey: string) {
+  const normalizedKey = machineKey.trim();
+  return DEPRECATED_MACHINE_KEY_MAP[normalizedKey] || normalizedKey;
+}
+
 export function parseMachineKey(machineKey: string): AssetParts {
-  const [category = "", subcategory = ""] = machineKey
+  const [category = "", subcategory = ""] = normalizeDeprecatedMachineKey(machineKey)
     .split("::")
     .map((part) => part.trim());
 
@@ -56,17 +66,18 @@ export async function ensureAssetExists(
   machineKey: string,
   updatedById?: string | null
 ) {
-  const { category, subcategory } = parseMachineKey(machineKey);
+  const normalizedMachineKey = normalizeDeprecatedMachineKey(machineKey);
+  const { category, subcategory } = parseMachineKey(normalizedMachineKey);
 
   if (!category || !subcategory) {
     throw new Error("machineKey must be a concrete asset key");
   }
 
   return prisma.asset.upsert({
-    where: { machineKey },
+    where: { machineKey: normalizedMachineKey },
     update: updatedById ? { updatedById } : {},
     create: {
-      machineKey,
+      machineKey: normalizedMachineKey,
       category,
       subcategory,
       updatedById: updatedById || null,

@@ -9,12 +9,16 @@ import {
   parseMaintenanceDateTime,
   parseDateOnly,
 } from "@/lib/dateOnly";
-import { DEPARTMENT_LINES } from "@/data/listData";
 import type { NormalizedIssue } from "@/lib/jira";
 import {
   normalizePlannedMaintenanceRecipients,
   type PlannedMaintenanceRecipient,
 } from "@/lib/plannedMaintenanceRecipients";
+import {
+  createVisibleMachineCatalog,
+  filterVisibleMachineDirectory,
+  VISIBLE_DEPARTMENT_LINES,
+} from "@/lib/machineCatalog";
 
 export type AdminTranslate = (
   key: string,
@@ -506,13 +510,7 @@ export function getActiveDatePreset(from: string, to: string): DatePreset {
 }
 
 export function createMachineCatalog(): MachineDirectoryItem[] {
-  return Object.entries(DEPARTMENT_LINES).flatMap(([dep, lines]) =>
-    lines.map((line) => ({
-      category: dep,
-      subcategory: line,
-      machineKey: `${dep}::${line}`,
-    }))
-  );
+  return createVisibleMachineCatalog();
 }
 
 export function createMachineDirectory(
@@ -520,7 +518,9 @@ export function createMachineDirectory(
   assetDetailsByMachineKey: Record<string, EquipmentDetailsResponse>
 ) {
   const catalogKeys = new Set(machineCatalog.map((machine) => machine.machineKey));
-  const extras = Object.values(assetDetailsByMachineKey)
+  const extras = filterVisibleMachineDirectory(
+    Object.values(assetDetailsByMachineKey)
+  )
     .filter((asset) => !catalogKeys.has(asset.machineKey))
     .map((asset) => {
       const parsed = parseMachineKey(asset.machineKey);
@@ -571,7 +571,7 @@ export function getAdminAssetHref(machineKey: string) {
 }
 
 export {
-  DEPARTMENT_LINES,
+  VISIBLE_DEPARTMENT_LINES,
   getCurrentLocalDateOnly,
   getDateOnlyFromMaintenanceDateTime,
   getIssueAssetParts,

@@ -3,7 +3,12 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { requireTrustedOrigin } from "@/lib/requireTrustedOrigin";
-import { ensureAssetExists, isConcreteMachineKey, parseMachineKey } from "@/lib/assets";
+import {
+  ensureAssetExists,
+  isConcreteMachineKey,
+  normalizeDeprecatedMachineKey,
+  parseMachineKey,
+} from "@/lib/assets";
 import {
   formatMaintenanceDateOnlyForLocale,
   parseMaintenanceDateTime,
@@ -323,6 +328,27 @@ async function repairDeletedLinkedMaintenanceItems(items: PlannedMaintenanceRow[
   return new Set(missingIds);
 }
 
+async function remapDeprecatedPlannedMaintenanceMachineKeys() {
+  const deprecatedEntries = [
+    {
+      from: "AB::UV linijos",
+      to: normalizeDeprecatedMachineKey("AB::UV linijos"),
+    },
+    {
+      from: "AB::CEFLA linijos",
+      to: normalizeDeprecatedMachineKey("AB::CEFLA linijos"),
+    },
+  ].filter((entry) => entry.from !== entry.to);
+
+  for (const entry of deprecatedEntries) {
+    await ensureAssetExists(prisma, entry.to);
+    await prisma.plannedMaintenance.updateMany({
+      where: { machineKey: entry.from },
+      data: { machineKey: entry.to },
+    });
+  }
+}
+
 export async function GET() {
   const session = await requireAdmin();
   if (!session) {
@@ -330,6 +356,8 @@ export async function GET() {
   }
 
   try {
+    await remapDeprecatedPlannedMaintenanceMachineKeys();
+
     const items = await prisma.plannedMaintenance.findMany({
       orderBy: [{ dueDate: "asc" }],
       select: {
@@ -399,7 +427,9 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json().catch(() => null);
-  const machineKey = String(body?.machineKey || "").trim();
+  const machineKey = normalizeDeprecatedMachineKey(
+    String(body?.machineKey || "").trim()
+  );
   const title = String(body?.title || "").trim();
   const dueDate = String(body?.dueDate || "").trim();
   const availabilityStartTime = normalizeMaintenanceTimeValue(

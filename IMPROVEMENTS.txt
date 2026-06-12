@@ -87,6 +87,15 @@ Current Maintenance State
   app/admin/hooks/useAdminMaintenance.ts
   app/api/admin/planned-maintenance/route.ts
   app/api/admin/planned-maintenance/[id]/route.ts
+- Machine lists for:
+  main page filters
+  admin filters
+  inventory
+  planned-maintenance asset dropdown
+  now intentionally share one visible-source definition through:
+  lib/machineCatalog.ts
+- If machine visibility needs to change again, update it in one place:
+  lib/machineCatalog.ts
 - Current maintenance behavior now includes:
   create in local DB only
   create works with or without notification recipients selected
@@ -196,6 +205,22 @@ Current Inventory / Asset Detail State
   main active-state visual cue is white background on editable fields
   standalone manual cost entries list was removed; manual costs remain summarized in asset overview
   breakdown tickets list is positioned below the cost and maintenance panels
+- Inventory machine visibility is now aligned with:
+  main page category/subcategory filters
+  planned maintenance asset selection
+  shared source = lib/machineCatalog.ts
+
+Recent Admin List Notes
+- Admin page now forces a full Jira ticket refresh on first load via:
+  hooks/useJiraSearch.ts
+- Admin costs/statistics filters also expose the same manual Full refresh tickets action
+  as the main page.
+- Deprecated planned-maintenance machine-key aliases currently normalize in:
+  lib/assets.ts
+  app/api/admin/planned-maintenance/route.ts
+  app/api/admin/planned-maintenance/[id]/route.ts
+- Be careful if reversing planned-maintenance DB key changes manually:
+  GET on planned-maintenance still upgrades deprecated keys forward.
 
 Highest-Value Next Work
 1. Cost workflow depth
@@ -261,6 +286,9 @@ Useful Reminders
 - Cost-section search depends on:
   app/api/jira/search/route.ts
   lib/jira.ts
+- Shared visible machine list depends on:
+  lib/machineCatalog.ts
+  data/listData.ts
 - Shared admin date filtering depends on:
   app/admin/adminShared.ts
   local date parsing matters here; avoid UTC-only formatting for date input values

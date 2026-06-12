@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useI18n } from "@/components/I18nProvider";
 import ExportIssuesButton from "../ExportIssuesButton/ExportIssuesButton";
 import { STATUS_OPTIONS } from "@/data/listData";
-import { DEPARTMENT_LINES } from "@/data/listData";
+import { VISIBLE_DEPARTMENT_LINES } from "@/lib/machineCatalog";
 
 type Props = {
   sort: "newest" | "oldest";
@@ -203,7 +203,7 @@ export function SortFilter({
             onChange={(e) => onDepartmentChange(e.target.value)}
           >
             <option value="">{t("common.all")}</option>
-            {Object.keys(DEPARTMENT_LINES).map((dep) => (
+            {Object.keys(VISIBLE_DEPARTMENT_LINES).map((dep) => (
               <option key={dep} value={dep}>
                 {dep}
               </option>
@@ -217,7 +217,7 @@ export function SortFilter({
             disabled={!selectedDepartment}
           >
             <option value="">{t("common.all")}</option>
-            {(DEPARTMENT_LINES[selectedDepartment] || []).map((line) => (
+            {(VISIBLE_DEPARTMENT_LINES[selectedDepartment] || []).map((line) => (
               <option key={line} value={line}>
                 {line}
               </option>
