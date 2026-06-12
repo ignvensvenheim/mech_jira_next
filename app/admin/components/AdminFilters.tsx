@@ -12,6 +12,7 @@ type AdminFiltersProps = {
   subCategoryOptions: string[];
   activeDatePreset: DatePreset;
   resetDisabled: boolean;
+  isFullRefreshDisabled?: boolean;
   onCategoryChange: (value: string) => void;
   onSubCategoryChange: (value: string) => void;
   onDateFromChange: (value: string) => void;
@@ -23,6 +24,7 @@ type AdminFiltersProps = {
   onApplyLastMonth: () => void;
   onApplyLastSixMonths: () => void;
   onResetFilters: () => void;
+  onFullRefreshTickets?: () => void;
   t: AdminTranslate;
   className?: string;
 };
@@ -36,6 +38,7 @@ export default function AdminFilters({
   subCategoryOptions,
   activeDatePreset,
   resetDisabled,
+  isFullRefreshDisabled = false,
   onCategoryChange,
   onSubCategoryChange,
   onDateFromChange,
@@ -47,6 +50,7 @@ export default function AdminFilters({
   onApplyLastMonth,
   onApplyLastSixMonths,
   onResetFilters,
+  onFullRefreshTickets,
   t,
   className = "",
 }: AdminFiltersProps) {
@@ -175,6 +179,16 @@ export default function AdminFilters({
         >
           {t("common.resetFilters")}
         </button>
+        {onFullRefreshTickets ? (
+          <button
+            type="button"
+            className="admin-reset-button"
+            onClick={onFullRefreshTickets}
+            disabled={isFullRefreshDisabled}
+          >
+            {t("home.fullRefreshTickets")}
+          </button>
+        ) : null}
       </div>
     </div>
   );

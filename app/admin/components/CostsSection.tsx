@@ -23,6 +23,7 @@ type CostsSectionProps = {
   costsSubCategoryOptions: string[];
   costsActiveDatePreset: DatePreset;
   ticketsLoading: boolean;
+  isFullRefreshDisabled: boolean;
   error: string | null | undefined;
   machineDataError: string;
   equipmentError: string;
@@ -60,6 +61,7 @@ type CostsSectionProps = {
   onApplyLastMonth: () => void;
   onApplyLastSixMonths: () => void;
   onResetFilters: () => void;
+  onFullRefreshTickets: () => void;
   onEquipmentModelChange: (value: string) => void;
   onEquipmentSerialNumberChange: (value: string) => void;
   onEquipmentManufacturerChange: (value: string) => void;
@@ -90,6 +92,7 @@ export default function CostsSection({
   costsSubCategoryOptions,
   costsActiveDatePreset,
   ticketsLoading,
+  isFullRefreshDisabled,
   error,
   machineDataError,
   equipmentError,
@@ -127,6 +130,7 @@ export default function CostsSection({
   onApplyLastMonth,
   onApplyLastSixMonths,
   onResetFilters,
+  onFullRefreshTickets,
   onEquipmentModelChange,
   onEquipmentSerialNumberChange,
   onEquipmentManufacturerChange,
@@ -181,6 +185,8 @@ export default function CostsSection({
           onApplyLastMonth={onApplyLastMonth}
           onApplyLastSixMonths={onApplyLastSixMonths}
           onResetFilters={onResetFilters}
+          onFullRefreshTickets={onFullRefreshTickets}
+          isFullRefreshDisabled={isFullRefreshDisabled}
           t={t}
         />
 

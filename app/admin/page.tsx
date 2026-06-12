@@ -35,7 +35,8 @@ function AdminPageContent() {
   const { locale, t } = useI18n();
   const ticketsPerPage = 20;
   const searchParams = useSearchParams();
-  const { loadingInitial, fetchingAllTickets, error } = useJiraSearch();
+  const { loadingInitial, fetchingAllTickets, error, refreshAllTickets } =
+    useJiraSearch(undefined, undefined, { forceFullRefreshOnMount: true });
   const { issues } = useIssues();
   const [selectedIssue, setSelectedIssue] = useState<NormalizedIssue | null>(null);
   const [inventoryCategory, setInventoryCategory] = useState("");
@@ -554,6 +555,7 @@ function AdminPageContent() {
                   costsSubCategoryOptions={costsSubCategoryOptions}
                   costsActiveDatePreset={costsActiveDatePreset}
                   ticketsLoading={ticketsLoading}
+                  isFullRefreshDisabled={ticketsLoading}
                   error={error}
                   machineDataError={machineDataError}
                   equipmentError={equipmentError}
@@ -591,6 +593,7 @@ function AdminPageContent() {
                   onApplyLastMonth={applyLastMonth}
                   onApplyLastSixMonths={applyLastSixMonths}
                   onResetFilters={resetCostsFilters}
+                  onFullRefreshTickets={refreshAllTickets}
                   onEquipmentModelChange={setEquipmentModel}
                   onEquipmentSerialNumberChange={setEquipmentSerialNumber}
                   onEquipmentManufacturerChange={setEquipmentManufacturer}
@@ -717,6 +720,7 @@ function AdminPageContent() {
                   statisticsDateTo={statisticsDateTo}
                   statisticsSubCategoryOptions={statisticsSubCategoryOptions}
                   statisticsActiveDatePreset={statisticsActiveDatePreset}
+                  isFullRefreshDisabled={ticketsLoading}
                   filteredIssues={filteredIssues}
                   statisticsTotalTimeSeconds={statisticsTotalTimeSeconds}
                   statisticsTrackedCost={statisticsTrackedCost}
@@ -744,6 +748,7 @@ function AdminPageContent() {
                   onApplyLastMonth={applyLastMonth}
                   onApplyLastSixMonths={applyLastSixMonths}
                   onResetFilters={resetStatisticsFilters}
+                  onFullRefreshTickets={refreshAllTickets}
                   onSetSelectedIssue={setSelectedIssue}
                 />
               )}

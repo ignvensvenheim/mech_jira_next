@@ -28,6 +28,7 @@ type StatisticsSectionProps = {
   statisticsDateTo: string;
   statisticsSubCategoryOptions: string[];
   statisticsActiveDatePreset: DatePreset;
+  isFullRefreshDisabled: boolean;
   filteredIssues: NormalizedIssue[];
   statisticsTotalTimeSeconds: number;
   statisticsTrackedCost: number;
@@ -55,6 +56,7 @@ type StatisticsSectionProps = {
   onApplyLastMonth: () => void;
   onApplyLastSixMonths: () => void;
   onResetFilters: () => void;
+  onFullRefreshTickets: () => void;
   onSetSelectedIssue: (issue: NormalizedIssue) => void;
 };
 
@@ -68,6 +70,7 @@ export default function StatisticsSection({
   statisticsDateTo,
   statisticsSubCategoryOptions,
   statisticsActiveDatePreset,
+  isFullRefreshDisabled,
   filteredIssues,
   statisticsTotalTimeSeconds,
   statisticsTrackedCost,
@@ -95,6 +98,7 @@ export default function StatisticsSection({
   onApplyLastMonth,
   onApplyLastSixMonths,
   onResetFilters,
+  onFullRefreshTickets,
   onSetSelectedIssue,
 }: StatisticsSectionProps) {
   return (
@@ -131,6 +135,8 @@ export default function StatisticsSection({
           onApplyLastMonth={onApplyLastMonth}
           onApplyLastSixMonths={onApplyLastSixMonths}
           onResetFilters={onResetFilters}
+          onFullRefreshTickets={onFullRefreshTickets}
+          isFullRefreshDisabled={isFullRefreshDisabled}
           t={t}
         />
       </div>

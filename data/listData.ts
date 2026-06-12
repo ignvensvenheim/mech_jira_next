@@ -8,10 +8,8 @@ export const STATUS_OPTIONS = [
 
 export const DEPARTMENT_LINES: Record<string, string[]> = {
   AB: [
-    "UV linijos",
     "UV apdailos linija",
     "UV dažymo kameros ir pompos",
-    "CEFLA linijos",
     "CEFLA dažymo linija",
   ],
   LPB: [
