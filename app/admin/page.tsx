@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Modal from "react-modal";
 import { useI18n } from "@/components/I18nProvider";
@@ -35,6 +35,7 @@ function AdminPageContent() {
   const { locale, t } = useI18n();
   const ticketsPerPage = 20;
   const searchParams = useSearchParams();
+  const requestedMaintenanceId = searchParams.get("maintenanceId");
   const { loadingInitial, fetchingAllTickets, error, refreshAllTickets } =
     useJiraSearch(undefined, undefined, { forceFullRefreshOnMount: true });
   const { issues } = useIssues();
@@ -289,6 +290,7 @@ function AdminPageContent() {
     sendPlannedMaintenanceReminder,
     deletePlannedMaintenance,
   } = maintenance;
+  const autoOpenedMaintenanceIdRef = useRef<string | null>(null);
 
   const statisticsTimeframeLabel = useMemo(() => {
     if (!statisticsDateFrom && !statisticsDateTo) return t("admin.timeframeAll");
@@ -512,6 +514,26 @@ function AdminPageContent() {
       setCostsCurrentPage(costsTotalPages);
     }
   }, [costsCurrentPage, costsTotalPages, setCostsCurrentPage]);
+
+  useEffect(() => {
+    if (activeFunction !== "maintenance") return;
+    if (!requestedMaintenanceId) return;
+    if (plannedMaintenanceLoading) return;
+    if (autoOpenedMaintenanceIdRef.current === requestedMaintenanceId) return;
+
+    const matchingItem =
+      plannedMaintenanceItems.find((item) => item.id === requestedMaintenanceId) || null;
+    if (!matchingItem) return;
+
+    autoOpenedMaintenanceIdRef.current = requestedMaintenanceId;
+    openEditMaintenanceModal(matchingItem);
+  }, [
+    activeFunction,
+    openEditMaintenanceModal,
+    plannedMaintenanceItems,
+    plannedMaintenanceLoading,
+    requestedMaintenanceId,
+  ]);
 
   const handleModalDataChanged = () => {
     void loadMachineData();

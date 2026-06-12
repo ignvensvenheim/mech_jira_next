@@ -1758,29 +1758,8 @@
   margin-bottom: 10px;
 }
 
-.admin-asset-maintenance-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
-  background: #fff;
-}
-
-.admin-asset-activity__meta,
-.admin-asset-maintenance-row__main {
-  min-width: 0;
-}
-
-.admin-asset-maintenance-row__meta {
-  font-size: 12px;
-  color: var(--color-muted);
-}
-
 .admin-asset-activity__title,
-.admin-asset-maintenance-row__title,
+.admin-asset-maintenance-card__title,
 .admin-asset-ticket__summary {
   color: var(--color-primary);
   overflow: hidden;
@@ -1789,13 +1768,14 @@
 
 .admin-asset-activity__detail,
 .admin-asset-activity__time,
-.admin-asset-maintenance-row__cost {
+.admin-asset-maintenance-card__meta,
+.admin-asset-maintenance-card__cost {
   font-size: 12px;
   color: var(--color-muted);
 }
 
 .admin-asset-activity__time,
-.admin-asset-maintenance-row__cost {
+.admin-asset-maintenance-card__cost {
   white-space: nowrap;
   text-align: right;
 }
@@ -1834,6 +1814,30 @@
     minmax(120px, 1fr);
 }
 
+.ticket-card.ticket-card--list.admin-asset-maintenance-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+  grid-template-columns:
+    minmax(0, 4fr)
+    minmax(130px, 1.2fr);
+}
+
+.admin-asset-maintenance-card > .ticket-card__list-field {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.ticket-card--list.admin-asset-maintenance-card > .ticket-card__list-field:nth-last-child(-n + 4) {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.admin-asset-maintenance-card:hover {
+  background: var(--color-card-bg-hover);
+}
+
 .admin-asset-ticket-card__cost {
   font-size: 12px;
   font-weight: 700;
@@ -1843,7 +1847,8 @@
 
 .admin-asset-ticket-card__status,
 .admin-asset-ticket-card__time,
-.admin-asset-activity__time {
+.admin-asset-activity__time,
+.admin-asset-maintenance-card__meta {
   color: var(--color-text-light);
 }
 
@@ -1855,12 +1860,14 @@
 }
 
 .admin-asset-ticket-card .ticket-card__list-field--summary,
-.admin-asset-activity-card .ticket-card__list-field--summary {
+.admin-asset-activity-card .ticket-card__list-field--summary,
+.admin-asset-maintenance-card .ticket-card__list-field--summary {
   max-width: none;
 }
 
 .admin-asset-ticket-card .ticket-card__list-field,
-.admin-asset-activity-card .ticket-card__list-field {
+.admin-asset-activity-card .ticket-card__list-field,
+.admin-asset-maintenance-card .ticket-card__list-field {
   width: 100%;
   min-width: 0;
   justify-self: stretch;
@@ -2078,13 +2085,9 @@
     grid-template-columns: 1fr;
   }
 
-  .admin-asset-header__top,
-  .admin-asset-maintenance-row {
-    flex-direction: column;
-  }
-
   .admin-asset-ticket-card,
-  .admin-asset-activity-card {
+  .admin-asset-activity-card,
+  .admin-asset-maintenance-card {
     grid-template-columns: 1fr;
   }
 
