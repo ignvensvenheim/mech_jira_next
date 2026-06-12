@@ -51,7 +51,16 @@ function isRecentIso(raw: string | null, maxAgeMs: number): boolean {
   return Date.now() - parsed <= maxAgeMs;
 }
 
-export function useJiraSearch(dateFrom?: string, dateTo?: string) {
+type UseJiraSearchOptions = {
+  forceFullRefreshOnMount?: boolean;
+};
+
+export function useJiraSearch(
+  dateFrom?: string,
+  dateTo?: string,
+  options: UseJiraSearchOptions = {}
+) {
+  const { forceFullRefreshOnMount = false } = options;
   const [loading, setLoading] = React.useState(true);
   const [fetchingAllTickets, setFetchingAllTickets] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -59,12 +68,22 @@ export function useJiraSearch(dateFrom?: string, dateTo?: string) {
     loaded: 0,
   });
   const [fullRefreshNonce, setFullRefreshNonce] = React.useState(0);
+  const hasForcedInitialRefresh = React.useRef(false);
 
   const { issues, setIssues } = useIssues();
   const issuesRef = React.useRef<NormalizedIssue[]>(issues);
   React.useEffect(() => {
     issuesRef.current = issues;
   }, [issues]);
+
+  React.useEffect(() => {
+    if (!forceFullRefreshOnMount || hasForcedInitialRefresh.current) return;
+
+    hasForcedInitialRefresh.current = true;
+    localStorage.removeItem(LAST_SYNC_KEY);
+    localStorage.removeItem(LAST_FULL_SYNC_KEY);
+    setFullRefreshNonce((value) => value + 1);
+  }, [forceFullRefreshOnMount]);
 
   const fetchPage = React.useCallback(async (jql: string, token?: string) => {
     const params = new URLSearchParams();
