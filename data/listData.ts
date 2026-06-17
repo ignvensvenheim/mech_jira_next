@@ -95,7 +95,6 @@ export const DEPARTMENT_LINES: Record<string, string[]> = {
   KITA: [
     "Įrankių galandinimas",
     "Suspausto oro vamzdynai",
-    "Pirkimo užsakymai gamybai",
     "Ištraukimo sistemos",
     "Kompresoriai",
     "Drėkinimo sistema UNIFOG",
