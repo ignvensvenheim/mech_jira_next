@@ -149,6 +149,8 @@ export const dictionaries = {
       maintenanceSendingNotifications:
         "Sending email to {count} selected people...",
       maintenanceSendingEmails: "Sending email...",
+      maintenanceAddAndSend: "Add & send email",
+      maintenanceSaveAndSend: "Save & send email",
       sendReminder: "Send reminder",
       addMaintenancePlan: "Add",
       maintenanceTimeline: "Timeline",
@@ -459,6 +461,8 @@ export const dictionaries = {
       maintenanceSendingNotifications:
         "Siunčiamas el. laiškas {count} pasirinktiems žmonėms...",
       maintenanceSendingEmails: "Siunčiamas el. laiškas...",
+      maintenanceAddAndSend: "Pridėti ir siųsti el. laišką",
+      maintenanceSaveAndSend: "Išsaugoti ir siųsti el. laišką",
       sendReminder: "Siųsti priminimą",
       addMaintenancePlan: "Pridėti",
       maintenanceTimeline: "Laikotarpis",

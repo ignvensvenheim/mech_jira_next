@@ -107,6 +107,14 @@ Current Maintenance State
   date-only event selection
   optional scheduled hours
   start time only or start + end time
+- Planned maintenance modal layout now gives more room to longer descriptions:
+  description textarea is taller by default
+  description textarea can be resized vertically
+  notify-people checklist uses 3 columns on larger screens and 2 on smaller screens
+- Planned maintenance primary button now makes the email side effect explicit:
+  Add & send email when creating with recipients selected
+  Save & send email when editing with recipients selected
+  plain Add / Save when no recipients are selected
 - Scheduled hours are shown in:
   calendar event card
   maintenance notification emails
@@ -141,6 +149,7 @@ Current Maintenance State
   status-specific dots / legends / colored status cues were intentionally removed
 - Maintenance email template notes:
   Outlook left padding was increased slightly for better readability
+  outgoing planned-maintenance emails are now forced to Lithuanian regardless of selected UI language
   Lithuanian copy now uses proper LT characters
   LT email label changed from "Atlikti iki" to "Atlikimo data"
   "Sukūrė" prefers full user name when available

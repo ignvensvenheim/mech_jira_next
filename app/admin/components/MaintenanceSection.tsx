@@ -608,9 +608,13 @@ export default function MaintenanceSection({
                 ? isSendingNotificationEmails
                   ? t("admin.maintenanceSendingEmails")
                   : t("admin.saving")
-                : isMaintenanceEditing
-                  ? t("common.save")
-                  : t("admin.addMaintenancePlan")}
+                : maintenanceNotificationRecipients.length > 0
+                  ? isMaintenanceEditing
+                    ? t("admin.maintenanceSaveAndSend")
+                    : t("admin.maintenanceAddAndSend")
+                  : isMaintenanceEditing
+                    ? t("common.save")
+                    : t("admin.addMaintenancePlan")}
             </button>
             {activeMaintenanceItem && (
               <button

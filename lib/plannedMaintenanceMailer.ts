@@ -34,7 +34,7 @@ function getResendConfig() {
 }
 
 function resolveLocale(locale: string | undefined): Locale {
-  return locale === "lt" ? "lt" : "en";
+  return "lt";
 }
 
 function getMailCopy(locale: Locale, action: "created" | "updated" | "reminder") {
