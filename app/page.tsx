@@ -2,6 +2,7 @@
 
 import "./page.css";
 import React, { useMemo, useState } from "react";
+import useSWR from "swr";
 import { useJiraSearch } from "@/hooks/useJiraSearch";
 import { Oval } from "react-loader-spinner";
 import { SortFilter } from "@/components/SortFilter/SortFilter";
@@ -12,12 +13,26 @@ import TicketModal from "@/components/TicketModal/TicketModal";
 import { fmtDuration } from "@/helpers/fmtDuration";
 import { relativeDate } from "@/helpers/relativeDate";
 import { getDateRangeBounds } from "./admin/adminShared";
+import { getIssueFilterOptions } from "@/lib/issueFilterOptions";
 
 const LAYOUT_STORAGE_KEY = "mechanikai-ticket-layout";
 
 export default function Page() {
   const { loadingInitial, fetchingAllTickets, error, refreshAllTickets } = useJiraSearch();
   const { issues } = useIssues();
+  const { data: jiraOptions, error: optionsError, mutate: refreshOptions } = useSWR(
+    "/api/jira/filter-options",
+    async (url: string) => {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error("Unable to load complete Jira category lists");
+      return response.json() as Promise<{ departmentLines: Record<string, string[]> }>;
+    },
+    { refreshInterval: 30_000 }
+  );
+  const filterOptions = useMemo(
+    () => getIssueFilterOptions(issues, jiraOptions?.departmentLines),
+    [issues, jiraOptions]
+  );
 
   const GRID_ITEMS_PER_PAGE = 20;
   const LIST_ITEMS_PER_PAGE = 40;
@@ -34,6 +49,19 @@ export default function Page() {
   const [selectedIssue, setSelectedIssue] = useState<NormalizedIssue | null>(
     null,
   );
+
+  React.useEffect(() => {
+    if (!jiraOptions || !selectedDepartment) return;
+    const lines = jiraOptions.departmentLines[selectedDepartment];
+    if (!lines) {
+      setSelectedDepartment("");
+      setSelectedLine("");
+      setPage(1);
+    } else if (selectedLine && !lines.includes(selectedLine)) {
+      setSelectedLine("");
+      setPage(1);
+    }
+  }, [jiraOptions, selectedDepartment, selectedLine]);
 
   // Sort issues
   const sortedIssues = useMemo(() => {
@@ -141,6 +169,7 @@ export default function Page() {
       <div className="page__layout">
         <aside className="page__sidebar">
           <SortFilter
+            filterOptions={filterOptions}
             sort={sort}
             onSortChange={setSort}
             viewMode={viewMode}
@@ -165,6 +194,7 @@ export default function Page() {
             selectedDepartment={selectedDepartment}
             onDepartmentChange={(dep) => {
               setSelectedDepartment(dep);
+              setSelectedLine("");
               setPage(1);
             }}
             selectedLine={selectedLine}
@@ -184,7 +214,11 @@ export default function Page() {
               setSelectedLine("");
               setPage(1);
             }}
-            onFullRefreshTickets={refreshAllTickets}
+            onFullRefreshTickets={() => {
+              refreshAllTickets();
+              // SWR exposes refresh failures through optionsError above.
+              void refreshOptions().catch(() => undefined);
+            }}
             issues={filteredIssues}
             isFullRefreshDisabled={loadingInitial || fetchingAllTickets}
           />
@@ -205,8 +239,8 @@ export default function Page() {
             issue={selectedIssue}
           />
 
-          {error && !loadingInitial && (
-            <div className="page__error">{String(error)}</div>
+          {(error || optionsError) && !loadingInitial && (
+            <div className="page__error">{String(error || optionsError.message)}</div>
           )}
 
           {loadingInitial && (
