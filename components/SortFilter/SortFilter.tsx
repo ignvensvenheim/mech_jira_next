@@ -5,10 +5,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useI18n } from "@/components/I18nProvider";
 import ExportIssuesButton from "../ExportIssuesButton/ExportIssuesButton";
-import { STATUS_OPTIONS } from "@/data/listData";
-import { VISIBLE_DEPARTMENT_LINES } from "@/lib/machineCatalog";
+import type { getIssueFilterOptions } from "@/lib/issueFilterOptions";
 
 type Props = {
+  filterOptions: ReturnType<typeof getIssueFilterOptions>;
   sort: "newest" | "oldest";
   onSortChange: (sort: "newest" | "oldest") => void;
   viewMode: "grid" | "list";
@@ -33,6 +33,7 @@ type Props = {
 };
 
 export function SortFilter({
+  filterOptions,
   sort,
   onSortChange,
   viewMode,
@@ -203,7 +204,7 @@ export function SortFilter({
             onChange={(e) => onDepartmentChange(e.target.value)}
           >
             <option value="">{t("common.all")}</option>
-            {Object.keys(VISIBLE_DEPARTMENT_LINES).map((dep) => (
+            {Object.keys(filterOptions.departmentLines).map((dep) => (
               <option key={dep} value={dep}>
                 {dep}
               </option>
@@ -214,10 +215,10 @@ export function SortFilter({
           <select
             value={selectedLine}
             onChange={(e) => onLineChange(e.target.value)}
-            disabled={!selectedDepartment}
+            disabled={!selectedDepartment || selectedDepartment.toUpperCase() === "PB"}
           >
             <option value="">{t("common.all")}</option>
-            {(VISIBLE_DEPARTMENT_LINES[selectedDepartment] || []).map((line) => (
+            {(filterOptions.departmentLines[selectedDepartment] || []).map((line) => (
               <option key={line} value={line}>
                 {line}
               </option>
@@ -226,7 +227,7 @@ export function SortFilter({
         </div>
         <div className="sort-filter__status-pills">
           <label>{t("home.status")}</label>
-          {STATUS_OPTIONS.map((status) => (
+          {filterOptions.statuses.map((status) => (
             <button
               key={status}
               type="button"
